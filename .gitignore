@@ -34,6 +34,8 @@ kaggle_pulled/
 # Storage generated audio & samples
 storage/audio/*
 storage/samples/*
+storage/kaggle_workspaces/
+storage/test_workspaces/
 !storage/audio/.gitkeep
 !storage/samples/.gitkeep
 

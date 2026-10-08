@@ -121,7 +121,7 @@ def mcp_pair_approve(
     user: User = Depends(get_current_user)
 ):
     clean_code = code.strip().upper()
-    success, msg = McpAuthService.approve_pairing_session(db, clean_code, user.id)
+    success, msg, sess_token = McpAuthService.approve_pairing_session(db, clean_code, user.id)
 
     if not success:
         return templates.TemplateResponse(

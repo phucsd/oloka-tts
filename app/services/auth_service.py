@@ -130,10 +130,15 @@ class AuthService:
 
     @staticmethod
     def get_google_redirect_uri(request: Request, db: Session) -> str:
+        import re
         from app.services.settings_service import SettingsService
         custom_uri = SettingsService.get_setting(db, "google_redirect_uri") or settings.GOOGLE_REDIRECT_URI
         if custom_uri and custom_uri.strip():
             return custom_uri.strip()
+
+        # Prioritize explicitly configured PUBLIC_API_BASE_URL
+        if settings.PUBLIC_API_BASE_URL and "localhost" not in settings.PUBLIC_API_BASE_URL:
+            return f"{settings.PUBLIC_API_BASE_URL.rstrip('/')}/auth/google/callback"
 
         host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
         proto = request.headers.get("x-forwarded-proto")
@@ -143,13 +148,13 @@ class AuthService:
         elif not proto:
             proto = "https" if request.url.scheme == "https" else "http"
 
-        if host:
+        # Host Header Injection Protection: only allow legitimate domain suffixes or local dev
+        allowed_hosts_pattern = r"^([a-zA-Z0-9-]+\.)*(oloka\.net|hf\.space|localhost|127\.0\.0\.1)(:\d+)?$"
+        if host and re.match(allowed_hosts_pattern, host):
             return f"{proto}://{host}/auth/google/callback"
 
-        if settings.PUBLIC_API_BASE_URL and "localhost" not in settings.PUBLIC_API_BASE_URL:
-            return f"{settings.PUBLIC_API_BASE_URL.rstrip('/')}/auth/google/callback"
-
         return f"{str(request.base_url).rstrip('/')}/auth/google/callback"
+
 
     @staticmethod
     def get_or_create_google_user(
@@ -238,8 +243,15 @@ class AuthService:
 
     @staticmethod
     def seed_default_admin(db: Session) -> User:
+        import secrets
         from app.services.settings_service import SettingsService
-        default_pwd = settings.ADMIN_DEFAULT_PASSWORD or "Admin@123456"
+        
+        default_pwd = settings.ADMIN_DEFAULT_PASSWORD
+        generated = False
+        if not default_pwd:
+            default_pwd = secrets.token_urlsafe(16)
+            generated = True
+
         force_reset = os.environ.get("RESET_ADMIN_PASSWORD", "false").lower() in ("true", "1", "yes")
         admin_google_email = (SettingsService.get_setting(db, "admin_google_email") or settings.ADMIN_GOOGLE_EMAIL or "phucsd@gmail.com").strip().lower()
 
@@ -257,7 +269,11 @@ class AuthService:
             db.add(admin)
             db.commit()
             db.refresh(admin)
-            print(f"[Auth] Seeded default admin user (admin / {admin_google_email})")
+            if generated:
+                print(f"🔒 [SECURITY ALERT] Bootstrapped initial admin user 'admin' with random password: {default_pwd}")
+                print(f"👉 Please save this password or sign in via Google OAuth ({admin_google_email}) and change it immediately!")
+            else:
+                print(f"[Auth] Seeded initial admin user (admin / {admin_google_email})")
         else:
             # Upgrade placeholder email to admin_google_email
             if admin.email in ("admin@olokatts.com", "", None):
@@ -269,8 +285,12 @@ class AuthService:
                 admin.hashed_password = AuthService.hash_password(default_pwd)
                 admin.is_active = True
                 db.commit()
-                print(f"[Auth] Force-reset admin password to default ({default_pwd}) via RESET_ADMIN_PASSWORD")
+                if generated:
+                    print(f"🔒 [SECURITY ALERT] Force-reset admin password to new random password: {default_pwd}")
+                else:
+                    print(f"[Auth] Force-reset admin password via RESET_ADMIN_PASSWORD")
         return admin
+
 
     @staticmethod
     def log_audit(db: Session, action: str, message: str, user_id: str = None, level: str = "INFO", details: str = None) -> AuditLog:
@@ -299,6 +319,7 @@ def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -
     Extracts user from:
     1. HTTP-Only Cookie 'session_token'
     2. Authorization header: Bearer <session_token> OR Bearer <api_key>
+    (Query parameters are strictly disallowed to prevent token leakage in logs/history/referers)
     """
     token = request.cookies.get("session_token")
     auth_header = request.headers.get("Authorization")
@@ -307,10 +328,6 @@ def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -
         parts = auth_header.split()
         if len(parts) == 2 and parts[0].lower() == "bearer":
             token = parts[1]
-
-    # Support API key in query parameters (for ChatGPT MCP URL, webhooks, etc.)
-    if not token:
-        token = request.query_params.get("api_key") or request.query_params.get("key") or request.query_params.get("token")
 
     if not token:
         return None
@@ -334,11 +351,6 @@ def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -
     except Exception as _e:
         pass
 
-    # Backward compatibility fallback: check legacy user.api_key
-    user = db.query(User).filter(User.api_key == token, User.is_active == True).first()
-    if user:
-        return user
-
     return None
 
 def get_current_user(request: Request, user: Optional[User] = Depends(get_current_user_optional)) -> User:
@@ -355,10 +367,27 @@ def get_current_user(request: Request, user: Optional[User] = Depends(get_curren
         )
     return user
 
-def get_current_admin(user: User = Depends(get_current_user)) -> User:
+def get_current_admin(request: Request, user: User = Depends(get_current_user)) -> User:
+    # If caller authenticated via API Key, enforce explicit admin scope and block web HTML access
+    api_key_obj = getattr(request.state, "api_key", None)
+    if api_key_obj:
+        granted_scopes = [s.strip() for s in (api_key_obj.scopes or "").split(",")]
+        if "admin:access" not in granted_scopes and "full:access" not in granted_scopes:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="API Key không có quyền Quản trị viên (yêu cầu scope 'admin:access' hoặc 'full:access')"
+            )
+        # Block API keys from navigating HTML admin panel pages
+        if not request.url.path.startswith("/api/"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Giao diện quản trị HTML chỉ cho phép truy cập qua phiên đăng nhập Cookie, không dùng API Key."
+            )
+
     if user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Bạn không có quyền truy cập trang Quản trị viên!"
         )
     return user
+

@@ -1449,9 +1449,10 @@
           finishJob(job);
         } else if (job.status === 'failed') {
           clearInterval(interval);
-          stepLabel.innerHTML = `<span class="text-[#dc2626] flex items-center"><span class="material-symbols-rounded text-sm mr-1">error</span>Thất bại: ${job.error_message || 'Lỗi không xác định'}</span>`;
+          stepLabel.innerHTML = `<span class="text-[#dc2626] flex items-center"><span class="material-symbols-rounded text-sm mr-1">error</span>Thất bại: ${escapeHtml(job.error_message || 'Lỗi không xác định')}</span>`;
           resetBtn();
         }
+
 
         if (tries > 240) {
           clearInterval(interval);

@@ -57,16 +57,29 @@ def get_system_status(db: Session = Depends(get_db), admin: User = Depends(get_c
         "recent_logs": RECENT_WORKER_LOGS[-30:]
     }
 
+from typing import Optional
+
 @router.post("/kaggle/push")
 def trigger_kaggle_push(force: bool = Query(False), admin: User = Depends(get_current_admin)):
-    from app.routers import internal_worker
-    internal_worker.SHUTDOWN_SIGNAL = False
     return KaggleOrchestrator.trigger_push(force=force)
 
 @router.post("/kaggle/stop")
-def trigger_kaggle_stop(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    from app.routers import internal_worker
-    internal_worker.SHUTDOWN_SIGNAL = True
-    db.query(WorkerSession).filter(WorkerSession.status.in_(["ready", "busy", "starting"])).update({"status": "stopping"})
+def trigger_kaggle_stop(
+    execution_account_id: Optional[str] = Query(None, description="Stop workers for specific account or admin workers"),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    query = db.query(WorkerSession).filter(WorkerSession.status.in_(["ready", "busy", "starting"]))
+    if execution_account_id:
+        query = query.filter(WorkerSession.execution_account_id == execution_account_id)
+    else:
+        from app.models import KaggleExecutionAccount
+        admin_accs = db.query(KaggleExecutionAccount.id).filter(
+            (KaggleExecutionAccount.user_id == admin.id) | (KaggleExecutionAccount.is_master == True)
+        ).all()
+        admin_acc_ids = [a[0] for a in admin_accs]
+        if admin_acc_ids:
+            query = query.filter(WorkerSession.execution_account_id.in_(admin_acc_ids))
+    count = query.update({"status": "stopping"}, synchronize_session=False)
     db.commit()
-    return {"status": "stopping", "message": "Đã gửi lệnh ngắt kết nối tới các Kaggle GPU Worker để giải phóng GPU."}
+    return {"status": "stopping", "stopped_workers": count, "message": f"Đã gửi lệnh ngắt kết nối tới {count} Kaggle GPU Worker."}

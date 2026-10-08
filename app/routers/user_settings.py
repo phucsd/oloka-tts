@@ -42,21 +42,27 @@ def update_kaggle_credentials(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    user.kaggle_username = kaggle_username.strip()
-    user.kaggle_key = kaggle_key.strip()
-    db.commit()
+    from app.services.kaggle_account_service import KaggleAccountService
+    KaggleAccountService.create_or_update_account(
+        db=db,
+        user_id=user.id,
+        kaggle_username=kaggle_username.strip(),
+        kaggle_key=kaggle_key.strip()
+    )
     DbSyncService.backup_database(immediate=True)
     AuthService.log_audit(db, action="update_kaggle_key", message=f"Đã cập nhật Kaggle API Key", user_id=user.id)
     return RedirectResponse(url="/settings?msg=kaggle_saved", status_code=302)
 
 @router.post("/api/user/kaggle/test")
-def test_kaggle_credentials(payload: dict = None, user: User = Depends(get_current_user)):
+def test_kaggle_credentials(payload: dict = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from app.services.kaggle_account_service import KaggleAccountService
     k_user = (payload or {}).get("kaggle_username") or user.kaggle_username
     k_key = (payload or {}).get("kaggle_key") or user.kaggle_key
 
     if not k_user or not k_key:
         raise HTTPException(status_code=400, detail="Vui lòng nhập đầy đủ Kaggle Username và API Key!")
 
+    acc = KaggleAccountService.get_execution_account_for_user(db, user)
     try:
         # Test authentication against Kaggle API directly
         # Kaggle HTTP Basic Auth with username and api_key
@@ -66,16 +72,27 @@ def test_kaggle_credentials(payload: dict = None, user: User = Depends(get_curre
             timeout=10
         )
         if resp.status_code == 200:
+            if acc:
+                from datetime import datetime
+                acc.last_validation_at = datetime.utcnow()
+                acc.last_status = "validated"
+                db.commit()
             return {
                 "status": "success",
                 "message": f"Kết nối Kaggle thành công! Tài khoản: {k_user} (Hợp lệ)"
             }
         elif resp.status_code == 401:
+            if acc:
+                acc.last_status = "unauthorized"
+                db.commit()
             return {
                 "status": "error",
                 "message": "Kaggle báo lỗi 401 Unauthorized: Username hoặc API Key không hợp lệ. Vui lòng kiểm tra lại file kaggle.json!"
             }
         else:
+            if acc:
+                acc.last_status = f"error_{resp.status_code}"
+                db.commit()
             return {
                 "status": "error",
                 "message": f"Kaggle phản hồi mã HTTP {resp.status_code}: {resp.text[:150]}"

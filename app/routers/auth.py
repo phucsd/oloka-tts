@@ -29,16 +29,52 @@ AUTH_ERROR_MESSAGES = {
     "account_disabled": "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.",
 }
 
+from urllib.parse import urlparse
+
+
+def is_safe_redirect_url(url: Optional[str]) -> bool:
+    if not url:
+        return False
+    clean = url.strip()
+    if not clean.startswith("/"):
+        return False
+    # Prevent protocol-relative URLs (//attacker.com) and backslash bypasses (\\attacker.com, /\attacker.com)
+    if clean.startswith("//") or clean.startswith("/\\") or clean.startswith("\\"):
+        return False
+    # Prevent open redirect to authentication loop endpoints
+    if clean.startswith("/login") or clean.startswith("/auth/"):
+        return False
+    try:
+        parsed = urlparse(clean)
+        if parsed.scheme or parsed.netloc:
+            return False
+    except Exception:
+        return False
+    return True
+
+def set_session_cookie(resp: Response, request: Request, token: str):
+    is_https = (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https" or settings.APP_ENV == "production")
+    resp.set_cookie(
+        key="session_token",
+        value=token,
+        max_age=7 * 86400,
+        httponly=True,
+        samesite="lax",
+        secure=is_https
+    )
+
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, next: str = "/", error: str = None, user: Optional[User] = Depends(get_current_user_optional)):
+    safe_next = next if is_safe_redirect_url(next) else "/"
     if user:
-        return RedirectResponse(url=next or "/", status_code=302)
+        return RedirectResponse(url=safe_next, status_code=302)
     error_msg = AUTH_ERROR_MESSAGES.get(error, error)
     return templates.TemplateResponse(
         request=request,
         name="auth/login.html",
-        context={"page_title": "Đăng Nhập - OlokaTTS", "next": next, "error": error_msg}
+        context={"page_title": "Đăng Nhập - OlokaTTS", "next": safe_next, "error": error_msg}
     )
+
 
 @router.post("/login")
 def login_action(
@@ -84,28 +120,29 @@ def login_action(
             }
         }
 
-    redirect_url = next if next and not next.startswith("/login") else "/"
+    redirect_url = next if is_safe_redirect_url(next) else "/"
     resp = RedirectResponse(url=redirect_url, status_code=303)
-    resp.set_cookie(
-        key="session_token",
-        value=token,
-        max_age=7 * 86400,
-        httponly=True,
-        samesite="lax",
-        secure=False  # Allow over HTTP / proxy
-    )
+    set_session_cookie(resp, request, token)
     return resp
 
 @router.get("/register", response_class=HTMLResponse)
-def register_page(request: Request, error: str = None, user: Optional[User] = Depends(get_current_user_optional)):
+def register_page(
+    request: Request,
+    error: str = None,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user_optional)
+):
     if user:
         return RedirectResponse(url="/", status_code=302)
+    if not SettingsService.get_bool(db, "allow_public_registration", True):
+        return RedirectResponse(url="/login?error=registration_disabled", status_code=303)
     error_msg = AUTH_ERROR_MESSAGES.get(error, error)
     return templates.TemplateResponse(
         request=request,
         name="auth/register.html",
         context={"page_title": "Đăng Ký Tài Khoản - OlokaTTS", "error": error_msg}
     )
+
 
 # ==============================================================================
 # GOOGLE OAUTH 2.0 (SIGN-IN & SIGN-UP)
@@ -158,9 +195,8 @@ async def google_oauth_callback(
         return RedirectResponse(url="/login?error=google_cancelled", status_code=303)
 
     stored_state = request.cookies.get("google_oauth_state")
-    next_url = request.cookies.get("google_oauth_next") or "/"
-    if next_url.startswith("/login") or next_url.startswith("/register"):
-        next_url = "/"
+    raw_next = request.cookies.get("google_oauth_next") or "/"
+    next_url = raw_next if is_safe_redirect_url(raw_next) else "/"
 
     if not state or not stored_state or state != stored_state:
         return RedirectResponse(url="/login?error=invalid_oauth_state", status_code=303)
@@ -211,6 +247,9 @@ async def google_oauth_callback(
     if not email:
         return RedirectResponse(url="/login?error=google_userinfo_failed", status_code=303)
 
+    if not userinfo.get("email_verified", True):
+        return RedirectResponse(url="/login?error=google_userinfo_failed", status_code=303)
+
     name = userinfo.get("name", "")
     avatar_url = userinfo.get("picture", "")
     google_id = userinfo.get("sub", "")
@@ -245,14 +284,7 @@ async def google_oauth_callback(
     )
 
     resp = RedirectResponse(url=next_url, status_code=303)
-    resp.set_cookie(
-        key="session_token",
-        value=token,
-        max_age=7 * 86400,
-        httponly=True,
-        samesite="lax",
-        secure=False
-    )
+    set_session_cookie(resp, request, token)
     resp.delete_cookie("google_oauth_state")
     resp.delete_cookie("google_oauth_next")
     return resp
@@ -270,14 +302,20 @@ def register_action(
     email = email.strip().lower()
     is_json = "application/json" in request.headers.get("accept", "").lower()
 
+    # Enforce registration policy
+    if not SettingsService.get_bool(db, "allow_public_registration", True):
+        err = "Hệ thống hiện tại đang tắt tính năng đăng ký tài khoản tự do."
+        if is_json: raise HTTPException(status_code=403, detail=err)
+        return RedirectResponse(url="/login?error=registration_disabled", status_code=303)
+
     # Validation
     if len(username) < 3 or not username.isalnum():
         err = "Tên đăng nhập phải từ 3 ký tự trở lên và chỉ chứa chữ/số!"
         if is_json: raise HTTPException(status_code=400, detail=err)
         return templates.TemplateResponse(request=request, name="auth/register.html", context={"error": err, "username": username, "email": email}, status_code=400)
 
-    if len(password) < 6:
-        err = "Mật khẩu phải có ít nhất 6 ký tự!"
+    if len(password) < 8:
+        err = "Mật khẩu phải có ít nhất 8 ký tự!"
         if is_json: raise HTTPException(status_code=400, detail=err)
         return templates.TemplateResponse(request=request, name="auth/register.html", context={"error": err, "username": username, "email": email}, status_code=400)
 
@@ -301,15 +339,9 @@ def register_action(
 
     # Redirect to settings to configure Kaggle key immediately
     resp = RedirectResponse(url="/settings?welcome=1", status_code=303)
-    resp.set_cookie(
-        key="session_token",
-        value=token,
-        max_age=7 * 86400,
-        httponly=True,
-        samesite="lax",
-        secure=False
-    )
+    set_session_cookie(resp, request, token)
     return resp
+
 
 @router.get("/logout")
 @router.post("/logout")

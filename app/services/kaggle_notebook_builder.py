@@ -1,17 +1,23 @@
 import json
 import os
 from pathlib import Path
+from typing import Optional
 from app.config import settings
 
 class KaggleNotebookBuilder:
     @staticmethod
-    def generate_kernel_metadata(output_dir: str = None) -> dict:
+    def generate_kernel_metadata(
+        output_dir: str = None,
+        kaggle_username: str = None,
+        kernel_slug: str = None,
+        kernel_title: str = None
+    ) -> dict:
         target_dir = Path(output_dir or settings.KAGGLE_WORKER_DIR)
         os.makedirs(target_dir, exist_ok=True)
         
-        username = settings.KAGGLE_USERNAME or "phcnguynhukendykerry"
-        slug = settings.KAGGLE_KERNEL_SLUG or "vieneu-worker"
-        title = settings.KAGGLE_KERNEL_TITLE or "VieNeu Dual T4 Worker"
+        username = kaggle_username or settings.KAGGLE_USERNAME or "anonymous"
+        slug = kernel_slug or settings.KAGGLE_KERNEL_SLUG or "vieneu-worker"
+        title = kernel_title or settings.KAGGLE_KERNEL_TITLE or "VieNeu Dual T4 Worker"
         
         metadata = {
             "id": f"{username}/{slug}",
@@ -36,12 +42,18 @@ class KaggleNotebookBuilder:
         return metadata
 
     @staticmethod
-    def generate_worker_script(output_dir: str = None) -> str:
+    def generate_worker_script(
+        output_dir: str = None,
+        gateway_url: str = None,
+        worker_token: str = None,
+        worker_prefix: str = None
+    ) -> str:
         target_dir = Path(output_dir or settings.KAGGLE_WORKER_DIR)
         os.makedirs(target_dir, exist_ok=True)
         
-        gateway_url = settings.PUBLIC_API_BASE_URL.rstrip("/")
-        worker_token = settings.WORKER_TOKEN
+        g_url = (gateway_url or settings.PUBLIC_API_BASE_URL).rstrip("/")
+        w_token = worker_token or settings.WORKER_TOKEN or ""
+        w_prefix = worker_prefix or "kaggle_worker"
         
         script_content = f'''"""
 VieNeu-TTS Kaggle Dual Tesla T4 Worker
@@ -84,8 +96,9 @@ def install_dependencies():
         subprocess.check_call([sys.executable, "-m", "pip", "install", "sea-g2p", "kaldi-native-fbank", "soxr", "onnxruntime", "requests", "soundfile"])
         print("✅ Fast-Bootstrap installed successfully!")
 
-GATEWAY_URL = os.environ.get("PUBLIC_API_BASE_URL", "{gateway_url}")
-WORKER_TOKEN = os.environ.get("WORKER_TOKEN", "{worker_token}")
+GATEWAY_URL = os.environ.get("PUBLIC_API_BASE_URL", "{g_url}")
+WORKER_TOKEN = os.environ.get("WORKER_TOKEN", "{w_token}")
+WORKER_PREFIX = os.environ.get("WORKER_PREFIX", "{w_prefix}")
 
 def run_worker_process(device_id: int, worker_name: str):
     import requests
@@ -192,6 +205,7 @@ def run_worker_process(device_id: int, worker_name: str):
                     voice_type = job_data.get("voice_type", "preset")
                     voice_id = job_data.get("voice_id", "Phạm Tuyên")
                     ref_audio_url = job_data.get("ref_audio_url")
+                    lease_token = job_data.get("lease_token", "")
                     
                     print(f"⚡ [{{worker_name}}] Processing Job {{job_id}} (Type: {{voice_type}}, Voice: {{voice_id}})")
                     job_t0 = time.time()
@@ -244,7 +258,8 @@ def run_worker_process(device_id: int, worker_name: str):
                                 "worker_id": worker_name,
                                 "duration": duration,
                                 "sample_rate": 48000,
-                                "execution_time": exec_time
+                                "execution_time": exec_time,
+                                "lease_token": lease_token
                             }}
                             requests.post(
                                 f"{{GATEWAY_URL}}/api/worker/jobs/{{job_id}}/complete",
@@ -264,7 +279,8 @@ def run_worker_process(device_id: int, worker_name: str):
                         fail_payload = {{
                             "job_id": job_id,
                             "worker_id": worker_name,
-                            "error_message": str(infer_err)
+                            "error_message": str(infer_err),
+                            "lease_token": lease_token
                         }}
                         requests.post(
                             f"{{GATEWAY_URL}}/api/worker/jobs/{{job_id}}/fail",
@@ -298,15 +314,15 @@ def main():
 
     workers = []
     if device_count >= 2:
-        print("⚡ Dual GPU setup: Launching 2 workers for Tesla T4 x 2!")
-        workers.append(("0", "kaggle_worker_t4_0"))
-        workers.append(("1", "kaggle_worker_t4_1"))
+        print(f"⚡ Dual GPU setup: Launching 2 workers for Tesla T4 x 2 (Prefix: {{WORKER_PREFIX}})")
+        workers.append(("0", f"{{WORKER_PREFIX}}_t4_0"))
+        workers.append(("1", f"{{WORKER_PREFIX}}_t4_1"))
     elif device_count == 1:
-        print("⚡ Single GPU setup: Launching 1 worker for Tesla T4!")
-        workers.append(("0", "kaggle_worker_t4_0"))
+        print(f"⚡ Single GPU setup: Launching 1 worker for Tesla T4 (Prefix: {{WORKER_PREFIX}})")
+        workers.append(("0", f"{{WORKER_PREFIX}}_t4_0"))
     else:
-        print("⚠️ No GPU detected! Running CPU mode worker...")
-        workers.append(("-1", "kaggle_worker_cpu"))
+        print(f"⚠️ No GPU detected! Running CPU mode worker (Prefix: {{WORKER_PREFIX}})")
+        workers.append(("-1", f"{{WORKER_PREFIX}}_cpu"))
 
     processes = {{}}
     for dev_id, name in workers:
@@ -347,7 +363,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.device is not None:
-        run_worker_process(args.device, args.name or f"kaggle_worker_{{args.device}}")
+        run_worker_process(args.device, args.name or f"{{WORKER_PREFIX}}_{{args.device}}")
     else:
         main()
 '''

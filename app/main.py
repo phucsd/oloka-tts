@@ -21,15 +21,8 @@ from app.services.job_service import JobService
 from app.services.kaggle_notebook_builder import KaggleNotebookBuilder
 from app.routers import web, tts, voices, internal_worker, openai_speech, admin, auth, user_settings, admin_views, mcp_auth
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup tasks: Restore database from cloud if running in ephemeral container
-    from app.services.db_sync_service import DbSyncService
-    try:
-        DbSyncService.restore_database()
-    except Exception as e_restore:
-        print(f"[Startup] Database restore check: {e_restore}")
-
+def init_database():
+    import app.models  # Ensure all models are registered in Base.metadata
     print("[Startup] Initializing VieNeu Gateway Database...")
     Base.metadata.create_all(bind=engine)
 
@@ -44,6 +37,39 @@ async def lifespan(app: FastAPI):
             if "user_id" not in cols and len(cols) > 0:
                 conn.exec_driver_sql("ALTER TABLE tts_jobs ADD COLUMN user_id VARCHAR(64)")
                 print("[Startup] Auto-migrated schema: Added user_id to tts_jobs.")
+            if "lease_token" not in cols and len(cols) > 0:
+                conn.exec_driver_sql("ALTER TABLE tts_jobs ADD COLUMN lease_token VARCHAR(64)")
+                print("[Startup] Auto-migrated schema: Added lease_token to tts_jobs.")
+            if "lease_expires_at" not in cols and len(cols) > 0:
+                conn.exec_driver_sql("ALTER TABLE tts_jobs ADD COLUMN lease_expires_at DATETIME")
+                print("[Startup] Auto-migrated schema: Added lease_expires_at to tts_jobs.")
+            if "execution_account_id" not in cols and len(cols) > 0:
+                conn.exec_driver_sql("ALTER TABLE tts_jobs ADD COLUMN execution_account_id VARCHAR(64)")
+                print("[Startup] Auto-migrated schema: Added execution_account_id to tts_jobs.")
+            if "completed_at" not in cols and len(cols) > 0:
+                conn.exec_driver_sql("ALTER TABLE tts_jobs ADD COLUMN completed_at DATETIME")
+                print("[Startup] Auto-migrated schema: Added completed_at to tts_jobs.")
+
+            res_w = conn.exec_driver_sql("PRAGMA table_info(worker_sessions)")
+            cols_w = [row[1] for row in res_w.fetchall()]
+            if "owner_user_id" not in cols_w and len(cols_w) > 0:
+                conn.exec_driver_sql("ALTER TABLE worker_sessions ADD COLUMN owner_user_id VARCHAR(64)")
+                print("[Startup] Auto-migrated schema: Added owner_user_id to worker_sessions.")
+            if "execution_account_id" not in cols_w and len(cols_w) > 0:
+                conn.exec_driver_sql("ALTER TABLE worker_sessions ADD COLUMN execution_account_id VARCHAR(64)")
+                print("[Startup] Auto-migrated schema: Added execution_account_id to worker_sessions.")
+            if "kernel_ref" not in cols_w and len(cols_w) > 0:
+                conn.exec_driver_sql("ALTER TABLE worker_sessions ADD COLUMN kernel_ref VARCHAR(256)")
+                print("[Startup] Auto-migrated schema: Added kernel_ref to worker_sessions.")
+
+            # Safe policy: deactivate legacy unowned worker sessions
+            conn.exec_driver_sql("UPDATE worker_sessions SET status = 'offline' WHERE owner_user_id IS NULL")
+
+            res_s = conn.exec_driver_sql("PRAGMA table_info(voice_samples)")
+            cols_s = [row[1] for row in res_s.fetchall()]
+            if "user_id" not in cols_s and len(cols_s) > 0:
+                conn.exec_driver_sql("ALTER TABLE voice_samples ADD COLUMN user_id VARCHAR(64)")
+                print("[Startup] Auto-migrated schema: Added user_id to voice_samples.")
             
             res_v = conn.exec_driver_sql("PRAGMA table_info(voice_presets)")
             cols_v = [row[1] for row in res_v.fetchall()]
@@ -59,8 +85,30 @@ async def lifespan(app: FastAPI):
             if "google_id" not in cols_u and len(cols_u) > 0:
                 conn.exec_driver_sql("ALTER TABLE users ADD COLUMN google_id VARCHAR(128)")
                 print("[Startup] Auto-migrated schema: Added google_id to users.")
+
+            res_mcp = conn.exec_driver_sql("PRAGMA table_info(mcp_pairing_sessions)")
+            cols_mcp = [row[1] for row in res_mcp.fetchall()]
+            if "session_token" not in cols_mcp and len(cols_mcp) > 0:
+                conn.exec_driver_sql("ALTER TABLE mcp_pairing_sessions ADD COLUMN session_token VARCHAR(128)")
+                print("[Startup] Auto-migrated schema: Added session_token to mcp_pairing_sessions.")
+            if "transport_session_id" not in cols_mcp and len(cols_mcp) > 0:
+                conn.exec_driver_sql("ALTER TABLE mcp_pairing_sessions ADD COLUMN transport_session_id VARCHAR(128)")
+                print("[Startup] Auto-migrated schema: Added transport_session_id to mcp_pairing_sessions.")
+
+            conn.commit()
     except Exception as em:
         print(f"[Startup] Migration check info: {em}")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup tasks: Restore database from cloud if running in ephemeral container
+    from app.services.db_sync_service import DbSyncService
+    try:
+        DbSyncService.restore_database()
+    except Exception as e_restore:
+        print(f"[Startup] Database restore check: {e_restore}")
+
+    init_database()
 
     # Seed default voice presets & admin account
     db = SessionLocal()
@@ -70,6 +118,21 @@ async def lifespan(app: FastAPI):
         JobService.cleanup_stale_jobs(db, max_age_minutes=5)
         from app.services.auth_service import AuthService
         AuthService.seed_default_admin(db)
+        
+        # Idempotent migration of any legacy plaintext API keys to hashed ApiKey table
+        from app.services.api_key_service import ApiKeyService
+        ApiKeyService.migrate_legacy_keys(db)
+
+        # Auto-seed KaggleExecutionAccounts for configured users
+        from app.services.kaggle_account_service import KaggleAccountService
+        from app.models import User
+        users_with_creds = db.query(User).filter(User.kaggle_username.isnot(None), User.kaggle_key.isnot(None)).all()
+        for u in users_with_creds:
+            KaggleAccountService.get_execution_account_for_user(db, u)
+        admin_user = db.query(User).filter(User.role == "admin").first()
+        if admin_user:
+            KaggleAccountService.get_execution_account_for_user(db, admin_user)
+
         # Ensure database is synced to private backup dataset
         DbSyncService.backup_database(immediate=False)
     finally:
@@ -123,25 +186,38 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Middleware
+# CORS Middleware (Strict explicit origin configuration)
+cors_allowed_origins = [
+    "https://tts.oloka.net",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",
+]
+if settings.PUBLIC_API_BASE_URL:
+    pub_base = settings.PUBLIC_API_BASE_URL.rstrip("/")
+    if pub_base not in cors_allowed_origins:
+        cors_allowed_origins.append(pub_base)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_allowed_origins,
+    allow_origin_regex=r"^https://.*\.hf\.space$",
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
 # Register Jinja2 filter
 web.templates.env.filters["basename"] = os.path.basename
 
-# Static and Storage Mounts
+# Static Mounts (Only public static assets like CSS/JS/images/preset previews)
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 os.makedirs(STATIC_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-os.makedirs(settings.AUDIO_DIR, exist_ok=True)
-app.mount("/audio_files", StaticFiles(directory=settings.AUDIO_DIR), name="audio_files")
+# Note: Generated private audio files are accessed strictly through authenticated /v1/tts/jobs/{job_id}/audio
+# Direct unauthenticated static file mounting of AUDIO_DIR has been removed for privacy and security.
+
 
 # Include routers
 app.include_router(web.router)

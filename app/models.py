@@ -11,6 +11,7 @@ class TTSJob(Base):
 
     id = Column(String(64), primary_key=True, default=lambda: generate_id("job"))
     user_id = Column(String(64), nullable=True, index=True)
+    execution_account_id = Column(String(64), ForeignKey("kaggle_execution_accounts.id"), nullable=True, index=True)
     prompt = Column(Text, nullable=False)
     voice_type = Column(String(32), default="preset")  # "preset" | "clone"
     voice_id = Column(String(128), default="Phạm Tuyên")
@@ -27,10 +28,13 @@ class TTSJob(Base):
     duration = Column(Float, nullable=True)
     sample_rate = Column(Integer, default=48000)
     worker_id = Column(String(64), nullable=True)
+    lease_token = Column(String(64), nullable=True)
+    lease_expires_at = Column(DateTime, nullable=True)
     execution_time = Column(Float, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
 
 class VoicePreset(Base):
     __tablename__ = "voice_presets"
@@ -49,26 +53,61 @@ class VoiceSample(Base):
     __tablename__ = "voice_samples"
 
     id = Column(String(64), primary_key=True, default=lambda: generate_id("vs"))
+    user_id = Column(String(64), nullable=True, index=True)
     name = Column(String(128), nullable=False)
     file_path = Column(String(512), nullable=False)
     ref_text = Column(Text, nullable=True)
     duration = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
 class WorkerSession(Base):
     __tablename__ = "worker_sessions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     worker_id = Column(String(64), unique=True, index=True)
+    owner_user_id = Column(String(64), ForeignKey("users.id"), index=True, nullable=True)
+    execution_account_id = Column(String(64), ForeignKey("kaggle_execution_accounts.id"), index=True, nullable=True)
+    kernel_ref = Column(String(256), nullable=True)
     gpu_index = Column(Integer, default=0)
     gpu_name = Column(String(64), default="Tesla T4")
     vram_total_mb = Column(Integer, default=15360)
     vram_used_mb = Column(Integer, default=0)
-    status = Column(String(32), default="starting")  # starting, ready, busy, offline
+    status = Column(String(32), default="starting")  # starting, ready, busy, offline, stopping
     current_job_id = Column(String(64), nullable=True)
     ip_address = Column(String(64), nullable=True)
     last_heartbeat_at = Column(DateTime, default=datetime.utcnow)
     started_at = Column(DateTime, default=datetime.utcnow)
+
+class KaggleExecutionAccount(Base):
+    __tablename__ = "kaggle_execution_accounts"
+
+    id = Column(String(64), primary_key=True, default=lambda: generate_id("kacc"))
+    owner_user_id = Column(String(64), ForeignKey("users.id"), index=True, nullable=False)
+    kaggle_username = Column(String(128), nullable=False)
+    kaggle_key = Column(String(256), nullable=False)
+    kernel_slug = Column(String(128), default="vieneu-tts-dual-t4-worker")
+    kernel_ref = Column(String(256), nullable=False)
+    kernel_title = Column(String(128), default="VieNeu TTS Dual T4 Worker")
+    is_enabled = Column(Boolean, default=True)
+    last_validation_at = Column(DateTime, nullable=True)
+    last_status = Column(String(64), default="configured")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class WorkerToken(Base):
+    __tablename__ = "worker_tokens"
+
+    id = Column(String(64), primary_key=True, default=lambda: generate_id("wtk"))
+    token_hash = Column(String(256), unique=True, index=True, nullable=False)
+    token_prefix = Column(String(32), nullable=False)
+    owner_user_id = Column(String(64), ForeignKey("users.id"), index=True, nullable=False)
+    execution_account_id = Column(String(64), ForeignKey("kaggle_execution_accounts.id"), index=True, nullable=True)
+    is_active = Column(Boolean, default=True)
+    expires_at = Column(DateTime, nullable=True)
+    last_used_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class SystemSetting(Base):
     __tablename__ = "system_settings"
@@ -131,6 +170,8 @@ class McpPairingSession(Base):
 
     id = Column(String(64), primary_key=True, default=lambda: generate_id("mcp_sess"))
     code = Column(String(32), unique=True, index=True, nullable=False)
+    session_token = Column(String(128), unique=True, index=True, nullable=True)
+    transport_session_id = Column(String(128), index=True, nullable=True)
     user_id = Column(String(64), ForeignKey("users.id"), nullable=True, index=True)
     status = Column(String(32), default="pending")  # "pending", "authorized", "revoked", "expired"
     client_name = Column(String(128), default="ChatGPT")

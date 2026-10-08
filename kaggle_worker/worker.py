@@ -39,7 +39,8 @@ def install_dependencies():
         print("✅ Vieneu SDK installed successfully.")
 
 GATEWAY_URL = os.environ.get("PUBLIC_API_BASE_URL", "https://tts.oloka.net")
-WORKER_TOKEN = os.environ.get("WORKER_TOKEN", "vieneu_secure_worker_token_2026")
+WORKER_TOKEN = os.environ.get("WORKER_TOKEN", "")
+
 
 def run_worker_process(device_id: int, worker_name: str):
     import requests
@@ -196,6 +197,7 @@ def run_worker_process(device_id: int, worker_name: str):
                             complete_payload = {
                                 "job_id": job_id,
                                 "worker_id": worker_name,
+                                "lease_token": job_data.get("lease_token", ""),
                                 "duration": duration,
                                 "sample_rate": 48000,
                                 "execution_time": exec_time
@@ -218,6 +220,7 @@ def run_worker_process(device_id: int, worker_name: str):
                         fail_payload = {
                             "job_id": job_id,
                             "worker_id": worker_name,
+                            "lease_token": job_data.get("lease_token", ""),
                             "error_message": str(infer_err)
                         }
                         requests.post(
@@ -226,6 +229,7 @@ def run_worker_process(device_id: int, worker_name: str):
                             headers=headers,
                             timeout=10
                         )
+
 
         except requests.exceptions.RequestException as req_err:
             pass
@@ -251,16 +255,17 @@ def main():
     print(f"🎯 Total CUDA devices detected: {device_count}")
 
     workers = []
+    w_prefix = os.environ.get("WORKER_PREFIX") or os.environ.get("WORKER_NAME_PREFIX", "kaggle_worker")
     if device_count >= 2:
-        print("⚡ Dual GPU setup: Launching 2 workers for Tesla T4 x 2!")
-        workers.append(("0", "kaggle_worker_t4_0"))
-        workers.append(("1", "kaggle_worker_t4_1"))
+        print(f"⚡ Dual GPU setup: Launching 2 workers for Tesla T4 x 2 (Prefix: {w_prefix})!")
+        workers.append(("0", f"{w_prefix}_t4_0"))
+        workers.append(("1", f"{w_prefix}_t4_1"))
     elif device_count == 1:
-        print("⚡ Single GPU setup: Launching 1 worker for Tesla T4!")
-        workers.append(("0", "kaggle_worker_t4_0"))
+        print(f"⚡ Single GPU setup: Launching 1 worker for Tesla T4 (Prefix: {w_prefix})!")
+        workers.append(("0", f"{w_prefix}_t4_0"))
     else:
-        print("⚠️ No GPU detected! Running CPU mode worker...")
-        workers.append(("-1", "kaggle_worker_cpu"))
+        print(f"⚠️ No GPU detected! Running CPU mode worker (Prefix: {w_prefix})...")
+        workers.append(("-1", f"{w_prefix}_cpu"))
 
     processes = {}
     for dev_id, name in workers:

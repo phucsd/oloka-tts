@@ -30,7 +30,8 @@ def reset_admin(new_password: str = None):
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     
-    password = new_password or settings.ADMIN_DEFAULT_PASSWORD or "Admin@123456"
+    import secrets
+    password = new_password or settings.ADMIN_DEFAULT_PASSWORD or secrets.token_urlsafe(16)
 
     try:
         admin = db.query(User).filter((User.username == "admin") | (User.role == "admin")).first()

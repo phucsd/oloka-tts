@@ -486,16 +486,17 @@
       box.classList.remove('hidden');
       if (res.ok && data.status === 'success') {
         box.className = "p-3.5 rounded-xl text-xs bg-white border border-[#16a34a]/30 text-[#16a34a] flex items-center space-x-2";
-        box.innerHTML = `<span class="material-symbols-rounded text-sm text-[#16a34a]">check_circle</span><span>${data.message}</span>`;
+        box.innerHTML = `<span class="material-symbols-rounded text-sm text-[#16a34a]">check_circle</span><span>${escapeHtml(data.message)}</span>`;
       } else {
         box.className = "p-3.5 rounded-xl text-xs bg-white border border-[#dc2626]/30 text-[#dc2626] flex items-center space-x-2";
-        box.innerHTML = `<span class="material-symbols-rounded text-sm text-[#dc2626]">warning</span><span>${data.message || data.detail || 'Lỗi không xác định'}</span>`;
+        box.innerHTML = `<span class="material-symbols-rounded text-sm text-[#dc2626]">warning</span><span>${escapeHtml(data.message || data.detail || 'Lỗi không xác định')}</span>`;
       }
     } catch (err) {
       box.classList.remove('hidden');
       box.className = "p-3.5 rounded-xl text-xs bg-white border border-[#dc2626]/30 text-[#dc2626] flex items-center space-x-2";
-      box.innerHTML = `<span class="material-symbols-rounded text-sm text-[#dc2626]">warning</span><span>Lỗi mạng: ${err.message}</span>`;
-    } finally {
+      box.innerHTML = `<span class="material-symbols-rounded text-sm text-[#dc2626]">warning</span><span>Lỗi mạng: ${escapeHtml(err.message)}</span>`;
+    }
+ finally {
       btn.disabled = false;
       txt.innerText = "Kiểm Tra Kết Nối";
     }

@@ -48,6 +48,9 @@ class DbSyncService:
         Runs on Gateway startup before DB connection is initialized.
         Restores the latest database from the private HF dataset if local DB is fresh.
         """
+        if os.environ.get("TESTING") == "1":
+            return False
+
         if not settings.DATABASE_URL.startswith("sqlite"):
             print("[DbSync] External database in use (e.g. PostgreSQL), skipping SQLite sync.")
             return False
@@ -138,6 +141,9 @@ class DbSyncService:
     @classmethod
     def start_periodic_sync(cls, interval_seconds: int = 180):
         """Starts a background daemon thread that periodically checkpoints the database."""
+        if os.environ.get("TESTING") == "1":
+            return
+
         def _loop():
             while True:
                 time.sleep(interval_seconds)
@@ -154,6 +160,9 @@ class DbSyncService:
         """
         Backs up the SQLite database to the private HF dataset.
         """
+        if os.environ.get("TESTING") == "1":
+            return
+
         if not settings.DATABASE_URL.startswith("sqlite"):
             return
 

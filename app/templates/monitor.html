@@ -142,17 +142,18 @@
       if (data.workers && data.workers.length > 0) {
         tbody.innerHTML = data.workers.map(w => `
           <tr class="hover:bg-[#fafafa] transition">
-            <td class="py-3 px-4 font-mono font-medium text-[#0c0a09]">${w.worker_id}</td>
-            <td class="py-3 px-4 font-medium text-[#4e4e4e]">CUDA:${w.gpu_index} (${w.gpu_name})</td>
-            <td class="py-3 px-4 font-mono text-[#4e4e4e]">${w.vram_used_mb} MB / ${w.vram_total_mb} MB</td>
+            <td class="py-3 px-4 font-mono font-medium text-[#0c0a09]">${escapeHtml(w.worker_id)}</td>
+            <td class="py-3 px-4 font-medium text-[#4e4e4e]">CUDA:${Number(w.gpu_index)} (${escapeHtml(w.gpu_name)})</td>
+            <td class="py-3 px-4 font-mono text-[#4e4e4e]">${Number(w.vram_used_mb)} MB / ${Number(w.vram_total_mb)} MB</td>
             <td class="py-3 px-4">
               <span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#f0efed] text-[#16a34a] border border-[#16a34a]/30">
-                ${w.status.toUpperCase()}
+                ${escapeHtml(w.status ? w.status.toUpperCase() : '')}
               </span>
             </td>
-            <td class="py-3 px-4 font-mono text-[#777169]">${w.last_heartbeat_seconds_ago !== null ? w.last_heartbeat_seconds_ago + 's trước' : '--'}</td>
+            <td class="py-3 px-4 font-mono text-[#777169]">${w.last_heartbeat_seconds_ago !== null ? Number(w.last_heartbeat_seconds_ago) + 's trước' : '--'}</td>
           </tr>
         `).join('');
+
       } else {
         tbody.innerHTML = `
           <tr>

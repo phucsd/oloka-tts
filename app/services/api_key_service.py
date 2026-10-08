@@ -60,11 +60,7 @@ class ApiKeyService:
         )
         db.add(api_key)
 
-        # Also sync to user.api_key for backward compatibility
-        user = db.query(User).filter(User.id == user_id).first()
-        if user and not user.api_key:
-            user.api_key = raw_secret
-
+        # Only store hash in api_keys table; do NOT store plaintext in user.api_key
         db.commit()
         db.refresh(api_key)
 
@@ -81,6 +77,58 @@ class ApiKeyService:
         return api_key, raw_secret
 
     @classmethod
+    def migrate_legacy_keys(cls, db: Session) -> int:
+        """
+        Idempotent migration: finds any users with legacy plaintext user.api_key,
+        migrates them into hashed ApiKey records with standard permissions (NOT full:access),
+        and safely nullifies the legacy plaintext column.
+        """
+        migrated_count = 0
+        try:
+            legacy_users = db.query(User).filter(
+                User.api_key.isnot(None),
+                User.api_key != ""
+            ).all()
+
+            for u in legacy_users:
+                raw_k = u.api_key.strip()
+                if not raw_k:
+                    u.api_key = None
+                    continue
+
+                k_hash = cls.hash_secret(raw_k)
+                existing = db.query(ApiKey).filter(ApiKey.key_hash == k_hash).first()
+                if not existing:
+                    prefix = cls.format_prefix(raw_k)
+                    # Grant standard non-admin scopes
+                    scopes = "tts:generate,voices:read" if u.role != "admin" else "tts:generate,voices:read,admin:access"
+                    migrated_key = ApiKey(
+                        id=generate_id("key"),
+                        user_id=u.id,
+                        name="Default API Key",
+                        key_prefix=prefix,
+                        key_hash=k_hash,
+                        scopes=scopes,
+                        is_active=True,
+                        created_at=u.created_at or datetime.utcnow()
+                    )
+                    db.add(migrated_key)
+                    migrated_count += 1
+                
+                # Nullify legacy plaintext column to eliminate fallback attack surface
+                u.api_key = None
+
+            if legacy_users:
+                db.commit()
+                if migrated_count > 0:
+                    print(f"🔒 [ApiKeyService] Successfully migrated {migrated_count} legacy API keys to hashed storage.")
+        except Exception as e:
+            db.rollback()
+            print(f"⚠️ [ApiKeyService] Error during legacy API key migration: {e}")
+
+        return migrated_count
+
+    @classmethod
     def validate_api_key(
         cls,
         db: Session,
@@ -89,7 +137,14 @@ class ApiKeyService:
     ) -> Optional[ApiKey]:
         """
         Validates raw API key secret against DB.
-        Returns ApiKey object if valid, None if invalid or expired.
+        Fail-closed:
+        - Must exist in api_keys table by hash
+        - Must be active (is_active == True)
+        - Must not be expired
+        - Associated user must be active
+        - Must satisfy required_scope
+        - ZERO fallback to users.api_key
+        - NEVER recreates revoked or deleted keys
         """
         if not raw_key or not isinstance(raw_key, str):
             return None
@@ -98,46 +153,33 @@ class ApiKeyService:
         key_hash = cls.hash_secret(clean_key)
 
         # 1. Check in api_keys table by hash
-        api_key = db.query(ApiKey).filter(
-            ApiKey.key_hash == key_hash,
-            ApiKey.is_active == True
-        ).first()
-
-        # 2. Backward compatibility fallback: check legacy user.api_key
-        if not api_key:
-            legacy_user = db.query(User).filter(
-                User.api_key == clean_key,
-                User.is_active == True
-            ).first()
-            if legacy_user:
-                # Auto-migrate legacy key into api_keys table
-                prefix = cls.format_prefix(clean_key)
-                api_key = ApiKey(
-                    id=generate_id("key"),
-                    user_id=legacy_user.id,
-                    name="Legacy API Key",
-                    key_prefix=prefix,
-                    key_hash=key_hash,
-                    scopes="full:access",
-                    is_active=True,
-                    created_at=datetime.utcnow()
-                )
-                db.add(api_key)
-                db.commit()
-                db.refresh(api_key)
-
+        api_key = db.query(ApiKey).filter(ApiKey.key_hash == key_hash).first()
         if not api_key:
             return None
 
-        # Check expiration
+        # 2. Enforce active status (revoked/deactivated keys rejected immediately)
+        if not api_key.is_active:
+            return None
+
+        # 3. Check expiration
         if api_key.expires_at and api_key.expires_at < datetime.utcnow():
             return None
 
-        # Check scope if required
+        # 4. Check user account active status
+        user = db.query(User).filter(User.id == api_key.user_id, User.is_active == True).first()
+        if not user:
+            return None
+
+        # 5. Check scope if required
         if required_scope:
-            granted_scopes = [s.strip() for s in (api_key.scopes or "").split(",")]
-            if "full:access" not in granted_scopes and required_scope not in granted_scopes:
-                return None
+            granted_scopes = [s.strip() for s in (api_key.scopes or "").split(",") if s.strip()]
+            if "full:access" not in granted_scopes:
+                # Standardize TTS scopes: tts:generate and tts:write are mutually acceptable
+                if required_scope in ("tts:generate", "tts:write"):
+                    if "tts:generate" not in granted_scopes and "tts:write" not in granted_scopes:
+                        return None
+                elif required_scope not in granted_scopes:
+                    return None
 
         return api_key
 
@@ -208,27 +250,5 @@ class ApiKeyService:
     @classmethod
     def list_user_api_keys(cls, db: Session, user_id: str) -> List[ApiKey]:
         """Returns all keys owned by user ordered by creation time descending."""
-        # Ensure user has at least one key if they have legacy user.api_key
-        user = db.query(User).filter(User.id == user_id).first()
-        keys = db.query(ApiKey).filter(ApiKey.user_id == user_id).order_by(ApiKey.created_at.desc()).all()
-        
-        if not keys and user and user.api_key:
-            # Auto-seed legacy key into table
-            prefix = cls.format_prefix(user.api_key)
-            key_hash = cls.hash_secret(user.api_key)
-            legacy_key = ApiKey(
-                id=generate_id("key"),
-                user_id=user.id,
-                name="Default API Key",
-                key_prefix=prefix,
-                key_hash=key_hash,
-                scopes="full:access",
-                is_active=True,
-                created_at=user.created_at or datetime.utcnow()
-            )
-            db.add(legacy_key)
-            db.commit()
-            db.refresh(legacy_key)
-            keys = [legacy_key]
+        return db.query(ApiKey).filter(ApiKey.user_id == user_id).order_by(ApiKey.created_at.desc()).all()
 
-        return keys

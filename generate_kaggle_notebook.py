@@ -1,7 +1,15 @@
 import json
+import sys
 from pathlib import Path
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 worker_py_path = Path("kaggle_worker/worker.py")
+
 worker_code = worker_py_path.read_text(encoding="utf-8")
 
 nb_content = {

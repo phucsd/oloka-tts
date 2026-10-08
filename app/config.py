@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 class Settings(BaseSettings):
+    BASE_DIR: Path = BASE_DIR
     HOST: str = "0.0.0.0"
     PORT: int = int(os.environ.get("PORT", 8000))
     APP_ENV: str = "development"
@@ -13,9 +14,9 @@ class Settings(BaseSettings):
         "PUBLIC_API_BASE_URL",
         f"https://{os.environ.get('SPACE_ID', '').replace('/', '-')}.hf.space" if os.environ.get("SPACE_ID") else "http://localhost:8000"
     )
-    WORKER_TOKEN: str = "vieneu_secure_worker_token_2026"
-    SECRET_KEY: str = os.environ.get("SECRET_KEY", "olokatts_super_secret_production_key_2026_xyz")
-    ADMIN_DEFAULT_PASSWORD: str = os.environ.get("ADMIN_DEFAULT_PASSWORD", "Admin@123456")
+    WORKER_TOKEN: str = os.environ.get("WORKER_TOKEN", "")
+    SECRET_KEY: str = os.environ.get("SECRET_KEY", "")
+    ADMIN_DEFAULT_PASSWORD: str = os.environ.get("ADMIN_DEFAULT_PASSWORD", "")
     
     # Google OAuth 2.0 settings
     GOOGLE_CLIENT_ID: str = os.environ.get("GOOGLE_CLIENT_ID", "")
@@ -35,8 +36,11 @@ class Settings(BaseSettings):
 
     # Storage settings
     DATABASE_URL: str = os.environ.get("DATABASE_URL") or (
-        f"sqlite:///{Path('/data/storage/vieneu_gateway.db')}" if Path("/data").exists() and os.access("/data", os.W_OK)
-        else f"sqlite:///{BASE_DIR / 'storage' / 'vieneu_gateway.db'}"
+        f"sqlite:///{BASE_DIR / 'storage' / 'test_isolated.db'}" if os.environ.get("TESTING") == "1"
+        else (
+            f"sqlite:///{Path('/data/storage/vieneu_gateway.db')}" if Path("/data").exists() and os.access("/data", os.W_OK)
+            else f"sqlite:///{BASE_DIR / 'storage' / 'vieneu_gateway.db'}"
+        )
     )
     AUDIO_DIR: str = os.environ.get("AUDIO_DIR") or (
         str(Path("/data/storage/audio")) if Path("/data").exists() and os.access("/data", os.W_OK)
@@ -59,6 +63,19 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+# Secure credential checks and runtime generation
+import secrets
+
+if not settings.SECRET_KEY:
+    if settings.APP_ENV == "production":
+        raise RuntimeError("CRITICAL SECURITY ERROR: 'SECRET_KEY' environment variable must be set in production (minimum 32 characters)!")
+    settings.SECRET_KEY = secrets.token_urlsafe(32)
+    print("[SECURITY NOTICE] No SECRET_KEY provided in environment. Generated dynamic runtime SECRET_KEY.")
+
+if not settings.WORKER_TOKEN:
+    settings.WORKER_TOKEN = secrets.token_hex(24)
+    print("[SECURITY NOTICE] No WORKER_TOKEN configured in environment. Generated dynamic runtime WORKER_TOKEN.")
+
 # Normalize postgres URL dialect if provided
 if settings.DATABASE_URL.startswith("postgres://"):
     settings.DATABASE_URL = settings.DATABASE_URL.replace("postgres://", "postgresql://", 1)
@@ -68,3 +85,4 @@ os.makedirs(settings.AUDIO_DIR, exist_ok=True)
 os.makedirs(settings.SAMPLES_DIR, exist_ok=True)
 if settings.DATABASE_URL.startswith("sqlite"):
     os.makedirs(Path(settings.DATABASE_URL.replace("sqlite:///", "")).parent, exist_ok=True)
+

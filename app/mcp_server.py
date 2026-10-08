@@ -13,11 +13,30 @@ import unicodedata
 import requests
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Context
 from app.database import SessionLocal
 from app.services.mcp_auth_service import McpAuthService
 from app.services.settings_service import SettingsService
 from app.services.auth_service import AuthService
+
+def extract_transport_session_id(ctx: Optional[Context] = None) -> Optional[str]:
+    """Safely extracts transport-level session identifier from FastMCP Context if available."""
+    if not ctx or not hasattr(ctx, "request_context") or not ctx.request_context:
+        return None
+    try:
+        req = getattr(ctx.request_context, "request", None)
+        if req and hasattr(req, "headers"):
+            h_sess = req.headers.get("mcp-session-id")
+            if h_sess and h_sess.strip():
+                return f"hdr_{h_sess.strip()}"
+            if hasattr(req, "query_params") and req.query_params.get("session_id"):
+                return f"sse_{req.query_params.get('session_id').strip()}"
+        sess_obj = getattr(ctx.request_context, "session", None)
+        if sess_obj is not None:
+            return f"sess_{id(sess_obj)}"
+    except Exception:
+        pass
+    return None
 
 # Initialize FastMCP Server
 mcp = FastMCP(
@@ -162,59 +181,107 @@ def list_voices(
 
 
 @mcp.tool()
-def link_account(pair_code: Optional[str] = None) -> str:
+def link_account(
+    pair_code: Optional[str] = None,
+    session_token: Optional[str] = None,
+    ctx: Optional[Context] = None
+) -> str:
     """
-    Check authentication status or get a Magic Pairing Link to link your OlokaTTS account with ChatGPT.
+    Check authentication status or get a Magic Pairing Link to securely link your OlokaTTS account with your MCP client.
     
     Parameters:
       pair_code: Optional pairing code (e.g. 'OLK-8291') to check or verify.
+      session_token: Optional persistent session token returned from previous link_account call.
     """
     db = SessionLocal()
     try:
         base_url = get_base_url()
-        # 1. If explicit pair_code provided
-        if pair_code and pair_code.strip():
-            user = McpAuthService.resolve_caller(db, pair_code=pair_code.strip())
-            if user:
-                return (
-                    f"✅ **TÀI KHOẢN ĐÃ ĐƯỢC XÁC THỰC THÀNH CÔNG!**\n\n"
-                    f"- **Tài khoản liên kết:** `{user.username}` ({user.email})\n"
-                    f"- **Vai trò:** `{user.role.upper()}`\n"
-                    f"- **Mã phiên:** `{pair_code.strip().upper()}`\n"
-                    f"- **Hạ tầng GPU:** {'Master Kaggle Dual Tesla T4' if user.role == 'admin' else ('Kaggle Cá Nhân (BYOK)' if user.kaggle_username else 'Hạ tầng dùng chung')}\n\n"
-                    f"Bạn có thể sử dụng tất cả các công cụ OlokaTTS bình thường!"
-                )
-            sess = McpAuthService.get_pairing_session(db, pair_code.strip())
-            if sess and sess.status == "pending":
-                auth_url = f"{base_url}/mcp/pair?code={sess.code}"
-                return (
-                    f"⏳ **Mã phiên `{sess.code}` đang chờ cấp quyền trên trình duyệt.**\n\n"
-                    f"👉 Vui lòng nhấp vào liên kết sau để đăng nhập và bấm 'Xác Nhận & Cấp Quyền':\n"
-                    f"[{auth_url}]({auth_url})\n\n"
-                    f"Sau khi xác nhận trên trình duyệt, hãy bảo tôi kiểm tra lại nhé!"
-                )
+        transport_sid = extract_transport_session_id(ctx)
 
-        # 2. Check for recently created pending session (prevent generating duplicate codes)
-        pending_sess = McpAuthService.get_latest_pending_session(db)
-        if pending_sess:
-            auth_url = f"{base_url}/mcp/pair?code={pending_sess.code}"
+        # 1. Check if already authenticated via session_token, transport_session_id, or pair_code
+        user = McpAuthService.resolve_caller(
+            db,
+            pair_code=pair_code.strip() if pair_code else None,
+            session_token=session_token.strip() if session_token else None,
+            transport_session_id=transport_sid
+        )
+        if user:
+            gpu_status_desc = McpAuthService.get_user_gpu_status_description(db, user)
+            token_hint = f"- **Mã xác thực phiên (Session Token):** `{session_token.strip()}`\n" if session_token else ""
             return (
-                f"🔗 **LIÊN KẾT TÀI KHOẢN OLOKATTS VỚI CHATGPT:**\n\n"
-                f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập và cấp quyền:**\n"
-                f"[{auth_url}]({auth_url})\n\n"
-                f"- **Mã phiên của bạn:** `{pending_sess.code}`\n\n"
-                f"*(Sau khi bạn đăng nhập trên trình duyệt và bấm 'Xác Nhận & Cấp Quyền', hãy bảo tôi tiếp tục nhé!)*"
+                f"✅ **TÀI KHOẢN ĐÃ ĐƯỢC XÁC THỰC THÀNH CÔNG!**\n\n"
+                f"- **Tài khoản liên kết:** `{user.username}` ({user.email})\n"
+                f"- **Vai trò:** `{user.role.upper()}`\n"
+                f"{token_hint}"
+                f"- **Hạ tầng GPU:** {gpu_status_desc}\n\n"
+                f"Bạn có thể sử dụng tất cả các công cụ OlokaTTS bình thường!"
             )
 
-        # 4. Generate new session only if no pending session exists
-        new_sess = McpAuthService.create_pairing_session(db, client_name="ChatGPT")
+        # 2. If explicit pair_code or session_token was provided but not yet approved
+        if pair_code and pair_code.strip():
+            sess = McpAuthService.get_pairing_session(db, pair_code.strip())
+            if sess:
+                if sess.status == "pending":
+                    auth_url = f"{base_url}/mcp/pair?code={sess.code}"
+                    return (
+                        f"⏳ **Mã phiên `{sess.code}` đang chờ cấp quyền trên trình duyệt.**\n\n"
+                        f"👉 Vui lòng nhấp vào liên kết sau để đăng nhập và bấm 'Xác Nhận & Cấp Quyền':\n"
+                        f"[{auth_url}]({auth_url})\n\n"
+                        f"- **Mã xác thực phiên (Session Token):** `{sess.session_token}`\n\n"
+                        f"Sau khi xác nhận trên trình duyệt, hãy bảo tôi kiểm tra lại nhé!"
+                    )
+                elif sess.status in ("expired", "revoked"):
+                    return (
+                        f"❌ **Mã phiên `{pair_code.strip()}` đã {sess.status}.**\n\n"
+                        f"Vui lòng gọi lại `link_account()` không kèm mã cũ để tạo phiên ghép đôi mới."
+                    )
+
+        if session_token and session_token.strip():
+            sess = McpAuthService.get_session_by_token(db, session_token.strip())
+            if sess:
+                if sess.status == "pending":
+                    auth_url = f"{base_url}/mcp/pair?code={sess.code}"
+                    return (
+                        f"⏳ **Phiên của bạn đang chờ cấp quyền trên trình duyệt.**\n\n"
+                        f"👉 Vui lòng nhấp vào liên kết sau để đăng nhập và bấm 'Xác Nhận & Cấp Quyền':\n"
+                        f"[{auth_url}]({auth_url})\n\n"
+                        f"- **Mã ghép đôi:** `{sess.code}`\n\n"
+                        f"Sau khi xác nhận trên trình duyệt, hãy bảo tôi kiểm tra lại nhé!"
+                    )
+                elif sess.status in ("expired", "revoked"):
+                    return (
+                        f"❌ **Phiên xác thực đã {sess.status}.**\n\n"
+                        f"Vui lòng gọi lại `link_account()` để tạo phiên ghép đôi mới."
+                    )
+
+        # 3. Check if there is an existing pending session strictly for THIS transport
+        if transport_sid:
+            pending_sess = McpAuthService.get_pending_session_for_transport(db, transport_sid)
+            if pending_sess:
+                auth_url = f"{base_url}/mcp/pair?code={pending_sess.code}"
+                return (
+                    f"🔗 **LIÊN KẾT TÀI KHOẢN OLOKATTS VỚI MCP CLIENT:**\n\n"
+                    f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập và cấp quyền:**\n"
+                    f"[{auth_url}]({auth_url})\n\n"
+                    f"- **Mã phiên của bạn:** `{pending_sess.code}`\n"
+                    f"- **Mã xác thực phiên (Session Token):** `{pending_sess.session_token}`\n\n"
+                    f"*(Sau khi bạn đăng nhập trên trình duyệt và bấm 'Xác Nhận & Cấp Quyền', hãy nhắn lại cho tôi biết nhé!)*"
+                )
+
+        # 4. Generate new session strictly for this caller/transport
+        new_sess = McpAuthService.create_pairing_session(
+            db,
+            client_name="MCP Client",
+            transport_session_id=transport_sid
+        )
         auth_url = f"{base_url}/mcp/pair?code={new_sess.code}"
         return (
-            f"🔗 **LIÊN KẾT TÀI KHOẢN OLOKATTS VỚI PHIÊN CHATGPT:**\n\n"
+            f"🔗 **LIÊN KẾT TÀI KHOẢN OLOKATTS VỚI PHIÊN MCP:**\n\n"
             f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập và cấp quyền:**\n"
             f"[{auth_url}]({auth_url})\n\n"
-            f"- **Mã phiên của bạn:** `{new_sess.code}`\n\n"
-            f"*(Sau khi đăng nhập trên trình duyệt bằng Google hoặc tài khoản của bạn và bấm 'Xác Nhận', hãy nhắn lại cho tôi biết nhé!)*"
+            f"- **Mã phiên của bạn:** `{new_sess.code}`\n"
+            f"- **Mã xác thực phiên (Session Token):** `{new_sess.session_token}`\n\n"
+            f"*(Sau khi đăng nhập trên trình duyệt và bấm 'Xác Nhận', hãy nhắn lại cho tôi biết nhé!)*"
         )
     finally:
         db.close()
@@ -227,9 +294,11 @@ async def generate_speech(
     speed: float = 1.0,
     temperature: float = 0.7,
     pair_code: Optional[str] = None,
+    session_token: Optional[str] = None,
     api_key: Optional[str] = None,
     save_to_file: bool = True,
-    output_path: Optional[str] = None
+    output_path: Optional[str] = None,
+    ctx: Optional[Context] = None
 ) -> str:
     """
     Synthesize high-fidelity 48kHz Vietnamese speech from text using OlokaTTS Neural Workers.
@@ -240,12 +309,12 @@ async def generate_speech(
               - [thở dài] (sigh)
               - [thì thầm] (whisper)
               - [ngập ngừng] (hesitation)
-              - [thở dài] (sigh)
               - [0.5s] or [1.0s] (pause)
       voice: Name of voice preset (e.g., 'Hải Đăng', 'Mai Anh', 'Anh Khôi', 'Trúc Ly', 'Quang Sơn', 'Ngọc Trân', 'Adam bựa').
       speed: Speaking speed multiplier (0.5 to 2.0, default 1.0).
       temperature: Neural voice expressiveness / prosody variation (0.1 to 1.5, default 0.7).
       pair_code: Optional pairing code (e.g. 'OLK-xxxxxx') if explicit binding is used.
+      session_token: Optional persistent session token from approved pairing session.
       api_key: Optional API key (oloka_live_...) for account attribution.
       save_to_file: If True, downloads and saves the generated .wav audio locally.
       output_path: Optional local destination file path.
@@ -259,7 +328,14 @@ async def generate_speech(
     auth_token = None
 
     try:
-        authenticated_user = McpAuthService.resolve_caller(db, pair_code=pair_code, api_key=api_key)
+        transport_sid = extract_transport_session_id(ctx)
+        authenticated_user = McpAuthService.resolve_caller(
+            db,
+            pair_code=pair_code.strip() if pair_code else None,
+            session_token=session_token.strip() if session_token else None,
+            transport_session_id=transport_sid,
+            api_key=api_key.strip() if api_key else None
+        )
         require_auth = SettingsService.get_bool(db, "mcp_require_auth", default=True)
 
         if authenticated_user:
@@ -274,35 +350,62 @@ async def generate_speech(
             )
 
         if require_auth and not authenticated_user:
-            # Check if there is an existing pending session to avoid generating new codes constantly
-            pending_sess = None
+            # Check if caller passed a pair code
             if pair_code and pair_code.strip():
-                pending_sess = McpAuthService.get_pairing_session(db, pair_code.strip())
-            if not pending_sess:
-                pending_sess = McpAuthService.get_latest_pending_session(db)
+                sess = McpAuthService.get_pairing_session(db, pair_code.strip())
+                if sess and sess.status == "pending":
+                    auth_url = f"{base_url}/mcp/pair?code={sess.code}"
+                    return (
+                        f"🔒 **YÊU CẦU CẤP QUYỀN TRÊN TRÌNH DUYỆT (MÃ PHIÊN: `{sess.code}`):**\n\n"
+                        f"Phiên kết nối `{sess.code}` của bạn đang chờ bạn xác nhận trên trình duyệt web.\n\n"
+                        f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
+                        f"[{auth_url}]({auth_url})\n\n"
+                        f"- **Mã xác thực phiên (Session Token):** `{sess.session_token}`\n\n"
+                        f"*(Lưu ý cho AI Assistant: Sau khi người dùng xác nhận trên trình duyệt, bạn BẮT BUỘC phải gọi lại hàm `generate_speech` với tham số `pair_code=\"{sess.code}\"` hoặc `session_token=\"{sess.session_token}\"`).* "
+                    )
+                elif sess and sess.status in ("expired", "revoked"):
+                    return (
+                        f"❌ **Mã ghép đôi `{pair_code.strip()}` đã {sess.status}.**\n\n"
+                        f"Vui lòng gọi lại hàm `generate_speech` mà không truyền mã cũ để nhận phiên ghép đôi mới."
+                    )
 
-            if pending_sess and pending_sess.status == "pending":
-                auth_url = f"{base_url}/mcp/pair?code={pending_sess.code}"
-                return (
-                    f"🔒 **YÊU CẦU CẤP QUYỀN TRÊN TRÌNH DUYỆT (MÃ PHIÊN: `{pending_sess.code}`):**\n\n"
-                    f"Phiên kết nối của bạn hiện đang chờ bạn xác nhận trên trình duyệt web.\n\n"
-                    f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
-                    f"[{auth_url}]({auth_url})\n\n"
-                    f"*(Lưu ý cho AI Assistant: Sau khi người dùng xác nhận trên trình duyệt, bạn BẮT BUỘC phải gọi lại hàm `generate_speech` với tham số `pair_code=\"{pending_sess.code}\"`).* "
-                )
+            if session_token and session_token.strip():
+                sess = McpAuthService.get_session_by_token(db, session_token.strip())
+                if sess and sess.status == "pending":
+                    auth_url = f"{base_url}/mcp/pair?code={sess.code}"
+                    return (
+                        f"🔒 **YÊU CẦU CẤP QUYỀN TRÊN TRÌNH DUYỆT:**\n\n"
+                        f"Phiên kết nối của bạn đang chờ bạn xác nhận trên trình duyệt web.\n\n"
+                        f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
+                        f"[{auth_url}]({auth_url})\n\n"
+                        f"- **Mã phiên:** `{sess.code}`\n\n"
+                        f"*(Sau khi người dùng xác nhận trên trình duyệt, hãy gọi lại hàm `generate_speech` với `session_token=\"{sess.session_token}\"`).* "
+                    )
+                elif sess and sess.status in ("expired", "revoked"):
+                    return (
+                        f"❌ **Phiên xác thực đã {sess.status}.**\n\n"
+                        f"Vui lòng tạo phiên ghép đôi mới qua `link_account()`."
+                    )
 
-            # Generate new session only if none exists
-            new_sess = McpAuthService.create_pairing_session(db, client_name="ChatGPT")
-            auth_url = f"{base_url}/mcp/pair?code={new_sess.code}"
+            # Generate or get pending session strictly for this caller/transport
+            sess_to_use = None
+            if transport_sid:
+                sess_to_use = McpAuthService.get_pending_session_for_transport(db, transport_sid)
+            if not sess_to_use:
+                sess_to_use = McpAuthService.create_pairing_session(db, client_name="MCP Client", transport_session_id=transport_sid)
+
+            auth_url = f"{base_url}/mcp/pair?code={sess_to_use.code}"
             return (
                 f"🔒 **YÊU CẦU XÁC THỰC TÀI KHOẢN OLOKATTS:**\n\n"
                 f"Để sử dụng công cụ tạo giọng nói Neural 48kHz và bảo vệ tài nguyên GPU, "
                 f"bạn cần liên kết tài khoản OlokaTTS với phiên trò chuyện này:\n\n"
                 f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
                 f"[{auth_url}]({auth_url})\n\n"
-                f"- **Mã ghép đôi phiên của bạn:** `{new_sess.code}`\n\n"
-                f"*(Lưu ý cho AI Assistant: Sau khi người dùng xác nhận trên trình duyệt, bạn BẮT BUỘC phải gọi lại hàm `generate_speech` với tham số `pair_code=\"{new_sess.code}\"`).* "
+                f"- **Mã ghép đôi:** `{sess_to_use.code}`\n"
+                f"- **Mã xác thực phiên (Session Token):** `{sess_to_use.session_token}`\n\n"
+                f"*(Lưu ý cho AI Assistant: Sau khi người dùng xác nhận trên trình duyệt, bạn BẮT BUỘC phải gọi lại hàm `generate_speech` với tham số `pair_code=\"{sess_to_use.code}\"` hoặc `session_token=\"{sess_to_use.session_token}\"`).* "
             )
+
 
         # ----------------------------------------------------------------------
         # Direct In-Process Execution (Zero HTTP Loopback Deadlocks on Uvicorn)
@@ -344,15 +447,20 @@ async def generate_speech(
                 await asyncio.sleep(1)
                 # Fresh, lightweight read that closes immediately
                 check_db = SessionLocal()
+                final_exec_acc_id = None
+                final_worker_id = None
                 try:
                     row = check_db.query(
-                        TTSJob.status, TTSJob.error_message, TTSJob.audio_path, TTSJob.duration
+                        TTSJob.status, TTSJob.error_message, TTSJob.audio_path, TTSJob.duration,
+                        TTSJob.execution_account_id, TTSJob.worker_id
                     ).filter(TTSJob.id == job_id).first()
                     if row:
                         final_job_status = row[0]
                         final_error = row[1]
                         final_audio_path = row[2]
                         final_duration = row[3]
+                        final_exec_acc_id = row[4]
+                        final_worker_id = row[5]
                         if final_job_status in ("completed", "failed"):
                             break
                 finally:
@@ -377,11 +485,14 @@ async def generate_speech(
 
             saved_file_str = ""
             if save_to_file or output_path:
-                out_dir = Path("./output_audio")
+                out_dir = Path("./output_audio").resolve()
                 out_dir.mkdir(parents=True, exist_ok=True)
                 if output_path:
-                    target_path = Path(output_path).resolve()
-                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    safe_filename = Path(output_path).name
+                    safe_filename = "".join(c for c in safe_filename if c.isalnum() or c in ('-', '_', '.')).strip(" .")
+                    if not safe_filename.lower().endswith(".wav"):
+                        safe_filename += ".wav"
+                    target_path = (out_dir / safe_filename).resolve()
                 else:
                     ts = int(time.time())
                     clean_voice = "".join(c for c in voice if c.isalnum() or c in (' ', '_')).strip().replace(' ', '_')
@@ -393,8 +504,24 @@ async def generate_speech(
 
             est_duration = final_duration or max(0.5, round(len(audio_bytes) / 96000.0, 1))
             user_str = f"- **Tài khoản xác thực:** `{auth_username}` ({auth_role})\n" if auth_username else ""
-            audio_filename = os.path.basename(audio_file_path) if audio_file_path else f"{job_id}.wav"
-            public_audio_url = f"{base_url}/audio_files/{audio_filename}"
+            
+            gpu_res_str = ""
+            if final_exec_acc_id:
+                read_db = SessionLocal()
+                try:
+                    from app.models import KaggleExecutionAccount
+                    k_acc = read_db.query(KaggleExecutionAccount).filter(KaggleExecutionAccount.id == final_exec_acc_id).first()
+                    if k_acc:
+                        if auth_role == "ADMIN":
+                            gpu_res_str = f"- **Tài nguyên GPU:** Master Admin Kaggle Dual T4 (@{k_acc.kaggle_username})\n"
+                        else:
+                            gpu_res_str = f"- **Tài nguyên GPU:** Kaggle Cá Nhân BYOK (@{k_acc.kaggle_username})\n"
+                finally:
+                    read_db.close()
+            elif final_worker_id == "local_cpu":
+                gpu_res_str = "- **Tài nguyên:** Local CPU ONNX\n"
+
+            public_audio_url = f"{base_url}/v1/tts/jobs/{job_id}/audio"
 
             return (
                 f"✅ **ĐÃ TẠO GIỌNG NÓI THÀNH CÔNG!**\n\n"
@@ -404,6 +531,7 @@ async def generate_speech(
                 f"- **Dung lượng tệp:** {len(audio_bytes) / 1024:.1f} KB\n"
                 f"- **Nghe trực tiếp:** [{public_audio_url}]({public_audio_url})\n"
                 f"{user_str}"
+                f"{gpu_res_str}"
                 f"{saved_file_str}"
                 f"- **Máy chủ xử lý:** `{base_url}`\n\n"
                 f"💬 *Nội dung đã đọc:* \"{prompt[:120]}{'...' if len(prompt) > 120 else ''}\""
@@ -439,11 +567,14 @@ async def generate_speech(
         audio_bytes = response.content
         saved_file_str = ""
         if save_to_file or output_path:
-            out_dir = Path("./output_audio")
+            out_dir = Path("./output_audio").resolve()
             out_dir.mkdir(parents=True, exist_ok=True)
             if output_path:
-                target_path = Path(output_path).resolve()
-                target_path.parent.mkdir(parents=True, exist_ok=True)
+                safe_filename = Path(output_path).name
+                safe_filename = "".join(c for c in safe_filename if c.isalnum() or c in ('-', '_', '.')).strip(" .")
+                if not safe_filename.lower().endswith(".wav"):
+                    safe_filename += ".wav"
+                target_path = (out_dir / safe_filename).resolve()
             else:
                 ts = int(time.time())
                 clean_voice = "".join(c for c in voice if c.isalnum() or c in (' ', '_')).strip().replace(' ', '_')
@@ -451,6 +582,7 @@ async def generate_speech(
             with open(target_path, "wb") as f:
                 f.write(audio_bytes)
             saved_file_str = f"- **Đường dẫn tệp cục bộ:** `{str(target_path)}`\n"
+
 
         est_duration = max(0.5, round(len(audio_bytes) / 96000.0, 1))
         user_str = f"- **Tài khoản xác thực:** `{auth_username}` ({auth_role})\n" if auth_username else ""

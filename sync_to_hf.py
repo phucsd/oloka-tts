@@ -25,7 +25,7 @@ commit_info = api.upload_folder(
     folder_path=".",
     repo_id=repo_id,
     repo_type="space",
-    commit_message="Fix: In-Process MCP Execution, Auto-Session Inheritance, and Zero-Loss Cloud DB Persistence Guard",
+    commit_message="Security & Hardening: MCP pairing cross-client isolation, API key lifecycle & scopes, scoped worker shutdown, and fail-closed legacy resources",
     ignore_patterns=[
         "benchmark_audio_*.wav",
         "tts_job_*.wav",
@@ -34,15 +34,23 @@ commit_info = api.upload_folder(
         "**/__pycache__/**",
         "__pycache__/**",
         "*.db",
+        "*.db-*",
+        "*.sqlite*",
         "storage/**",
+        "app.db*",
         "kaggle_backup*/**",
         "kaggle_logs/**",
         "kaggle_pulled/**",
+        "kaggle_dump/**",
+        "kaggle_output_dump/**",
+        "temp_kaggle_out/**",
+        "tmp_output/**",
         "patch_*.py",
         "generate_*.py",
         "sync_to_hf.py",
         "benchmark_*.py",
         "test_*.py",
+        "tests/**",
         "vieneu-tts-dual-t4-worker.log",
         ".git/**",
         ".env*"
@@ -51,3 +59,17 @@ commit_info = api.upload_folder(
 
 print("Đã hoàn tất đồng bộ!")
 print("Commit URL / Ref:", commit_info)
+
+# Purge any legacy sensitive files directly from remote HF repo
+for sensitive_file in [".env", "storage/vieneu_gateway.db", "vieneu_gateway.db", "app.db"]:
+    try:
+        api.delete_file(
+            path_in_repo=sensitive_file,
+            repo_id=repo_id,
+            repo_type="space",
+            commit_message=f"Security: Purge sensitive file {sensitive_file}"
+        )
+        print(f"🔒 Đã gỡ bỏ tệp nhạy cảm khỏi Hugging Face Space: {sensitive_file}")
+    except Exception:
+        pass
+
