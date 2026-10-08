@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <!-- Admin Subnav & Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#e7e5e4]">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+        <span class="material-symbols-rounded text-sm text-[#292524]">monitoring</span>
+        <span>Platform Telemetry &amp; System Health</span>
+      </div>
+      <h1 class="font-serif text-3xl sm:text-4xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Báo Cáo &amp; Thống Kê Toàn Hệ Thống
+      </h1>
+      <p class="text-xs sm:text-sm text-[#777169] mt-1.5">Số liệu tổng quan về người dùng, lượt tạo âm thanh, hạ tầng GPU, hiệu suất RTF và chất lượng dịch vụ</p>
+    </div>
+
+    <!-- Admin Nav Tabs -->
+    <div class="flex items-center flex-wrap gap-2">
+      <a href="/admin/analytics" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white shadow-sm flex items-center space-x-1.5">
+        <span class="material-symbols-rounded text-sm">monitoring</span>
+        <span>Báo Cáo</span>
+      </a>
+      <a href="/admin/settings" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">settings</span>
+        <span>Cấu Hình</span>
+      </a>
+      <a href="/admin/jobs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">queue_music</span>
+        <span>Hàng Đợi &amp; Job</span>
+      </a>
+      <a href="/admin/voices" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">record_voice_over</span>
+        <span>Giọng Đọc</span>
+      </a>
+      <a href="/admin/users" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">group</span>
+        <span>Người Dùng</span>
+      </a>
+      <a href="/admin/api-keys" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">vpn_key</span>
+        <span>API Keys</span>
+      </a>
+      <a href="/admin/logs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">warning</span>
+        <span>Logs</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI Top Stats Cards (6 cols on lg) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+    
+    <!-- Total Users -->
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm space-y-2">
+      <div class="flex items-center justify-between text-[#777169] text-xs font-medium">
+        <span>Tổng Thành Viên</span>
+        <span class="material-symbols-rounded text-lg text-[#292524]">group</span>
+      </div>
+      <div class="text-3xl font-light text-[#0c0a09]">{{ total_users }}</div>
+      <div class="text-[11px] text-[#777169] flex items-center justify-between pt-1">
+        <span>Hoạt động: <strong class="text-[#0c0a09] font-medium">{{ active_users }}</strong></span>
+        <span>Có Key: <strong class="text-[#16a34a] font-medium">{{ users_with_kaggle }}</strong></span>
+      </div>
+    </div>
+
+    <!-- Total TTS Jobs -->
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm space-y-2">
+      <div class="flex items-center justify-between text-[#777169] text-xs font-medium">
+        <span>Tổng Job Đã Tạo</span>
+        <span class="material-symbols-rounded text-lg text-[#292524]">graphic_eq</span>
+      </div>
+      <div class="text-3xl font-light text-[#0c0a09]">{{ total_jobs }}</div>
+      <div class="text-[11px] text-[#777169] flex items-center justify-between pt-1">
+        <span>Xong: <strong class="text-[#16a34a] font-medium">{{ completed_jobs }}</strong></span>
+        <span>Chờ: <strong class="text-[#292524] font-medium">{{ pending_jobs }}</strong></span>
+      </div>
+    </div>
+
+    <!-- Total Audio Duration -->
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm space-y-2">
+      <div class="flex items-center justify-between text-[#777169] text-xs font-medium">
+        <span>Thời Lượng Audio</span>
+        <span class="material-symbols-rounded text-lg text-[#292524]">schedule</span>
+      </div>
+      <div class="text-3xl font-light text-[#0c0a09]">{{ total_duration_minutes }} <span class="text-xs font-normal text-[#777169]">phút</span></div>
+      <div class="text-[11px] text-[#777169] pt-1 truncate">
+        Tương đương: <strong class="text-[#0c0a09] font-medium">{{ total_audio_hours }} giờ</strong>
+      </div>
+    </div>
+
+    <!-- Success Rate -->
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm space-y-2">
+      <div class="flex items-center justify-between text-[#777169] text-xs font-medium">
+        <span>Tỷ Lệ Thành Công</span>
+        <span class="material-symbols-rounded text-lg text-[#16a34a]">verified</span>
+      </div>
+      <div class="text-3xl font-light text-[#16a34a]">{{ success_rate }}%</div>
+      <div class="text-[11px] text-[#777169] pt-1">
+        Thất bại: <strong class="text-[#dc2626] font-medium">{{ failed_jobs }}</strong>
+      </div>
+    </div>
+
+    <!-- Average RTF Performance -->
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm space-y-2">
+      <div class="flex items-center justify-between text-[#777169] text-xs font-medium">
+        <span>Tốc Độ RTF TB</span>
+        <span class="material-symbols-rounded text-lg text-[#292524]">bolt</span>
+      </div>
+      <div class="text-3xl font-light text-[#0c0a09]">{{ avg_rtf }}<span class="text-xs font-normal text-[#777169]">x</span></div>
+      <div class="text-[11px] text-[#777169] pt-1">
+        Real-Time Factor (&lt;1.0 là nhanh hơn thời gian nói)
+      </div>
+    </div>
+
+    <!-- Storage Used -->
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm space-y-2">
+      <div class="flex items-center justify-between text-[#777169] text-xs font-medium">
+        <span>Lưu Trữ Audio</span>
+        <span class="material-symbols-rounded text-lg text-[#292524]">database</span>
+      </div>
+      <div class="text-3xl font-light text-[#0c0a09]">{{ storage_mb }} <span class="text-xs font-normal text-[#777169]">MB</span></div>
+      <div class="text-[11px] text-[#777169] pt-1">
+        Thư mục âm thanh tạm
+      </div>
+    </div>
+
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    
+    <!-- Top Voices Breakdown (6 cols) -->
+    <div class="lg:col-span-6 card-editorial bg-white rounded-2xl p-6 sm:p-7 border border-[#e7e5e4] shadow-sm space-y-4">
+      <h3 class="text-sm font-medium text-[#0c0a09] flex items-center">
+        <span class="material-symbols-rounded text-[#292524] mr-2 text-base">local_fire_department</span>Top 5 Giọng Đọc Được Sử Dụng Nhiều Nhất
+      </h3>
+
+      <div class="space-y-3.5 pt-2">
+        {% for voice_id, count in top_voices %}
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-medium text-[#0c0a09]">{{ voice_id }}</span>
+            <span class="text-[#777169] font-mono">{{ count }} lượt ({% if completed_jobs > 0 %}{{ "%.1f"|format(count / completed_jobs * 100) }}%{% else %}0%{% endif %})</span>
+          </div>
+          <div class="w-full bg-[#f0efed] rounded-full h-2 overflow-hidden">
+            <div class="bg-[#292524] h-2 rounded-full" 
+                 style="width: {% if completed_jobs > 0 %}{{ (count / completed_jobs * 100)|int }}%{% else %}0%{% endif %}"></div>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-xs text-[#777169] py-4 text-center">Chưa có đủ dữ liệu thống kê giọng đọc.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Active Worker Sessions (6 cols) -->
+    <div class="lg:col-span-6 card-editorial bg-white rounded-2xl p-6 sm:p-7 border border-[#e7e5e4] shadow-sm space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-medium text-[#0c0a09] flex items-center">
+          <span class="material-symbols-rounded text-[#292524] mr-2 text-base">memory</span>Kaggle GPU Workers Online
+        </h3>
+        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-[#f0efed] text-[#4e4e4e] border border-[#e7e5e4]">
+          {{ live_workers|length }} active
+        </span>
+      </div>
+
+      <div class="space-y-2.5 max-h-64 overflow-y-auto">
+        {% for w in live_workers %}
+        <div class="p-3.5 rounded-xl bg-[#fafafa] border border-[#e7e5e4] flex items-center justify-between text-xs">
+          <div>
+            <div class="font-medium text-[#0c0a09] flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse"></span>
+              <span>{{ w.worker_id }}</span>
+            </div>
+            <div class="text-[11px] text-[#777169] mt-0.5">
+              {{ w.gpu_name }} (GPU #{{ w.gpu_index }}) • VRAM: {{ w.vram_used_mb }} / {{ w.vram_total_mb }} MB
+            </div>
+          </div>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#f0efed] text-[#16a34a] border border-[#16a34a]/30 uppercase">
+            {{ w.status }}
+          </span>
+        </div>
+        {% else %}
+        <div class="p-8 rounded-xl bg-[#fafafa] border border-dashed border-[#e7e5e4] text-center text-xs text-[#777169]">
+          Hiện chưa có worker nào đang hoạt động. Worker sẽ tự động kích hoạt khi có job mới được gửi.
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

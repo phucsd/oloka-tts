@@ -1,0 +1,1652 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Editorial Hero Band -->
+<div class="text-center max-w-3xl mx-auto pt-2 pb-6 sm:pb-8 space-y-3">
+  <div class="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full text-xs font-medium uppercase tracking-wider text-[#777169] bg-[#f0efed] border border-[#e7e5e4]">
+    <span class="w-1.5 h-1.5 rounded-full bg-[#16a34a]"></span>
+    <span>VieNeu v3 Turbo • 48kHz Neural Voice</span>
+  </div>
+  <h1 class="font-serif text-3xl sm:text-5xl lg:text-6xl font-light tracking-[-0.03em] text-[#0c0a09] leading-[1.12]">
+    Tiếng nói Việt chuẩn xác,<br class="hidden sm:inline"> biểu cảm và tự nhiên.
+  </h1>
+  <p class="font-sans text-sm sm:text-base text-[#4e4e4e] max-w-xl mx-auto font-normal leading-relaxed">
+    Công nghệ tổng hợp giọng nói tiếng Việt chất lượng phòng thu 48.000 Hz, 25 giọng chuẩn 3 miền và sao chép giọng nói tức thì.
+  </p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
+  
+  <!-- Left Column: TTS Input Form & Advanced Controls (7 cols) -->
+  <div class="lg:col-span-7 space-y-6">
+    
+    <!-- Editor Card -->
+    <div class="card-editorial p-6 sm:p-7 space-y-5">
+      
+      <!-- Top Action Bar: Title, Presets, File Upload, Clear -->
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <label for="prompt-input" class="text-sm font-medium text-[#0c0a09] flex items-center space-x-2">
+          <span>Văn bản tiếng Việt</span>
+        </label>
+
+        <div class="flex items-center space-x-2">
+          <!-- Quick Prompt Presets Dropdown -->
+          <div class="relative inline-block text-left">
+            <button type="button" onclick="toggleDropdown('preset-menu')" class="px-3 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+              <span class="material-symbols-rounded text-sm text-[#292524]">menu_book</span>
+              <span>Mẫu câu</span>
+              <span class="material-symbols-rounded text-xs text-[#777169]">expand_more</span>
+            </button>
+            <div id="preset-menu" class="hidden absolute right-0 mt-2 w-72 rounded-2xl bg-white border border-[#e7e5e4] shadow-xl z-20 p-2 text-xs space-y-1">
+              <button type="button" onclick="applyPromptPreset('bilingual')" class="w-full text-left p-2.5 rounded-xl hover:bg-[#f5f5f5] text-[#0c0a09] transition">
+                <div class="font-medium text-[#0c0a09]">Tin tức AI song ngữ (Bilingual)</div>
+                <div class="text-[11px] text-[#777169] line-clamp-1 mt-0.5">Code-switching tiếng Anh và tiếng Việt mượt mà</div>
+              </button>
+              <button type="button" onclick="applyPromptPreset('story')" class="w-full text-left p-2.5 rounded-xl hover:bg-[#f5f5f5] text-[#0c0a09] transition">
+                <div class="font-medium text-[#0c0a09]">Đọc truyện đêm muộn (Kịch tính)</div>
+                <div class="text-[11px] text-[#777169] line-clamp-1 mt-0.5">Kết hợp thì thầm, thở dài, ngập ngừng</div>
+              </button>
+              <button type="button" onclick="applyPromptPreset('casual')" class="w-full text-left p-2.5 rounded-xl hover:bg-[#f5f5f5] text-[#0c0a09] transition">
+                <div class="font-medium text-[#0c0a09]">Hài hước đời thường (Cảm xúc)</div>
+                <div class="text-[11px] text-[#777169] line-clamp-1 mt-0.5">Kết hợp cười đùa, ngáp, biểu cảm tự nhiên</div>
+              </button>
+              <button type="button" onclick="applyPromptPreset('promo')" class="w-full text-left p-2.5 rounded-xl hover:bg-[#f5f5f5] text-[#0c0a09] transition">
+                <div class="font-medium text-[#0c0a09]">Review sản phẩm (Quảng cáo)</div>
+                <div class="text-[11px] text-[#777169] line-clamp-1 mt-0.5">Giọng điệu hào hứng, sôi nổi, cuốn hút</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Smart Text Polish / Punctuation Optimizer -->
+          <button type="button" onclick="polishPrompt()" title="Chuẩn hóa dấu câu & khoảng trắng thông minh" 
+            class="px-3 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+            <span class="material-symbols-rounded text-sm text-[#292524]">auto_fix_high</span>
+            <span>Chuẩn hóa</span>
+          </button>
+
+          <!-- Copy text button -->
+          <button type="button" onclick="copyPromptText()" title="Sao chép nội dung văn bản" class="w-8 h-8 rounded-full text-xs text-[#777169] hover:text-[#0c0a09] hover:bg-[#f0efed] flex items-center justify-center transition">
+            <span class="material-symbols-rounded text-base">content_copy</span>
+          </button>
+
+          <!-- File Upload Button (.txt) -->
+          <input type="file" id="txt-file-input" accept=".txt" class="hidden" onchange="handleFileUpload(event)">
+          <button type="button" onclick="document.getElementById('txt-file-input').click()" title="Tải tệp văn bản .txt" class="w-8 h-8 rounded-full text-xs text-[#777169] hover:text-[#0c0a09] hover:bg-[#f0efed] flex items-center justify-center transition">
+            <span class="material-symbols-rounded text-base">upload_file</span>
+          </button>
+
+          <!-- Clear text button -->
+          <button type="button" onclick="clearPrompt()" title="Xóa trắng nội dung" class="w-8 h-8 rounded-full text-xs text-[#777169] hover:text-[#dc2626] hover:bg-rose-50 flex items-center justify-center transition">
+            <span class="material-symbols-rounded text-base">delete</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Textarea -->
+      <textarea id="prompt-input" rows="6" 
+        class="w-full input-editorial p-4 text-[#0c0a09] placeholder-[#a8a29e] text-[15px] leading-relaxed resize-y font-sans"
+        placeholder="Nhập nội dung cần chuyển thành giọng nói tại đây... (Mẹo: Nhấn Ctrl + Enter để tạo nhanh)">Chào bạn! [cười] Đây là hệ thống chuyển văn bản thành giọng nói tiếng Việt chất lượng cao OlokaTTS v3 Turbo, chạy trên hạ tầng Kaggle Dual Tesla T4 với âm thanh chuẩn 48kHz siêu mượt mà!</textarea>
+
+      <!-- Live Text Statistics Strip -->
+      <div class="flex flex-wrap items-center justify-between text-xs text-[#777169] px-1 gap-2">
+        <div class="flex items-center space-x-3.5">
+          <span><strong id="stat-chars" class="text-[#0c0a09] font-medium mr-1">0</strong> ký tự</span>
+          <span><strong id="stat-words" class="text-[#0c0a09] font-medium mr-1">0</strong> từ</span>
+          <span><strong id="stat-sentences" class="text-[#0c0a09] font-medium mr-1">0</strong> câu</span>
+        </div>
+        <div class="text-[#292524] font-medium flex items-center space-x-1">
+          <span class="material-symbols-rounded text-sm text-[#777169]">timer</span>
+          <span>Ước tính:</span>
+          <span id="stat-est-duration" class="font-semibold text-[#0c0a09]">~0s</span>
+        </div>
+      </div>
+
+      <!-- Emotion & Non-verbal Tags Bar -->
+      <div class="pt-3 border-t border-[#f0efed] space-y-2">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-1">
+          <span class="text-xs font-medium text-[#777169] mr-1 shrink-0">Cảm xúc:</span>
+          <button type="button" onclick="insertEmotion('[cười]')" class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-sm mr-1">sentiment_satisfied</span>[cười]
+          </button>
+          <button type="button" onclick="insertEmotion('[thở dài]')" class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-sm mr-1">sentiment_dissatisfied</span>[thở dài]
+          </button>
+          <button type="button" onclick="insertEmotion('[hắng giọng]')" class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-sm mr-1">mic</span>[hắng giọng]
+          </button>
+          <button type="button" onclick="insertEmotion('[ngập ngừng]')" class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-sm mr-1">psychology_alt</span>[ngập ngừng]
+          </button>
+          <button type="button" onclick="insertEmotion('[thì thầm]')" class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-sm mr-1">volume_mute</span>[thì thầm]
+          </button>
+          <button type="button" onclick="insertEmotion('[ngáp]')" class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-sm mr-1">bedtime</span>[ngáp]
+          </button>
+          <button type="button" onclick="insertEmotion('[khóc]')" class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-sm mr-1">tear_drop</span>[khóc]
+          </button>
+          <button type="button" onclick="insertEmotion('[nói nhanh]')" class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-sm mr-1">bolt</span>[nói nhanh]
+          </button>
+          <button type="button" onclick="insertEmotion('[nói chậm]')" class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-sm mr-1">hourglass_bottom</span>[nói chậm]
+          </button>
+        </div>
+
+        <!-- Custom Silence / Pause Tags -->
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pt-1">
+          <span class="text-xs font-medium text-[#777169] mr-1 shrink-0">Ngắt nghỉ:</span>
+          <button type="button" onclick="insertEmotion('[0.5]')" class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-xs mr-0.5">timer</span>0.5s
+          </button>
+          <button type="button" onclick="insertEmotion('[1.0]')" class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-xs mr-0.5">timer</span>1.0s
+          </button>
+          <button type="button" onclick="insertEmotion('[2.0]')" class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-xs mr-0.5">timer</span>2.0s
+          </button>
+        </div>
+      </div>
+
+      <div class="border-t border-[#f0efed] pt-5 space-y-3">
+        <!-- Voice Selector & Filter Bar -->
+        <div class="flex items-center justify-between">
+          <label class="block text-xs font-medium text-[#0c0a09]">
+            Chọn Giọng Đọc (25 Giọng Chuẩn 48kHz)
+          </label>
+          <button type="button" id="preview-voice-btn" onclick="quickPreviewSelectedVoice()" class="text-xs font-medium text-[#292524] hover:text-[#0c0a09] flex items-center space-x-1.5 transition cursor-pointer">
+            <span id="preview-voice-icon" class="material-symbols-rounded text-base text-[#292524]">volume_up</span>
+            <span id="preview-voice-txt">Nghe thử giọng</span>
+          </button>
+        </div>
+
+        <!-- Filter Chips Bar & Search Box -->
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-1 max-w-full" id="voice-filter-chips">
+            <button type="button" onclick="filterVoiceDropdown('all', this)" class="shrink-0 filter-chip active-filter inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#292524] text-white transition shadow-sm active:scale-95">
+              <span class="material-symbols-rounded text-xs mr-1">tune</span>Tất cả (25)
+            </button>
+            <button type="button" onclick="filterVoiceDropdown('featured', this)" class="shrink-0 filter-chip inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] border border-[#e7e5e4] transition active:scale-95">
+              <span class="material-symbols-rounded text-xs mr-1 text-[#292524]">star</span>Nổi bật (11)
+            </button>
+            <button type="button" onclick="filterVoiceDropdown('bac', this)" class="shrink-0 filter-chip inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] border border-[#e7e5e4] transition active:scale-95">
+              <span class="material-symbols-rounded text-xs mr-1">north</span>Miền Bắc
+            </button>
+            <button type="button" onclick="filterVoiceDropdown('nam', this)" class="shrink-0 filter-chip inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] border border-[#e7e5e4] transition active:scale-95">
+              <span class="material-symbols-rounded text-xs mr-1">south</span>Miền Nam
+            </button>
+            <button type="button" onclick="filterVoiceDropdown('trung', this)" class="shrink-0 filter-chip inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] border border-[#e7e5e4] transition active:scale-95">
+              <span class="material-symbols-rounded text-xs mr-1">explore</span>Miền Trung
+            </button>
+            <button type="button" onclick="filterVoiceDropdown('male', this)" class="shrink-0 filter-chip inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] border border-[#e7e5e4] transition active:scale-95">
+              <span class="material-symbols-rounded text-xs mr-1">male</span>Nam
+            </button>
+            <button type="button" onclick="filterVoiceDropdown('female', this)" class="shrink-0 filter-chip inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] border border-[#e7e5e4] transition active:scale-95">
+              <span class="material-symbols-rounded text-xs mr-1">female</span>Nữ
+            </button>
+          </div>
+
+          <div class="relative">
+            <span class="material-symbols-rounded absolute left-2.5 top-1.5 text-xs text-[#a8a29e]">search</span>
+            <input type="text" id="voice-search" placeholder="Tìm tên giọng..." oninput="onVoiceSearch(this.value)"
+              class="w-32 text-xs pl-7 pr-3 py-1 rounded-full input-editorial text-[#0c0a09] placeholder-[#a8a29e] focus:w-44 transition-all outline-none">
+          </div>
+        </div>
+
+        <!-- Quick Visual Voice Cards (Top Editors' Picks with 1-Click Select) -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1" id="quick-voice-cards">
+          {% for p in presets %}
+            {% if loop.index <= 6 %}
+            <div onclick="selectVoiceById('{{ p.voice_id }}')" 
+                 id="qcard-{{ p.voice_id|replace(' ', '-') }}"
+                 class="quick-voice-card p-2 sm:p-2.5 rounded-xl border border-[#e7e5e4] hover:border-[#292524] bg-white cursor-pointer transition-all flex items-center justify-between group {% if p.voice_id == 'Hải Đăng' %}border-[#292524] bg-[#fafafa] ring-1 ring-[#292524]{% endif %}">
+              <div class="min-w-0 pr-1">
+                <div class="text-xs font-semibold text-[#0c0a09] truncate group-hover:text-black flex items-center space-x-1">
+                  <span>{{ p.name }}</span>
+                  {% if p.gender == 'Nam' %}
+                  <span class="material-symbols-rounded text-[11px] text-[#777169]">male</span>
+                  {% else %}
+                  <span class="material-symbols-rounded text-[11px] text-[#777169]">female</span>
+                  {% endif %}
+                </div>
+                <div class="text-[10px] text-[#777169] truncate">Miền {{ p.region }}</div>
+              </div>
+              <button type="button" onclick="event.stopPropagation(); playQuickVoicePreview('{{ p.preview_audio_url or '' }}', this)" 
+                      title="Nghe thử giọng" class="w-6 h-6 rounded-full bg-[#f0efed] hover:bg-[#292524] hover:text-white text-[#4e4e4e] flex items-center justify-center shrink-0 transition">
+                <span class="material-symbols-rounded text-xs">play_arrow</span>
+              </button>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="flex items-center justify-between pt-1">
+          <span class="text-[11px] text-[#777169]">Hoặc chọn chi tiết trong danh mục 25 giọng:</span>
+        </div>
+
+        <!-- Main Select Element -->
+        <select id="voice-select" onchange="onVoiceSelected()" class="w-full input-editorial rounded-xl px-3.5 py-2.5 text-sm text-[#0c0a09] font-medium bg-white">
+          <optgroup id="grp-featured" label="Giọng Nổi Bật (Editors' Picks)">
+            {% for p in presets %}
+              {% if p.is_editors_pick %}
+                <option value="{{ p.voice_id }}" data-preview="{{ p.preview_audio_url or '' }}" 
+                        data-region="{{ p.region|lower }}" data-gender="{{ p.gender|lower }}" data-desc="{{ p.description or '' }}" data-featured="true"
+                        {% if p.voice_id == 'Hải Đăng' %}selected{% endif %}>
+                  {{ p.name }} ({{ p.gender }}, Miền {{ p.region }}) — {{ p.description }}
+                </option>
+              {% endif %}
+            {% endfor %}
+          </optgroup>
+          <optgroup id="grp-standard" label="Các Giọng Chuẩn Khác">
+            {% for p in presets %}
+              {% if not p.is_editors_pick %}
+                <option value="{{ p.voice_id }}" data-preview="{{ p.preview_audio_url or '' }}" 
+                        data-region="{{ p.region|lower }}" data-gender="{{ p.gender|lower }}" data-desc="{{ p.description or '' }}" data-featured="false">
+                  {{ p.name }} ({{ p.gender }}, Miền {{ p.region }}) — {{ p.description }}
+                </option>
+              {% endif %}
+            {% endfor %}
+          </optgroup>
+          {% if samples %}
+          <optgroup id="grp-clone" label="Giọng Clone Của Bạn">
+            {% for s in samples %}
+              <option value="clone:{{ s.id }}" data-preview="/v1/voices/samples/{{ s.file_path|basename }}" data-featured="false" data-region="clone" data-gender="clone" data-desc="Giọng tạo từ mẫu người dùng">
+                [Clone] {{ s.name }} ({{ "%.1f"|format(s.duration) }}s)
+              </option>
+            {% endfor %}
+          </optgroup>
+          {% endif %}
+        </select>
+
+        <!-- Live Selected Voice Characteristics Strip -->
+        <div id="voice-meta-strip" class="flex flex-wrap items-center gap-2 pt-1 text-xs text-[#777169]">
+          <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-[#292524] text-[11px] font-medium" id="meta-gender">
+            <span class="material-symbols-rounded text-xs mr-0.5" id="meta-gender-icon">male</span>
+            <span id="meta-gender-txt">Nam</span>
+          </span>
+          <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-[#292524] text-[11px] font-medium" id="meta-region">
+            <span class="material-symbols-rounded text-xs mr-0.5">location_on</span>
+            <span id="meta-region-txt">Miền Bắc</span>
+          </span>
+          <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-[#292524] text-[11px] font-medium">
+            <span class="material-symbols-rounded text-xs mr-0.5">graphic_eq</span>
+            <span>48.000 Hz</span>
+          </span>
+          <span class="text-[11px] text-[#777169] truncate max-w-[280px]" id="meta-desc">Truyền cảm, tự nhiên</span>
+        </div>
+      </div>
+
+      <!-- Advanced Hyperparameters Accordion -->
+      <div class="border border-[#e7e5e4] rounded-2xl overflow-hidden bg-[#fafafa]">
+        <button type="button" onclick="toggleAdvancedSettings()" class="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold text-[#292524] hover:bg-[#f0efed] transition">
+          <span class="flex items-center space-x-2">
+            <span class="material-symbols-rounded text-base text-[#777169]">tune</span>
+            <span>Tùy Chỉnh Nâng Cao (Studio Parameters)</span>
+          </span>
+          <div class="flex items-center space-x-2 text-[11px] text-[#777169]">
+            <span id="adv-summary">Tốc độ: 1.0x | Temp: 0.7 | Ngắt nghỉ: 0.15s</span>
+            <span id="adv-chevron" class="material-symbols-rounded text-sm transition-transform duration-200">expand_more</span>
+          </div>
+        </button>
+
+        <div id="advanced-settings-body" class="hidden p-5 pt-2 space-y-4 border-t border-[#e7e5e4] bg-white">
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+            
+            <!-- Speed Slider -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-medium text-[#292524]">
+                  Tốc độ đọc (Speed)
+                </label>
+                <span id="speed-val" class="text-xs font-mono font-bold text-[#0c0a09]">1.00x</span>
+              </div>
+              <input type="range" id="speed-slider" min="0.5" max="2.0" step="0.05" value="1.0"
+                class="w-full h-1.5 bg-[#e7e5e4] rounded-lg appearance-none cursor-pointer accent-[#292524]">
+              
+              <!-- Quick Speed Chips -->
+              <div class="flex items-center justify-between text-[11px] text-[#777169]">
+                <button type="button" onclick="setSpeed(0.8)" class="hover:text-[#0c0a09]">0.8x</button>
+                <button type="button" onclick="setSpeed(1.0)" class="text-[#0c0a09] font-medium">1.0x (Chuẩn)</button>
+                <button type="button" onclick="setSpeed(1.2)" class="hover:text-[#0c0a09]">1.2x</button>
+                <button type="button" onclick="setSpeed(1.5)" class="hover:text-[#0c0a09]">1.5x</button>
+              </div>
+            </div>
+
+            <!-- Temperature Slider -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-medium text-[#292524]">
+                  Độ biểu cảm (Temperature)
+                </label>
+                <span id="temp-val" class="text-xs font-mono font-bold text-[#0c0a09]">0.70</span>
+              </div>
+              <input type="range" id="temp-slider" min="0.1" max="1.5" step="0.05" value="0.7"
+                class="w-full h-1.5 bg-[#e7e5e4] rounded-lg appearance-none cursor-pointer accent-[#292524]">
+              <div class="flex justify-between text-[10px] text-[#777169]">
+                <span>0.1 (Nghiêm túc)</span>
+                <span class="text-[#292524] font-medium" id="temp-badge">Tự nhiên / Cân bằng</span>
+                <span>1.5 (Phóng khoáng)</span>
+              </div>
+            </div>
+
+            <!-- Silence Pause Duration -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-medium text-[#292524]">
+                  Độ nghỉ ngắt câu (Silence Pause)
+                </label>
+                <span id="silence-val" class="text-xs font-mono font-bold text-[#0c0a09]">0.15s</span>
+              </div>
+              <input type="range" id="silence-slider" min="0.05" max="0.50" step="0.01" value="0.15"
+                class="w-full h-1.5 bg-[#e7e5e4] rounded-lg appearance-none cursor-pointer accent-[#292524]">
+              <div class="text-[10px] text-[#777169]">Thời gian nghỉ tại dấu chấm, phẩy (0.05s - 0.50s)</div>
+            </div>
+
+            <!-- Denoise & Processing Mode -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between p-3 rounded-xl bg-[#fafafa] border border-[#e7e5e4]">
+                <div>
+                  <div class="text-xs font-medium text-[#0c0a09]">Khử nhiễu mẫu Clone (Denoise)</div>
+                  <div class="text-[10px] text-[#777169]">Tự động lọc tiếng ồn nền âm thanh mẫu</div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" id="denoise-toggle" checked class="sr-only peer">
+                  <div class="w-8 h-4 bg-[#e7e5e4] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#292524]"></div>
+                </label>
+              </div>
+
+              {% if local_cpu_available %}
+              <div class="flex items-center justify-between p-3 rounded-xl bg-[#fafafa] border border-[#e7e5e4]">
+                <div>
+                  <div class="text-xs font-medium text-[#0c0a09]">Ưu tiên Local CPU Fallback</div>
+                  <div class="text-[10px] text-[#777169]">Bỏ qua GPU Kaggle khi có sẵn CPU cục bộ</div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" id="force-local-toggle" class="sr-only peer">
+                  <div class="w-8 h-4 bg-[#e7e5e4] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#292524]"></div>
+                </label>
+              </div>
+              {% else %}
+              <div class="flex items-center justify-between p-3 rounded-xl bg-[#f5f5f5] border border-[#e7e5e4] opacity-75">
+                <div>
+                  <div class="text-xs font-medium text-[#777169] flex items-center">
+                    <span>Ưu tiên Local CPU Fallback</span>
+                    <span class="ml-2 text-[9px] px-2 py-0.5 rounded-full bg-[#e7e5e4] text-[#4e4e4e]">Kaggle GPU Mode</span>
+                  </div>
+                  <div class="text-[10px] text-[#a8a29e]">Gateway đám mây nhẹ, tự động kích hoạt GPU Tesla T4</div>
+                </div>
+                <input type="checkbox" id="force-local-toggle" disabled class="sr-only">
+              </div>
+              {% endif %}
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Action Button & Developer API Trigger -->
+      <div class="pt-2 flex items-center space-x-3">
+        <button id="generate-btn" onclick="startGeneration()" 
+          class="flex-1 py-3.5 px-6 rounded-full font-medium text-white bg-[#292524] hover:bg-[#0c0a09] shadow-sm flex items-center justify-center space-x-2 transition-all active:scale-[0.99] text-[15px]">
+          <span class="material-symbols-rounded text-lg">play_arrow</span>
+          <span id="btn-text">Tạo Giọng Nói (48kHz Stereo)</span>
+          <kbd class="ml-2 text-[10px] font-mono bg-white/20 px-1.5 py-0.5 rounded text-white/90">Ctrl ↵</kbd>
+        </button>
+
+        <button type="button" onclick="openApiModal()" title="Xem mã nguồn gọi API tích hợp" 
+          class="px-5 py-3.5 rounded-full font-medium text-[#0c0a09] hover:bg-[#f0efed] border border-[#d6d3d1] flex items-center space-x-1.5 transition text-[14px]">
+          <span class="material-symbols-rounded text-sm text-[#777169]">terminal</span>
+          <span>API</span>
+        </button>
+      </div>
+
+      <!-- Progress status indicator -->
+      <div id="job-status-box" class="hidden p-4 rounded-2xl border border-[#e7e5e4] bg-[#fafafa] space-y-2">
+        <div class="flex items-center justify-between text-xs font-medium">
+          <span id="job-step-label" class="text-[#292524] flex items-center">
+            <span class="material-symbols-rounded text-sm animate-spin mr-1.5 text-[#777169]">sync</span>Đang gửi yêu cầu...
+          </span>
+          <span id="job-id-label" class="font-mono text-[#777169]"></span>
+        </div>
+        <div class="w-full bg-[#e7e5e4] rounded-full h-1 overflow-hidden">
+          <div id="job-progress-bar" class="bg-[#292524] h-1 rounded-full transition-all duration-300" style="width: 20%"></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Right Column: Player & Recent Results (5 cols) - Smart Sticky Desktop Experience -->
+  <div class="lg:col-span-5 space-y-6 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto no-scrollbar">
+    
+    <!-- Waveform & Player Card -->
+    <div class="card-editorial p-6 sm:p-7 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-[#0c0a09] flex items-center">
+            <span>Bản Phát Âm Thanh</span>
+          </h3>
+          <div class="flex items-center space-x-2">
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#f0efed] text-[#292524] border border-[#e7e5e4]">48.000 Hz</span>
+            <span id="active-voice-badge" class="text-xs px-2.5 py-0.5 rounded-full bg-[#f0efed] text-[#4e4e4e] font-medium border border-[#e7e5e4]">Hải Đăng</span>
+          </div>
+        </div>
+
+        <!-- Waveform Container -->
+        <div class="rounded-2xl bg-[#fafafa] p-4 border border-[#f0efed] relative">
+          <div id="waveform" class="w-full h-24"></div>
+          <div id="player-placeholder" class="h-24 flex flex-col items-center justify-center text-[#777169] space-y-1">
+            <span class="material-symbols-rounded text-3xl text-[#a8a29e]">graphic_eq</span>
+            <span class="text-xs">Chưa có audio. Nhập văn bản và bấm Tạo giọng nói!</span>
+          </div>
+        </div>
+
+        <!-- Player Controls -->
+        <div class="mt-5 flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <button id="play-pause-btn" onclick="togglePlay()" disabled
+              class="w-11 h-11 rounded-full bg-[#292524] hover:bg-[#0c0a09] disabled:bg-[#f0efed] disabled:text-[#a8a29e] text-white flex items-center justify-center shadow-sm transition active:scale-95">
+              <span id="play-icon" class="material-symbols-rounded text-xl">play_arrow</span>
+            </button>
+            <div>
+              <div id="time-display" class="text-xs font-mono font-medium text-[#0c0a09]">00:00 / 00:00</div>
+              <div class="text-[11px] text-[#777169]">48kHz Neural Master</div>
+            </div>
+          </div>
+
+          <!-- Playback Speed for listener -->
+          <div class="flex items-center space-x-2">
+            <select id="player-speed-select" onchange="changePlaybackRate(this.value)" class="text-xs input-editorial px-2.5 py-1 rounded-full text-[#0c0a09] bg-white outline-none">
+              <option value="0.75">0.75x</option>
+              <option value="1.0" selected>1.0x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2.0">2.0x</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Export & Download Toolbar -->
+        <div class="mt-5 pt-4 border-t border-[#f0efed] flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <!-- Download WAV -->
+            <a id="download-btn" href="#" download class="hidden px-3.5 py-1.5 rounded-full text-xs font-medium border border-[#d6d3d1] text-[#0c0a09] hover:bg-[#f0efed] transition flex items-center space-x-1.5">
+              <span class="material-symbols-rounded text-sm text-[#777169]">download</span>
+              <span>Tải WAV</span>
+            </a>
+            <!-- Download MP3 -->
+            <button id="download-mp3-btn" onclick="exportMp3()" class="hidden px-3.5 py-1.5 rounded-full text-xs font-medium border border-[#d6d3d1] text-[#0c0a09] hover:bg-[#f0efed] transition flex items-center space-x-1.5">
+              <span class="material-symbols-rounded text-sm text-[#777169]">audio_file</span>
+              <span id="mp3-btn-txt">Tải MP3</span>
+            </button>
+          </div>
+
+          <button id="copy-url-btn" onclick="copyAudioUrl()" class="hidden px-3 py-1.5 rounded-full text-xs font-medium text-[#777169] hover:text-[#0c0a09] hover:bg-[#f0efed] border border-[#e7e5e4] transition flex items-center space-x-1">
+            <span class="material-symbols-rounded text-xs">share</span>
+            <span>Copy Link</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Audio Details Metadata Card -->
+      <div id="audio-stats-card" class="hidden mt-6 pt-4 border-t border-[#f0efed] grid grid-cols-4 gap-2 text-center text-xs">
+        <div class="p-2.5 rounded-xl bg-[#fafafa] border border-[#f0efed]">
+          <div class="text-[#777169] text-[10px]">Thời lượng</div>
+          <div id="stat-duration" class="font-semibold text-[#0c0a09] mt-0.5">--</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-[#fafafa] border border-[#f0efed]">
+          <div class="text-[#777169] text-[10px]">Thời gian tạo</div>
+          <div id="stat-time" class="font-semibold text-[#0c0a09] mt-0.5">--</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-[#fafafa] border border-[#f0efed]">
+          <div class="text-[#777169] text-[10px]">Tốc độ RTF</div>
+          <div id="stat-rtf" class="font-semibold text-[#0c0a09] mt-0.5">--</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-[#fafafa] border border-[#f0efed]">
+          <div class="text-[#777169] text-[10px]">Worker</div>
+          <div id="stat-worker" class="font-semibold text-[#0c0a09] mt-0.5 truncate">--</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Recent History -->
+    <div class="card-editorial p-6 sm:p-7">
+      <h3 class="text-sm font-semibold text-[#0c0a09] mb-4 flex items-center justify-between">
+        <span>Lịch sử gần đây</span>
+        <span class="text-xs text-[#777169] font-normal">{{ recent_jobs|length }} mục</span>
+      </h3>
+      <div class="space-y-2 max-h-72 overflow-y-auto pr-1">
+        {% for job in recent_jobs %}
+        <div class="p-3 rounded-xl hover:bg-[#fafafa] border border-transparent hover:border-[#f0efed] transition flex items-center justify-between">
+          <div class="min-w-0 pr-3">
+            <div class="text-xs text-[#0c0a09] font-medium truncate">{{ job.prompt }}</div>
+            <div class="text-[11px] text-[#777169] mt-0.5 flex items-center space-x-2">
+              <span class="text-[#292524] font-medium">{{ job.voice_id }}</span>
+              <span>•</span>
+              <span>{{ job.created_at.strftime('%H:%M:%S') }}</span>
+              {% if job.duration %}
+              <span>•</span>
+              <span>{{ "%.1f"|format(job.duration) }}s</span>
+              {% endif %}
+            </div>
+          </div>
+          {% if job.status == 'completed' and job.audio_url %}
+          <button onclick="loadAudioUrl('{{ job.audio_url }}', '{{ job.voice_id }}', true)" class="w-8 h-8 rounded-full bg-[#f0efed] hover:bg-[#292524] text-[#292524] hover:text-white flex items-center justify-center text-xs transition active:scale-95" title="Nghe lại ngay">
+            <span class="material-symbols-rounded text-sm ml-0.5">play_arrow</span>
+          </button>
+          {% elif job.status == 'failed' %}
+          <span class="text-[10px] text-rose-600 px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200">Lỗi</span>
+          {% else %}
+          <span class="text-[10px] text-amber-700 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200">Đang chạy</span>
+          {% endif %}
+        </div>
+        {% else %}
+        <p class="text-xs text-[#777169] text-center py-6">Chưa có lịch sử tạo giọng.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Mobile Sticky Floating Audio Player Bar -->
+<div id="mobile-sticky-player" class="lg:hidden fixed bottom-3 left-3 right-3 z-40 bg-[#0c0a09]/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-white/10 hidden items-center justify-between transition-all">
+  <div class="flex items-center space-x-3 min-w-0 cursor-pointer" onclick="document.getElementById('waveform').scrollIntoView({behavior:'smooth', block:'center'})">
+    <button type="button" onclick="event.stopPropagation(); togglePlay();" class="w-8 h-8 rounded-full bg-white text-[#0c0a09] flex items-center justify-center shrink-0 shadow-sm active:scale-95">
+      <span id="mobile-play-icon" class="material-symbols-rounded text-lg">play_arrow</span>
+    </button>
+    <div class="min-w-0">
+      <div id="mobile-voice-name" class="text-xs font-medium truncate">Đang phát audio</div>
+      <div id="mobile-time-display" class="text-[10px] text-[#a8a29e] font-mono">00:00 / 00:00</div>
+    </div>
+  </div>
+  <div class="flex items-center space-x-1.5">
+    <a id="mobile-download-btn" href="#" download class="p-2 rounded-full hover:bg-white/10 text-[#a8a29e] hover:text-white transition" title="Tải file WAV">
+      <span class="material-symbols-rounded text-base">download</span>
+    </a>
+    <button type="button" onclick="document.getElementById('mobile-sticky-player').classList.add('hidden')" class="p-1 rounded-full text-[#777169] hover:text-white transition" title="Đóng thanh phát">
+      <span class="material-symbols-rounded text-sm">close</span>
+    </button>
+  </div>
+</div>
+
+<!-- Developer API Code Snippet Modal -->
+<div id="api-code-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0c0a09]/40 backdrop-blur-sm">
+  <div class="w-full max-w-2xl bg-white border border-[#e7e5e4] rounded-[24px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="p-6 border-b border-[#f0efed] flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-full bg-[#f0efed] text-[#292524] flex items-center justify-center">
+          <span class="material-symbols-rounded text-lg">terminal</span>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold text-[#0c0a09]">Tích Hợp API OlokaTTS</h3>
+          <p class="text-xs text-[#777169]">OpenAI-Compatible &amp; REST Endpoint chuẩn 48kHz</p>
+        </div>
+      </div>
+      <button onclick="closeApiModal()" class="w-8 h-8 rounded-full text-[#777169] hover:text-[#0c0a09] hover:bg-[#f0efed] flex items-center justify-center transition">
+        <span class="material-symbols-rounded text-lg">close</span>
+      </button>
+    </div>
+
+    <!-- Code Language Tabs -->
+    <div class="flex items-center border-b border-[#f0efed] px-6 bg-[#fafafa]">
+      <button onclick="switchCodeTab('curl')" id="tab-curl" class="tab-btn px-4 py-2.5 text-xs font-medium text-[#0c0a09] border-b-2 border-[#292524]">cURL</button>
+      <button onclick="switchCodeTab('py-requests')" id="tab-py-requests" class="tab-btn px-4 py-2.5 text-xs font-medium text-[#777169] hover:text-[#0c0a09]">Python (Requests)</button>
+      <button onclick="switchCodeTab('py-openai')" id="tab-py-openai" class="tab-btn px-4 py-2.5 text-xs font-medium text-[#777169] hover:text-[#0c0a09]">Python (OpenAI SDK)</button>
+      <button onclick="switchCodeTab('js-fetch')" id="tab-js-fetch" class="tab-btn px-4 py-2.5 text-xs font-medium text-[#777169] hover:text-[#0c0a09]">JavaScript</button>
+    </div>
+
+    <!-- Code Box -->
+    <div class="p-5 flex-1 overflow-y-auto bg-[#1c1917] font-mono text-xs text-[#e7e5e4] relative">
+      <button onclick="copySnippetCode()" class="absolute top-5 right-5 px-3 py-1.5 rounded-full bg-[#292524] hover:bg-[#0c0a09] text-xs text-white border border-[#44403c] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-xs">content_copy</span>
+        <span id="copy-btn-txt">Sao chép</span>
+      </button>
+      <pre id="code-snippet-pre" class="whitespace-pre-wrap leading-relaxed pt-2"></pre>
+    </div>
+
+    <div class="p-5 border-t border-[#f0efed] bg-[#fafafa] flex items-center justify-between text-xs text-[#777169]">
+      <span>Định dạng trả về: <strong>48kHz WAV PCM</strong></span>
+      <button onclick="closeApiModal()" class="px-4 py-2 rounded-full border border-[#d6d3d1] hover:bg-[#f0efed] text-[#0c0a09] font-medium transition">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Login Required Modal -->
+<div id="login-required-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0c0a09]/40 backdrop-blur-sm">
+  <div class="w-full max-w-md bg-white border border-[#e7e5e4] rounded-[24px] p-7 shadow-2xl space-y-4">
+    <div class="flex items-center space-x-3.5">
+      <div class="w-10 h-10 rounded-full bg-[#f0efed] text-[#292524] flex items-center justify-center text-sm">
+        <span class="material-symbols-rounded text-xl">lock</span>
+      </div>
+      <div>
+        <h3 class="text-base font-semibold text-[#0c0a09]">Yêu Cầu Đăng Nhập</h3>
+        <p class="text-xs text-[#777169]">Trải nghiệm giọng nói AI 48kHz không giới hạn</p>
+      </div>
+    </div>
+    <p class="text-xs text-[#4e4e4e] leading-relaxed">
+      Để bảo vệ tài nguyên và cấp phát GPU riêng cho từng người dùng, vui lòng <strong>đăng nhập</strong> hoặc <strong>tạo tài khoản miễn phí</strong> trước khi sinh giọng nói. Bạn có thể nghe thử 25 mẫu giọng có sẵn ngay bên dưới mà không cần đăng nhập.
+    </p>
+    <div class="flex items-center justify-end space-x-2 pt-3 border-t border-[#f0efed]">
+      <button type="button" onclick="closeLoginModal()" class="px-4 py-2 rounded-full text-xs font-medium text-[#777169] hover:text-[#0c0a09] hover:bg-[#f0efed] transition">
+        Để Sau
+      </button>
+      <a href="/login" class="px-4 py-2 rounded-full text-xs font-medium border border-[#d6d3d1] text-[#0c0a09] hover:bg-[#f0efed] transition">
+        Đăng Nhập
+      </a>
+      <a href="/register" class="px-4 py-2 rounded-full text-xs font-medium bg-[#292524] hover:bg-[#0c0a09] text-white transition shadow-sm">
+        Đăng Ký Miễn Phí
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Kaggle Key Missing Modal -->
+<div id="kaggle-missing-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0c0a09]/40 backdrop-blur-sm">
+  <div class="w-full max-w-md bg-white border border-[#e7e5e4] rounded-[24px] p-7 shadow-2xl space-y-4">
+    <div class="flex items-center space-x-3.5">
+      <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center text-sm">
+        <span class="material-symbols-rounded text-xl">vpn_key</span>
+      </div>
+      <div>
+        <h3 class="text-base font-semibold text-[#0c0a09]">Chưa Cài Đặt Kaggle API Key</h3>
+        <p class="text-xs text-[#777169]">Dùng GPU Tesla T4 miễn phí 30h/tuần</p>
+      </div>
+    </div>
+    <p class="text-xs text-[#4e4e4e] leading-relaxed">
+      Tài khoản của bạn chưa được liên kết <strong>Kaggle Username &amp; Key</strong>. Hệ thống chạy theo cơ chế BYOK (Bring Your Own Key) giúp bạn sở hữu GPU T4 riêng, tốc độ cao và không lo nghẽn hàng đợi.
+    </p>
+    <div class="flex items-center justify-end space-x-2 pt-3 border-t border-[#f0efed]">
+      <button type="button" onclick="closeKaggleModal()" class="px-4 py-2 rounded-full text-xs font-medium text-[#777169] hover:text-[#0c0a09] hover:bg-[#f0efed] transition">
+        Đóng
+      </button>
+      {% if local_cpu_available %}
+      <button type="button" onclick="continueWithLocalCpu()" class="px-4 py-2 rounded-full text-xs font-medium border border-[#d6d3d1] text-[#0c0a09] hover:bg-[#f0efed] transition">
+        Dùng Tạm Local CPU
+      </button>
+      {% endif %}
+      <a href="/settings" class="px-4 py-2 rounded-full text-xs font-medium bg-[#292524] hover:bg-[#0c0a09] text-white transition shadow-sm">
+        Cài Đặt Ngay
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  var wavesurfer = null;
+  var currentAudioUrl = null;
+  var activeCodeTab = 'curl';
+
+  // --- Toast Notification Helper ---
+  function showToast(msg) {
+    let toast = document.getElementById('studio-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'studio-toast';
+      toast.className = 'fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-full bg-[#292524] text-white text-xs font-medium shadow-lg transition-all duration-300 opacity-0 translate-y-2 pointer-events-none flex items-center space-x-2';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = `<span class="material-symbols-rounded text-sm text-[#a7e5d3]">check_circle</span><span>${msg}</span>`;
+    toast.classList.remove('opacity-0', 'translate-y-2');
+    setTimeout(() => {
+      toast.classList.add('opacity-0', 'translate-y-2');
+    }, 2400);
+  }
+
+  // --- Live Text Statistics ---
+  var promptInput = document.getElementById('prompt-input');
+  var statChars = document.getElementById('stat-chars');
+  var statWords = document.getElementById('stat-words');
+  var statSentences = document.getElementById('stat-sentences');
+  var statEstDuration = document.getElementById('stat-est-duration');
+
+  function updateTextStats() {
+    const text = promptInput.value.trim();
+    statChars.innerText = promptInput.value.length;
+    
+    if (!text) {
+      statWords.innerText = "0";
+      statSentences.innerText = "0";
+      statEstDuration.innerText = "~0s";
+      return;
+    }
+
+    // Word count
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    statWords.innerText = words.length;
+
+    // Sentence count
+    const sentences = text.split(/[.!?\n]+/).filter(s => s.trim().length > 0);
+    statSentences.innerText = sentences.length;
+
+    // Est. duration: ~3.2 words / second at 1.0x speed
+    const speed = parseFloat(document.getElementById('speed-slider').value) || 1.0;
+    const estSeconds = Math.max(1, Math.round((words.length / (3.2 * speed))));
+    if (estSeconds < 60) {
+      statEstDuration.innerText = `~${estSeconds}s`;
+    } else {
+      const mins = Math.floor(estSeconds / 60);
+      const rem = estSeconds % 60;
+      statEstDuration.innerText = `~${mins}p ${rem}s`;
+    }
+
+    // Auto-save draft to localStorage
+    debounceSaveDraft();
+  }
+
+  // Auto-save draft mechanism
+  var draftSaveTimer = null;
+  function debounceSaveDraft() {
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(() => {
+      try {
+        if (promptInput.value && promptInput.value.trim()) {
+          localStorage.setItem('oloka_tts_draft', promptInput.value);
+        }
+      } catch (e) {}
+    }, 400);
+  }
+
+  // Restore saved draft on load if available
+  try {
+    const savedDraft = localStorage.getItem('oloka_tts_draft');
+    if (savedDraft && savedDraft.trim() && savedDraft !== promptInput.value) {
+      promptInput.value = savedDraft;
+    }
+  } catch (e) {}
+
+  promptInput.addEventListener('input', updateTextStats);
+  updateTextStats();
+
+  // --- Keyboard Shortcut: Ctrl + Enter to Generate ---
+  promptInput.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      startGeneration();
+    }
+  });
+
+  // --- Smart Prompt Polish / Auto-Punctuation ---
+  function polishPrompt() {
+    let t = promptInput.value;
+    if (!t.trim()) return;
+
+    // 1. Clean spaces before punctuation
+    t = t.replace(/\s+([.,!?:;])/g, '$1');
+    // 2. Ensure single space after punctuation if followed by text/letter
+    t = t.replace(/([.,!?:;])(?=[^\s\d.,!?:;])/g, '$1 ');
+    // 3. Remove multiple redundant spaces
+    t = t.replace(/[ \t]+/g, ' ');
+    // 4. Remove multiple consecutive line breaks
+    t = t.replace(/\n\s*\n\s*\n+/g, '\n\n');
+    // 5. Trim leading/trailing
+    t = t.trim();
+    // 6. Ensure ending punctuation for clean neural prosody
+    if (!/[.!?…]$/.test(t) && !t.endsWith(']')) {
+      t += '.';
+    }
+    promptInput.value = t;
+    updateTextStats();
+    showToast("Đã tối ưu hóa dấu câu & ngắt nghỉ cho giọng nói tự nhiên!");
+  }
+
+  function copyPromptText() {
+    if (!promptInput.value.trim()) return;
+    navigator.clipboard.writeText(promptInput.value);
+    showToast("Đã sao chép văn bản vào clipboard!");
+  }
+
+  // --- Emotion & Silence Tag Insertion ---
+  function insertEmotion(tag) {
+    const start = promptInput.selectionStart;
+    const end = promptInput.selectionEnd;
+    const text = promptInput.value;
+    promptInput.value = text.substring(0, start) + " " + tag + " " + text.substring(end);
+    promptInput.focus();
+    promptInput.selectionStart = promptInput.selectionEnd = start + tag.length + 2;
+    updateTextStats();
+  }
+
+  // --- Prompt Presets ---
+  var PROMPT_PRESETS = {
+    bilingual: "Google vừa chính thức công bố bước đột phá mới với mô hình Gemini 1.5 Pro hỗ trợ context window lên đến 2 triệu tokens. Khả năng code-switching và ultra-low latency mang lại trải nghiệm multimodal vô cùng ấn tượng cho người dùng toàn cầu.",
+    story: "Đêm hôm ấy, gió rít từng hồi qua khe cửa sổ gỗ cũ kỹ. [thở dài] Tôi ngồi một mình giữa căn phòng tối, chỉ có ánh nến leo lét rọi lên vách tường. [ngập ngừng] Bỗng nhiên... [thì thầm] có một tiếng bước chân nhẹ nhàng đang tiến lại gần cánh cửa.",
+    casual: "Trời ơi, cậu không thể nào tin được chuyện gì vừa xảy ra sáng nay đâu! [cười] Con mèo nhà tôi nó nhảy phốc lên bàn làm việc, rồi làm đổ cả cốc trà sữa vào bàn phím! [thở dài] Tôi vừa dọn vừa khóc không ra tiếng... [ngáp] Buồn ngủ quá đi mất!",
+    promo: "Chào mừng các bạn đã quay trở lại! Hôm nay trên tay mình là chiếc máy tính bảng mới nhất vừa ra mắt. Thiết kế khung nhôm nguyên khối siêu mỏng nhẹ, màn hình 120Hz mượt mà cùng dàn loa vòm 48kHz sống động, chắc chắn sẽ không làm bạn thất vọng!"
+  };
+
+  function applyPromptPreset(key) {
+    if (PROMPT_PRESETS[key]) {
+      promptInput.value = PROMPT_PRESETS[key];
+      updateTextStats();
+      toggleDropdown('preset-menu');
+    }
+  }
+
+  function clearPrompt() {
+    if (confirm("Bạn có chắc chắn muốn xóa toàn bộ nội dung?")) {
+      promptInput.value = "";
+      try { localStorage.removeItem('oloka_tts_draft'); } catch (e) {}
+      updateTextStats();
+      promptInput.focus();
+    }
+  }
+
+  function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      promptInput.value = e.target.result;
+      updateTextStats();
+      showToast(`Đã tải tệp: ${file.name}`);
+    };
+    reader.readAsText(file, "UTF-8");
+  }
+
+  function toggleDropdown(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden');
+  }
+
+  window.addEventListener('click', (e) => {
+    const menu = document.getElementById('preset-menu');
+    if (menu && !menu.classList.contains('hidden') && !e.target.closest('#preset-menu') && !e.target.closest('button[onclick*="preset-menu"]')) {
+      menu.classList.add('hidden');
+    }
+  });
+
+  // --- Voice Filter & Search ---
+  function filterVoiceDropdown(filterType, btnEl) {
+    // Highlight active chip
+    document.querySelectorAll('#voice-filter-chips .filter-chip').forEach(b => {
+      b.classList.remove('active-filter', 'bg-[#292524]', 'text-white');
+      b.classList.add('bg-[#f0efed]', 'text-[#4e4e4e]');
+    });
+    btnEl.classList.add('active-filter', 'bg-[#292524]', 'text-white');
+    btnEl.classList.remove('bg-[#f0efed]', 'text-[#4e4e4e]');
+
+    const sel = document.getElementById('voice-select');
+    const options = sel.querySelectorAll('option');
+    let firstVisible = null;
+
+    options.forEach(opt => {
+      let show = false;
+      const feat = opt.getAttribute('data-featured') === 'true';
+      const region = opt.getAttribute('data-region') || '';
+      const gender = opt.getAttribute('data-gender') || '';
+
+      if (filterType === 'all') show = true;
+      else if (filterType === 'featured') show = feat;
+      else if (filterType === 'bac') show = region.includes('bắc');
+      else if (filterType === 'nam') show = region.includes('nam');
+      else if (filterType === 'trung') show = region.includes('trung');
+      else if (filterType === 'male') show = gender.includes('nam');
+      else if (filterType === 'female') show = gender.includes('nữ');
+
+      opt.style.display = show ? '' : 'none';
+      if (show && !firstVisible) firstVisible = opt;
+    });
+
+    if (firstVisible && sel.selectedOptions[0] && sel.selectedOptions[0].style.display === 'none') {
+      sel.value = firstVisible.value;
+      onVoiceSelected();
+    }
+  }
+
+  function onVoiceSearch(query) {
+    const q = query.trim().toLowerCase();
+    const sel = document.getElementById('voice-select');
+    const options = sel.querySelectorAll('option');
+    options.forEach(opt => {
+      const match = opt.text.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q);
+      opt.style.display = match ? '' : 'none';
+    });
+  }
+
+  function onVoiceSelected() {
+    const sel = document.getElementById('voice-select');
+    const opt = sel.options[sel.selectedIndex];
+    if (opt) {
+      const name = opt.text.split('(')[0].trim();
+      document.getElementById('active-voice-badge').innerText = name;
+      
+      // Update characteristics pill strip
+      const gender = opt.getAttribute('data-gender') || 'nam';
+      const region = opt.getAttribute('data-region') || 'bắc';
+      const desc = opt.getAttribute('data-desc') || '';
+
+      const isMale = gender.includes('nam');
+      document.getElementById('meta-gender-icon').innerText = isMale ? 'male' : 'female';
+      document.getElementById('meta-gender-txt').innerText = isMale ? 'Nam' : 'Nữ';
+      
+      let regionLabel = 'Miền Bắc';
+      if (region.includes('nam')) regionLabel = 'Miền Nam';
+      else if (region.includes('trung')) regionLabel = 'Miền Trung';
+      else if (region.includes('clone')) regionLabel = 'Bản sao';
+      document.getElementById('meta-region-txt').innerText = regionLabel;
+
+      if (desc) {
+        document.getElementById('meta-desc').innerText = desc;
+        document.getElementById('meta-desc').classList.remove('hidden');
+      } else {
+        document.getElementById('meta-desc').classList.add('hidden');
+      }
+
+      // Sync active state on quick visual cards
+      const currentVal = sel.value;
+      document.querySelectorAll('.quick-voice-card').forEach(c => {
+        c.classList.remove('border-[#292524]', 'bg-[#fafafa]', 'ring-1', 'ring-[#292524]');
+        c.classList.add('border-[#e7e5e4]', 'bg-white');
+      });
+      const activeCard = document.getElementById('qcard-' + currentVal.replace(/\s+/g, '-'));
+      if (activeCard) {
+        activeCard.classList.remove('border-[#e7e5e4]', 'bg-white');
+        activeCard.classList.add('border-[#292524]', 'bg-[#fafafa]', 'ring-1', 'ring-[#292524]');
+      }
+    }
+    // Stop any ongoing preview audio
+    if (previewAudioInstance) {
+      previewAudioInstance.pause();
+      previewAudioInstance = null;
+      const btn = document.getElementById('preview-voice-btn');
+      btn.dataset.playing = "false";
+      document.getElementById('preview-voice-txt').innerText = "Nghe thử giọng";
+      document.getElementById('preview-voice-icon').innerText = "volume_up";
+    }
+  }
+
+  function selectVoiceById(voiceId) {
+    const sel = document.getElementById('voice-select');
+    if (!sel) return;
+    sel.value = voiceId;
+    onVoiceSelected();
+  }
+
+  function playQuickVoicePreview(url, btn) {
+    if (!url) {
+      showToast('Chưa có âm thanh nghe thử cho giọng này.');
+      return;
+    }
+    const icon = btn.querySelector('.material-symbols-rounded');
+    if (window.currentPreviewAudio && window.currentPreviewAudio._btn === btn) {
+      window.currentPreviewAudio.pause();
+      window.currentPreviewAudio = null;
+      if (icon) icon.innerText = 'play_arrow';
+      return;
+    }
+    if (window.currentPreviewAudio) {
+      window.currentPreviewAudio.pause();
+      if (window.currentPreviewAudio._icon) window.currentPreviewAudio._icon.innerText = 'play_arrow';
+      window.currentPreviewAudio = null;
+    }
+    const audio = new Audio(url);
+    audio._btn = btn;
+    audio._icon = icon;
+    window.currentPreviewAudio = audio;
+    if (icon) icon.innerText = 'pause';
+    audio.play();
+    audio.onended = () => {
+      if (icon) icon.innerText = 'play_arrow';
+      window.currentPreviewAudio = null;
+    };
+    audio.onerror = () => {
+      if (icon) icon.innerText = 'play_arrow';
+      window.currentPreviewAudio = null;
+    };
+  }
+
+  // --- Instant Voice Preview ---
+  var previewAudioInstance = null;
+  async function quickPreviewSelectedVoice() {
+    const sel = document.getElementById('voice-select');
+    const opt = sel.options[sel.selectedIndex];
+    const previewUrl = opt ? opt.getAttribute('data-preview') : null;
+    const btn = document.getElementById('preview-voice-btn');
+    const txt = document.getElementById('preview-voice-txt');
+    const icon = document.getElementById('preview-voice-icon');
+
+    if (!previewUrl) {
+      alert("Chưa có file mẫu âm thanh sẵn cho giọng đã chọn.");
+      return;
+    }
+
+    if (btn.dataset.playing === "true") {
+      if (previewAudioInstance) {
+        previewAudioInstance.pause();
+        previewAudioInstance.currentTime = 0;
+      }
+      btn.dataset.playing = "false";
+      txt.innerText = "Nghe thử giọng";
+      icon.innerText = "volume_up";
+      return;
+    }
+
+    if (previewAudioInstance) {
+      previewAudioInstance.pause();
+      previewAudioInstance.currentTime = 0;
+    }
+
+    previewAudioInstance = new Audio(previewUrl);
+    btn.dataset.playing = "true";
+    txt.innerText = "Dừng";
+    icon.innerText = "stop";
+
+    previewAudioInstance.onended = () => {
+      btn.dataset.playing = "false";
+      txt.innerText = "Nghe thử giọng";
+      icon.innerText = "volume_up";
+      previewAudioInstance = null;
+    };
+
+    previewAudioInstance.onerror = () => {
+      btn.dataset.playing = "false";
+      txt.innerText = "Nghe thử giọng";
+      icon.innerText = "volume_up";
+      alert("Không thể tải file âm thanh mẫu.");
+    };
+
+    try {
+      await previewAudioInstance.play();
+    } catch (err) {
+      btn.dataset.playing = "false";
+      txt.innerText = "Nghe thử giọng";
+      icon.innerText = "volume_up";
+    }
+  }
+
+  // Initial trigger to sync voice meta
+  onVoiceSelected();
+
+  // --- Advanced Settings Sliders ---
+  function toggleAdvancedSettings() {
+    const body = document.getElementById('advanced-settings-body');
+    const chevron = document.getElementById('adv-chevron');
+    body.classList.toggle('hidden');
+    if (body.classList.contains('hidden')) {
+      chevron.style.transform = 'rotate(0deg)';
+    } else {
+      chevron.style.transform = 'rotate(180deg)';
+    }
+  }
+
+  var speedSlider = document.getElementById('speed-slider');
+  var speedVal = document.getElementById('speed-val');
+  speedSlider.addEventListener('input', () => {
+    speedVal.innerText = `${parseFloat(speedSlider.value).toFixed(2)}x`;
+    updateAdvSummary();
+    updateTextStats();
+  });
+
+  function setSpeed(v) {
+    speedSlider.value = v;
+    speedVal.innerText = `${parseFloat(v).toFixed(2)}x`;
+    updateAdvSummary();
+    updateTextStats();
+  }
+
+  var tempSlider = document.getElementById('temp-slider');
+  var tempVal = document.getElementById('temp-val');
+  var tempBadge = document.getElementById('temp-badge');
+  tempSlider.addEventListener('input', () => {
+    const val = parseFloat(tempSlider.value);
+    tempVal.innerText = val.toFixed(2);
+    if (val < 0.5) {
+      tempBadge.innerText = "Trang nghiêm / Chuẩn mực";
+      tempBadge.className = "text-[#292524] font-medium";
+    } else if (val <= 0.85) {
+      tempBadge.innerText = "Tự nhiên / Cân bằng";
+      tempBadge.className = "text-[#292524] font-medium";
+    } else {
+      tempBadge.innerText = "Biểu cảm / Phóng khoáng";
+      tempBadge.className = "text-[#292524] font-medium";
+    }
+    updateAdvSummary();
+  });
+
+  var silenceSlider = document.getElementById('silence-slider');
+  var silenceVal = document.getElementById('silence-val');
+  silenceSlider.addEventListener('input', () => {
+    silenceVal.innerText = `${parseFloat(silenceSlider.value).toFixed(2)}s`;
+    updateAdvSummary();
+  });
+
+  function updateAdvSummary() {
+    const s = parseFloat(speedSlider.value).toFixed(2);
+    const t = parseFloat(tempSlider.value).toFixed(2);
+    const p = parseFloat(silenceSlider.value).toFixed(2);
+    document.getElementById('adv-summary').innerText = `Tốc độ: ${s}x | Temp: ${t} | Ngắt nghỉ: ${p}s`;
+  }
+
+  // --- WaveSurfer Audio Player ---
+  function initWaveSurfer(url, autoPlay = false) {
+    if (wavesurfer) {
+      wavesurfer.destroy();
+    }
+    document.getElementById('player-placeholder').classList.add('hidden');
+
+    wavesurfer = WaveSurfer.create({
+      container: '#waveform',
+      waveColor: '#d6d3d1',
+      progressColor: '#292524',
+      cursorColor: '#0c0a09',
+      barWidth: 2,
+      barGap: 3,
+      barRadius: 2,
+      height: window.innerWidth < 640 ? 80 : 96,
+      url: url,
+    });
+
+    wavesurfer.on('ready', () => {
+      document.getElementById('play-pause-btn').disabled = false;
+      const rate = parseFloat(document.getElementById('player-speed-select').value) || 1.0;
+      wavesurfer.setPlaybackRate(rate);
+      updateTimeDisplay();
+
+      // Autoplay if requested
+      if (autoPlay) {
+        wavesurfer.play().then(() => {
+          document.getElementById('play-icon').innerText = 'pause';
+        }).catch((err) => {
+          console.warn("Autoplay was prevented by browser policy:", err);
+          document.getElementById('play-icon').innerText = 'play_arrow';
+        });
+      }
+    });
+
+    wavesurfer.on('play', () => {
+      document.getElementById('play-icon').innerText = 'pause';
+      const mIcon = document.getElementById('mobile-play-icon');
+      if (mIcon) mIcon.innerText = 'pause';
+    });
+
+    wavesurfer.on('pause', () => {
+      document.getElementById('play-icon').innerText = 'play_arrow';
+      const mIcon = document.getElementById('mobile-play-icon');
+      if (mIcon) mIcon.innerText = 'play_arrow';
+    });
+
+    wavesurfer.on('audioprocess', updateTimeDisplay);
+    wavesurfer.on('seek', updateTimeDisplay);
+    wavesurfer.on('finish', () => {
+      document.getElementById('play-icon').innerText = 'play_arrow';
+      const mIcon = document.getElementById('mobile-play-icon');
+      if (mIcon) mIcon.innerText = 'play_arrow';
+    });
+  }
+
+  function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  function updateTimeDisplay() {
+    if (!wavesurfer) return;
+    const cur = wavesurfer.getCurrentTime();
+    const dur = wavesurfer.getDuration();
+    const formatted = `${formatTime(cur)} / ${formatTime(dur)}`;
+    const td = document.getElementById('time-display');
+    if (td) td.innerText = formatted;
+    const mtd = document.getElementById('mobile-time-display');
+    if (mtd) mtd.innerText = formatted;
+  }
+
+  function togglePlay() {
+    if (!wavesurfer) return;
+    wavesurfer.playPause();
+  }
+
+  function changePlaybackRate(rate) {
+    if (wavesurfer) {
+      wavesurfer.setPlaybackRate(parseFloat(rate));
+    }
+  }
+
+  function loadAudioUrl(url, voiceName, autoPlay = false) {
+    currentAudioUrl = url;
+    document.getElementById('active-voice-badge').innerText = voiceName || 'OlokaTTS 48kHz';
+    
+    // Show download buttons
+    const dlWav = document.getElementById('download-btn');
+    dlWav.href = url;
+    dlWav.classList.remove('hidden');
+    
+    const dlMp3 = document.getElementById('download-mp3-btn');
+    dlMp3.classList.remove('hidden');
+
+    const copyBtn = document.getElementById('copy-url-btn');
+    copyBtn.classList.remove('hidden');
+
+    // Sync mobile floating player
+    const mPlayer = document.getElementById('mobile-sticky-player');
+    if (mPlayer) {
+      mPlayer.classList.remove('hidden');
+      mPlayer.classList.add('flex');
+      const mVoice = document.getElementById('mobile-voice-name');
+      if (mVoice) mVoice.innerText = voiceName || 'OlokaTTS 48kHz';
+      const mDl = document.getElementById('mobile-download-btn');
+      if (mDl) mDl.href = url;
+    }
+
+    initWaveSurfer(url, autoPlay);
+
+    // Smooth scroll into player view on smaller screens when auto-playing
+    if (autoPlay && window.innerWidth < 1024) {
+      setTimeout(() => {
+        const wf = document.getElementById('waveform');
+        if (wf) wf.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 250);
+    }
+  }
+
+  function copyAudioUrl() {
+    if (!currentAudioUrl) return;
+    const fullUrl = window.location.origin + currentAudioUrl;
+    navigator.clipboard.writeText(fullUrl);
+    showToast('Đã copy link audio: ' + fullUrl);
+  }
+
+  // --- Export to MP3 Client-Side ---
+  async function exportMp3() {
+    if (!currentAudioUrl) return;
+    const btn = document.getElementById('download-mp3-btn');
+    const txt = document.getElementById('mp3-btn-txt');
+    const oldTxt = txt.innerText;
+    txt.innerText = "Đang xuất MP3...";
+    btn.disabled = true;
+
+    try {
+      const resp = await fetch(currentAudioUrl);
+      const arrayBuffer = await resp.arrayBuffer();
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+      // Dynamically load lamejs if needed
+      if (typeof lamejs === 'undefined') {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js';
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+
+      const channels = audioBuffer.numberOfChannels;
+      const sampleRate = audioBuffer.sampleRate;
+      const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, 192);
+      const mp3Data = [];
+
+      const sampleBlockSize = 1152;
+      const left = audioBuffer.getChannelData(0);
+      const right = channels > 1 ? audioBuffer.getChannelData(1) : left;
+
+      const leftInt16 = new Int16Array(left.length);
+      const rightInt16 = new Int16Array(right.length);
+      for (let i = 0; i < left.length; i++) {
+        const sL = Math.max(-1, Math.min(1, left[i]));
+        leftInt16[i] = sL < 0 ? sL * 0x8000 : sL * 0x7FFF;
+        const sR = Math.max(-1, Math.min(1, right[i]));
+        rightInt16[i] = sR < 0 ? sR * 0x8000 : sR * 0x7FFF;
+      }
+
+      for (let i = 0; i < leftInt16.length; i += sampleBlockSize) {
+        const leftChunk = leftInt16.subarray(i, i + sampleBlockSize);
+        const rightChunk = channels > 1 ? rightInt16.subarray(i, i + sampleBlockSize) : leftChunk;
+        let mp3buf;
+        if (channels === 1) {
+          mp3buf = mp3encoder.encodeBuffer(leftChunk);
+        } else {
+          mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk);
+        }
+        if (mp3buf.length > 0) {
+          mp3Data.push(mp3buf);
+        }
+      }
+
+      const endBuf = mp3encoder.flush();
+      if (endBuf.length > 0) {
+        mp3Data.push(endBuf);
+      }
+
+      const blob = new Blob(mp3Data, { type: 'audio/mp3' });
+      const dlLink = document.createElement('a');
+      dlLink.href = URL.createObjectURL(blob);
+      dlLink.download = `olokatts_${Date.now()}.mp3`;
+      dlLink.click();
+
+      txt.innerText = "Tải MP3";
+      btn.disabled = false;
+      showToast("Đã tải xuống file MP3 thành công!");
+
+    } catch (err) {
+      console.error("MP3 export error:", err);
+      window.location.href = currentAudioUrl;
+      txt.innerText = oldTxt;
+      btn.disabled = false;
+    }
+  }
+
+  // --- Generation Pipeline ---
+  async function startGeneration() {
+    const prompt = promptInput.value.trim();
+    if (!prompt) {
+      alert("Vui lòng nhập văn bản cần đọc!");
+      return;
+    }
+
+    const voiceVal = document.getElementById('voice-select').value;
+    let voiceType = "preset";
+    let voiceId = voiceVal;
+    let refSampleId = null;
+
+    if (voiceVal.startsWith("clone:")) {
+      voiceType = "clone";
+      refSampleId = voiceVal.replace("clone:", "");
+      voiceId = "Custom Clone";
+    }
+
+    const speed = parseFloat(speedSlider.value) || 1.0;
+    const temperature = parseFloat(tempSlider.value) || 0.7;
+    const silence_p = parseFloat(silenceSlider.value) || 0.15;
+    const forceLocal = document.getElementById('force-local-toggle').checked;
+
+    const isLoggedIn = {{ 'true' if user else 'false' }};
+    const isKaggleConfigured = {{ 'true' if kaggle_configured else 'false' }};
+    const isLocalCpuAvailable = {{ 'true' if local_cpu_available else 'false' }};
+
+    if (!isLoggedIn) {
+      document.getElementById('login-required-modal').classList.remove('hidden');
+      return;
+    }
+
+    if (!isKaggleConfigured && !(forceLocal && isLocalCpuAvailable)) {
+      document.getElementById('kaggle-missing-modal').classList.remove('hidden');
+      return;
+    }
+
+    // UI state
+    const btn = document.getElementById('generate-btn');
+    const btnText = document.getElementById('btn-text');
+    const statusBox = document.getElementById('job-status-box');
+    const stepLabel = document.getElementById('job-step-label');
+    const idLabel = document.getElementById('job-id-label');
+    const progressBar = document.getElementById('job-progress-bar');
+
+    btn.disabled = true;
+    btn.classList.add('opacity-75');
+    btnText.innerText = "Đang khởi tạo...";
+    statusBox.classList.remove('hidden');
+    stepLabel.innerHTML = '<span class="material-symbols-rounded text-sm animate-spin mr-1.5 text-[#777169]">sync</span>Đang gửi yêu cầu...';
+    progressBar.style.width = "20%";
+
+    try {
+      const res = await fetch(`/v1/tts/jobs?force_local=${forceLocal}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompt,
+          voice_type: voiceType,
+          voice_id: voiceId,
+          ref_sample_id: refSampleId,
+          speed: speed,
+          temperature: temperature,
+          silence_p: silence_p
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Lỗi khi gửi yêu cầu tới Gateway");
+      }
+
+      const job = await res.json();
+      idLabel.innerText = `#${job.id}`;
+
+      if (job.status === 'completed') {
+        finishJob(job);
+        return;
+      }
+
+      pollJobStatus(job.id);
+
+    } catch (err) {
+      alert("Lỗi: " + err.message);
+      resetBtn();
+    }
+  }
+
+  async function pollJobStatus(jobId) {
+    const stepLabel = document.getElementById('job-step-label');
+    const progressBar = document.getElementById('job-progress-bar');
+
+    let tries = 0;
+    const interval = setInterval(async () => {
+      tries++;
+      try {
+        const res = await fetch(`/v1/tts/jobs/${jobId}`);
+        if (!res.ok) return;
+        const job = await res.json();
+
+        if (job.status === 'booting_kaggle') {
+          stepLabel.innerHTML = '<span class="material-symbols-rounded text-sm animate-spin mr-1.5 text-[#292524]">sync</span>Đang khởi động Kaggle Tesla T4 GPU...';
+          progressBar.style.width = "40%";
+        } else if (job.status === 'processing') {
+          stepLabel.innerHTML = '<span class="material-symbols-rounded text-sm animate-pulse mr-1.5 text-[#292524]">graphic_eq</span>Kaggle GPU đang tổng hợp giọng nói 48kHz...';
+          progressBar.style.width = "75%";
+        } else if (job.status === 'completed') {
+          clearInterval(interval);
+          progressBar.style.width = "100%";
+          finishJob(job);
+        } else if (job.status === 'failed') {
+          clearInterval(interval);
+          stepLabel.innerHTML = `<span class="text-[#dc2626] flex items-center"><span class="material-symbols-rounded text-sm mr-1">error</span>Thất bại: ${job.error_message || 'Lỗi không xác định'}</span>`;
+          resetBtn();
+        }
+
+        if (tries > 240) {
+          clearInterval(interval);
+          alert("Hết thời gian chờ worker phản hồi!");
+          resetBtn();
+        }
+
+      } catch (e) {
+        console.error("Poll error", e);
+      }
+    }, 1000);
+  }
+
+  function finishJob(job) {
+    const stepLabel = document.getElementById('job-step-label');
+    stepLabel.innerHTML = '<span class="material-symbols-rounded text-sm text-[#16a34a] mr-1">check_circle</span>Hoàn thành!';
+    
+    // Automatically load and autoplay the generated speech
+    loadAudioUrl(job.audio_url, job.voice_id, true);
+    
+    // Show stats
+    const statsCard = document.getElementById('audio-stats-card');
+    statsCard.classList.remove('hidden');
+    
+    const dur = job.duration ? job.duration.toFixed(1) : '--';
+    const execT = job.execution_time ? job.execution_time.toFixed(2) : '--';
+    
+    document.getElementById('stat-duration').innerText = dur + 's';
+    document.getElementById('stat-time').innerText = execT + 's';
+    
+    // Real-Time Factor (RTF)
+    if (job.duration && job.execution_time) {
+      const rtf = (job.execution_time / job.duration).toFixed(2);
+      document.getElementById('stat-rtf').innerText = `${rtf}x RTF`;
+    } else {
+      document.getElementById('stat-rtf').innerText = '--';
+    }
+
+    document.getElementById('stat-worker').innerText = job.worker_id || 'Tesla T4';
+
+    resetBtn();
+    showToast("Tạo giọng nói hoàn tất!");
+  }
+
+  function resetBtn() {
+    const btn = document.getElementById('generate-btn');
+    const btnText = document.getElementById('btn-text');
+    btn.disabled = false;
+    btn.classList.remove('opacity-75');
+    btnText.innerText = "Tạo Giọng Nói (48kHz Stereo)";
+  }
+
+  function closeLoginModal() {
+    document.getElementById('login-required-modal').classList.add('hidden');
+  }
+
+  function closeKaggleModal() {
+    document.getElementById('kaggle-missing-modal').classList.add('hidden');
+  }
+
+  function continueWithLocalCpu() {
+    closeKaggleModal();
+    const toggle = document.getElementById('force-local-toggle');
+    if (toggle && !toggle.disabled) {
+      toggle.checked = true;
+    }
+    startGeneration();
+  }
+
+  // --- Developer API Modal & Code Generator ---
+  function openApiModal() {
+    document.getElementById('api-code-modal').classList.remove('hidden');
+    renderApiSnippet();
+  }
+
+  function closeApiModal() {
+    document.getElementById('api-code-modal').classList.add('hidden');
+  }
+
+  function switchCodeTab(tabKey) {
+    activeCodeTab = tabKey;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('text-[#0c0a09]', 'border-b-2', 'border-[#0c0a09]');
+      btn.classList.add('text-[#777169]');
+    });
+    const active = document.getElementById(`tab-${tabKey}`);
+    if (active) {
+      active.classList.add('text-[#0c0a09]', 'border-b-2', 'border-[#0c0a09]');
+      active.classList.remove('text-[#777169]');
+    }
+    renderApiSnippet();
+  }
+
+  function renderApiSnippet() {
+    const baseUrl = window.location.origin;
+    const prompt = promptInput.value.trim() || "Xin chào Việt Nam!";
+    const voice = document.getElementById('voice-select').value;
+    const speed = parseFloat(speedSlider.value) || 1.0;
+    const temp = parseFloat(tempSlider.value) || 0.7;
+    const silence = parseFloat(silenceSlider.value) || 0.15;
+
+    let code = "";
+    if (activeCodeTab === 'curl') {
+      code = `# 1. OpenAI-Compatible Audio Speech (trực tiếp trả về file WAV 48kHz)
+curl -X POST "${baseUrl}/v1/audio/speech" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "olokatts-v3-turbo",
+    "voice": "${voice}",
+    "input": ${JSON.stringify(prompt)},
+    "speed": ${speed}
+  }' \\
+  --output "output_speech.wav"
+
+# 2. Hoặc gửi Job bất đồng bộ qua TTS API
+curl -X POST "${baseUrl}/v1/tts/jobs" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "prompt": ${JSON.stringify(prompt)},
+    "voice_id": "${voice}",
+    "speed": ${speed},
+    "temperature": ${temp},
+    "silence_p": ${silence}
+  }'`;
+    } else if (activeCodeTab === 'py-requests') {
+      code = `import requests
+
+# OpenAI-Compatible Speech Endpoint
+url = "${baseUrl}/v1/audio/speech"
+payload = {
+    "model": "olokatts-v3-turbo",
+    "voice": "${voice}",
+    "input": ${JSON.stringify(prompt)},
+    "speed": ${speed}
+}
+
+response = requests.post(url, json=payload, timeout=60)
+if response.status_code == 200:
+    with open("output_48khz.wav", "wb") as f:
+        f.write(response.content)
+    print("✅ Đã lưu file âm thanh chất lượng 48kHz vào output_48khz.wav")
+else:
+    print(f"❌ Lỗi: HTTP {response.status_code} - {response.text}")`;
+    } else if (activeCodeTab === 'py-openai') {
+      code = `from openai import OpenAI
+
+# Sử dụng OpenAI Python SDK chính thức, trỏ Base URL về OlokaTTS Gateway
+client = OpenAI(
+    base_url="${baseUrl}/v1",
+    api_key="not-needed"  # Gateway không bắt buộc API key
+)
+
+response = client.audio.speech.create(
+    model="olokatts-v3-turbo",
+    voice="${voice}",
+    input=${JSON.stringify(prompt)},
+    speed=${speed}
+)
+
+response.stream_to_file("speech.wav")
+print("✅ Hoàn thành tổng hợp giọng nói qua OpenAI SDK!")`;
+    } else if (activeCodeTab === 'js-fetch') {
+      code = `// Gọi API từ NodeJS hoặc Browser Fetch
+async function generateSpeech() {
+  const response = await fetch("${baseUrl}/v1/audio/speech", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "olokatts-v3-turbo",
+      voice: "${voice}",
+      input: ${JSON.stringify(prompt)},
+      speed: ${speed}
+    })
+  });
+
+  if (!response.ok) throw new Error("TTS generation failed");
+  const blob = await response.blob();
+  const audioUrl = URL.createObjectURL(blob);
+  
+  const audio = new Audio(audioUrl);
+  audio.play();
+}
+
+generateSpeech();`;
+    }
+
+    document.getElementById('code-snippet-pre').innerText = code;
+  }
+
+  function copySnippetCode() {
+    const code = document.getElementById('code-snippet-pre').innerText;
+    navigator.clipboard.writeText(code);
+    const txt = document.getElementById('copy-btn-txt');
+    txt.innerText = "Đã chép!";
+    setTimeout(() => { txt.innerText = "Sao chép"; }, 2000);
+  }
+</script>
+{% endblock %}

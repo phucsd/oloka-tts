@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl xl:max-w-6xl mx-auto space-y-8">
+  
+  <!-- Header Title -->
+  <div class="border-b border-[#e7e5e4] pb-6">
+    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+      <span class="material-symbols-rounded text-sm text-[#292524]">forum</span>
+      <span>Multi-Speaker Production</span>
+    </div>
+    <h1 class="font-serif text-3xl sm:text-4xl font-light text-[#0c0a09] tracking-[-0.03em]">
+      Studio Hội Thoại Đa Nhân Vật
+    </h1>
+    <p class="text-sm text-[#777169] mt-1.5 max-w-2xl leading-relaxed">
+      Kịch bản đối thoại âm thanh chuyên nghiệp dành cho Podcast, Audio Drama hoặc phỏng vấn tin tức với chất lượng âm thanh 48.000 Hz.
+    </p>
+  </div>
+
+  <div class="card-editorial bg-white border border-[#e7e5e4] rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+    
+    <!-- Dialogue Lines Container -->
+    <div id="lines-container" class="space-y-4">
+      
+      <!-- Line 1 -->
+      <div class="dialogue-row p-5 rounded-2xl bg-[#fafafa] border border-[#e7e5e4] space-y-3.5 hover:border-[#d6d3d1] transition">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <span class="w-6 h-6 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-[#292524] font-semibold text-xs flex items-center justify-center">1</span>
+            <select class="voice-picker rounded-full border border-[#e7e5e4] bg-white px-3 py-1.5 text-xs text-[#0c0a09] font-medium outline-none focus:border-[#292524]">
+              {% for p in presets %}
+                <option value="{{ p.voice_id }}" {% if p.voice_id == 'Phạm Tuyên' %}selected{% endif %}>{{ p.name }} ({{ p.gender }} - {{ p.region }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="button" onclick="removeRow(this)" class="w-7 h-7 rounded-full text-[#a8a29e] hover:text-[#dc2626] hover:bg-rose-50 flex items-center justify-center transition" title="Xóa dòng thoại">
+            <span class="material-symbols-rounded text-base">delete</span>
+          </button>
+        </div>
+        <textarea rows="2" class="line-text w-full rounded-xl border border-[#e7e5e4] bg-white p-3.5 text-sm text-[#0c0a09] placeholder-[#a8a29e] outline-none focus:border-[#292524] focus:ring-1 focus:ring-[#292524] transition leading-relaxed" 
+          placeholder="Lời thoại của nhân vật 1...">Chào Mai Anh, hôm nay podcast của chúng ta sẽ bàn về công nghệ giọng nói AI thế hệ mới!</textarea>
+      </div>
+
+      <!-- Line 2 -->
+      <div class="dialogue-row p-5 rounded-2xl bg-[#fafafa] border border-[#e7e5e4] space-y-3.5 hover:border-[#d6d3d1] transition">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <span class="w-6 h-6 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-[#292524] font-semibold text-xs flex items-center justify-center">2</span>
+            <select class="voice-picker rounded-full border border-[#e7e5e4] bg-white px-3 py-1.5 text-xs text-[#0c0a09] font-medium outline-none focus:border-[#292524]">
+              {% for p in presets %}
+                <option value="{{ p.voice_id }}" {% if p.voice_id == 'Mai Anh' %}selected{% endif %}>{{ p.name }} ({{ p.gender }} - {{ p.region }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="button" onclick="removeRow(this)" class="w-7 h-7 rounded-full text-[#a8a29e] hover:text-[#dc2626] hover:bg-rose-50 flex items-center justify-center transition" title="Xóa dòng thoại">
+            <span class="material-symbols-rounded text-base">delete</span>
+          </button>
+        </div>
+        <textarea rows="2" class="line-text w-full rounded-xl border border-[#e7e5e4] bg-white p-3.5 text-sm text-[#0c0a09] placeholder-[#a8a29e] outline-none focus:border-[#292524] focus:ring-1 focus:ring-[#292524] transition leading-relaxed" 
+          placeholder="Lời thoại của nhân vật 2...">[cười] Chào anh Phạm Tuyên! Em rất hào hứng vì OlokaTTS phát ra âm thanh chuẩn 48kHz nghe tự nhiên như người thật vậy.</textarea>
+      </div>
+
+    </div>
+
+    <!-- Add Line Button & Submit -->
+    <div class="flex flex-wrap justify-between items-center gap-3 pt-3 border-t border-[#f0efed]">
+      <button type="button" onclick="addLine()" class="px-4 py-2 rounded-full text-xs font-medium border border-[#d6d3d1] bg-white hover:bg-[#f0efed] text-[#292524] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-base text-[#292524]">add</span>
+        <span>Thêm Lời Thoại Mới</span>
+      </button>
+
+      <button type="button" onclick="generateConversation()" id="conv-btn" class="px-6 py-2.5 rounded-full text-xs font-medium text-white bg-[#292524] hover:bg-[#0c0a09] shadow-sm flex items-center space-x-1.5 transition active:scale-[0.99]">
+        <span class="material-symbols-rounded text-base">play_arrow</span>
+        <span id="conv-btn-text">Ghép &amp; Tạo Toàn Bộ Hội Thoại</span>
+      </button>
+    </div>
+
+    <!-- Player Output Container -->
+    <div id="conv-output-box" class="hidden mt-6 pt-6 border-t border-[#e7e5e4] space-y-4">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-medium text-[#16a34a] flex items-center">
+          <span class="material-symbols-rounded text-sm mr-1.5">check_circle</span>Đã ghép hoàn thành hội thoại!
+        </span>
+        <a id="conv-download" href="#" download class="px-4 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white hover:bg-[#0c0a09] flex items-center space-x-1.5 transition">
+          <span class="material-symbols-rounded text-sm">download</span>
+          <span>Tải File Hội Thoại (48kHz)</span>
+        </a>
+      </div>
+      <audio id="conv-audio" controls class="w-full"></audio>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  function addLine() {
+    const container = document.getElementById('lines-container');
+    const count = container.children.length + 1;
+    const templateRow = container.children[0].cloneNode(true);
+    templateRow.querySelector('span').innerText = count;
+    templateRow.querySelector('textarea').value = "";
+    container.appendChild(templateRow);
+  }
+
+  function removeRow(btn) {
+    const container = document.getElementById('lines-container');
+    if (container.children.length <= 1) {
+      alert("Cần tối thiểu 1 lời thoại!");
+      return;
+    }
+    btn.closest('.dialogue-row').remove();
+    // Re-index numbers
+    Array.from(container.children).forEach((row, i) => {
+      row.querySelector('span').innerText = i + 1;
+    });
+  }
+
+  async function generateConversation() {
+    const rows = document.querySelectorAll('.dialogue-row');
+    const items = [];
+    rows.forEach(r => {
+      const voice = r.querySelector('.voice-picker').value;
+      const text = r.querySelector('.line-text').value.trim();
+      if (text) {
+        items.push({ voice, text });
+      }
+    });
+
+    if (items.length === 0) {
+      alert("Vui lòng nhập lời thoại!");
+      return;
+    }
+
+    const btn = document.getElementById('conv-btn');
+    const btnText = document.getElementById('conv-btn-text');
+    btn.disabled = true;
+    btnText.innerText = "Đang tạo đoạn 1 / " + items.length + "...";
+
+    try {
+      // Generate each line sequentially
+      for (let i = 0; i < items.length; i++) {
+        btnText.innerText = `Đang tạo đoạn ${i+1}/${items.length}...`;
+        const res = await fetch('/v1/tts/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: items[i].text,
+            voice_type: 'preset',
+            voice_id: items[i].voice,
+            speed: 1.0
+          })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Lỗi khi gửi yêu cầu tới Gateway");
+        }
+        const job = await res.json();
+        // Wait for completion
+        await waitForJob(job.id);
+      }
+
+      btnText.innerText = "Hoàn thành!";
+      alert("Đã hoàn thành sinh toàn bộ các đoạn hội thoại!");
+      window.location.href = "/";
+    } catch (e) {
+      alert("Lỗi: " + e.message);
+    } finally {
+      btn.disabled = false;
+      btnText.innerText = "Ghép & Tạo Toàn Bộ Hội Thoại";
+    }
+  }
+
+  function waitForJob(jobId) {
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch(`/v1/tts/jobs/${jobId}`);
+          const job = await res.json();
+          if (job.status === 'completed') {
+            clearInterval(interval);
+            resolve(job);
+          } else if (job.status === 'failed') {
+            clearInterval(interval);
+            reject(new Error(job.error_message || 'Thất bại'));
+          }
+        } catch (err) {
+          clearInterval(interval);
+          reject(err);
+        }
+      }, 1000);
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <!-- Admin Subnav & Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#e7e5e4]">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+        <span class="material-symbols-rounded text-sm text-[#292524]">group</span>
+        <span>User Accounts &amp; Access Control</span>
+      </div>
+      <h1 class="font-serif text-3xl sm:text-4xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Quản Lý Người Dùng
+      </h1>
+      <p class="text-xs sm:text-sm text-[#777169] mt-1.5">Danh sách thành viên, phân quyền Admin, giám sát quota sử dụng và cấp phát tài khoản mới</p>
+    </div>
+
+    <!-- Admin Nav Tabs -->
+    <div class="flex items-center flex-wrap gap-2">
+      <a href="/admin/analytics" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">monitoring</span>
+        <span>Báo Cáo</span>
+      </a>
+      <a href="/admin/settings" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">settings</span>
+        <span>Cấu Hình</span>
+      </a>
+      <a href="/admin/jobs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">queue_music</span>
+        <span>Hàng Đợi &amp; Job</span>
+      </a>
+      <a href="/admin/voices" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">record_voice_over</span>
+        <span>Giọng Đọc</span>
+      </a>
+      <a href="/admin/users" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white shadow-sm flex items-center space-x-1.5">
+        <span class="material-symbols-rounded text-sm">group</span>
+        <span>Người Dùng</span>
+      </a>
+      <a href="/admin/logs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">warning</span>
+        <span>Logs</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Notification Banner -->
+  {% if msg %}
+  <div class="p-3.5 rounded-xl bg-white border border-[#16a34a]/30 text-[#16a34a] text-xs font-medium flex items-center space-x-2 shadow-sm">
+    <span class="material-symbols-rounded text-base">check_circle</span>
+    <span>
+      {% if msg == 'user_created' %}Đã tạo tài khoản người dùng mới thành công!
+      {% elif msg == 'password_reset_success' %}Đã đặt lại mật khẩu thành công!
+      {% else %}{{ msg }}{% endif %}
+    </span>
+  </div>
+  {% endif %}
+
+  <!-- Search & Action Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <form action="/admin/users" method="GET" class="flex items-center space-x-2">
+      <div class="relative">
+        <span class="material-symbols-rounded absolute left-3 top-2.5 text-base text-[#a8a29e]">search</span>
+        <input type="text" name="q" value="{{ q }}" placeholder="Tìm theo username hoặc email..."
+          class="rounded-xl border border-[#e7e5e4] bg-white pl-9 pr-4 py-2 text-xs text-[#0c0a09] placeholder-[#a8a29e] w-64 focus:w-80 transition-all outline-none focus:border-[#292524] shadow-sm">
+      </div>
+      <button type="submit" class="px-4 py-2 rounded-xl text-xs font-medium bg-white hover:bg-[#f0efed] text-[#292524] border border-[#d6d3d1] shadow-sm transition">
+        Tìm
+      </button>
+      {% if q %}
+      <a href="/admin/users" class="text-xs text-[#777169] hover:text-[#0c0a09] underline">Xóa lọc</a>
+      {% endif %}
+    </form>
+
+    <div class="flex items-center space-x-3">
+      <div class="text-xs text-[#777169]">
+        Tổng cộng: <strong class="text-[#0c0a09] font-medium">{{ total_users }}</strong> tài khoản
+      </div>
+      <button type="button" onclick="openCreateUserModal()" class="px-4 py-2 rounded-full text-xs font-medium text-white bg-[#292524] hover:bg-[#0c0a09] transition shadow-sm flex items-center space-x-1.5 active:scale-95">
+        <span class="material-symbols-rounded text-sm">person_add</span>
+        <span>Thêm Người Dùng</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Users Table Card -->
+  <div class="card-editorial bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden shadow-sm">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-[#fafafa] text-[#777169] font-medium uppercase tracking-wider text-[11px] border-b border-[#e7e5e4]">
+          <tr>
+            <th class="p-4">Người Dùng</th>
+            <th class="p-4">Email</th>
+            <th class="p-4">Vai Trò</th>
+            <th class="p-4">Kaggle Key (BYOK)</th>
+            <th class="p-4">Đã Tạo (Jobs / Phút)</th>
+            <th class="p-4">Trạng Thái</th>
+            <th class="p-4">Ngày Tạo</th>
+            <th class="p-4 text-right">Hành Động</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#f0efed]">
+          {% for u in users %}
+          <tr class="hover:bg-[#fafafa] transition">
+            <td class="p-4 font-medium text-[#0c0a09] flex items-center space-x-2.5">
+              <div class="w-7 h-7 rounded-full bg-[#f0efed] border border-[#e7e5e4] flex items-center justify-center text-[11px] text-[#292524]">
+                <span class="material-symbols-rounded text-sm">person</span>
+              </div>
+              <span>{{ u.username }}</span>
+            </td>
+            <td class="p-4 text-[#4e4e4e]">{{ u.email }}</td>
+            <td class="p-4">
+              {% if u.role == 'admin' %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#292524] text-white uppercase">Admin</span>
+              {% else %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#f0efed] text-[#4e4e4e] border border-[#e7e5e4] uppercase">User</span>
+              {% endif %}
+            </td>
+            <td class="p-4">
+              {% if u.kaggle_username and u.kaggle_key %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-[#f0efed] text-[#16a34a] border border-[#16a34a]/30">
+                <span class="material-symbols-rounded text-xs mr-1">check</span>{{ u.kaggle_username }}
+              </span>
+              {% else %}
+              <span class="text-[11px] text-[#a8a29e] italic">Chưa cài</span>
+              {% endif %}
+            </td>
+            <td class="p-4 font-mono text-[#0c0a09]">
+              {% if user_job_stats and user_job_stats[u.id] %}
+              <span>{{ user_job_stats[u.id].job_count }} jobs</span>
+              <span class="text-[10px] text-[#777169] block">~{{ user_job_stats[u.id].audio_minutes }}p</span>
+              {% else %}
+              <span class="text-[#a8a29e]">0 jobs</span>
+              {% endif %}
+            </td>
+            <td class="p-4">
+              {% if u.is_active %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#f0efed] text-[#16a34a] border border-[#16a34a]/30">Hoạt động</span>
+              {% else %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-[#dc2626] border border-[#dc2626]/30">Đã khóa</span>
+              {% endif %}
+            </td>
+            <td class="p-4 text-[#777169] text-[11px]">{{ u.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td class="p-4 text-right">
+              <div class="flex items-center justify-end space-x-1.5">
+                
+                <!-- Toggle Active -->
+                <form action="/admin/users/{{ u.id }}/toggle-active" method="POST" onsubmit="return confirm('Xác nhận đổi trạng thái hoạt động của {{ u.username }}?')">
+                  <button type="submit" title="{% if u.is_active %}Khóa tài khoản{% else %}Mở khóa{% endif %}"
+                    class="p-1.5 rounded-lg text-xs transition border {% if u.is_active %}border-[#e7e5e4] bg-white hover:bg-rose-50 text-[#777169] hover:text-[#dc2626]{% else %}bg-[#f0efed] text-[#16a34a] border-[#16a34a]/30{% endif %}">
+                    <span class="material-symbols-rounded text-sm">{% if u.is_active %}block{% else %}check{% endif %}</span>
+                  </button>
+                </form>
+
+                <!-- Toggle Role -->
+                <form action="/admin/users/{{ u.id }}/toggle-role" method="POST" onsubmit="return confirm('Xác nhận đổi vai trò của {{ u.username }}?')">
+                  <button type="submit" title="Chuyển quyền Admin / User"
+                    class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#777169] hover:text-[#0c0a09] border border-[#e7e5e4] transition">
+                    <span class="material-symbols-rounded text-sm">shield</span>
+                  </button>
+                </form>
+
+                <!-- Reset Password Modal Trigger -->
+                <button type="button" onclick="openResetPasswordModal('{{ u.id }}', '{{ u.username }}')" title="Đặt lại mật khẩu"
+                  class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#777169] hover:text-[#0c0a09] border border-[#e7e5e4] transition">
+                  <span class="material-symbols-rounded text-sm">key</span>
+                </button>
+
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="p-8 text-center text-[#777169]">Không tìm thấy người dùng nào.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="p-4 bg-[#fafafa] border-t border-[#e7e5e4] flex items-center justify-between text-xs text-[#777169]">
+      <div>Trang {{ page }}</div>
+      <div class="flex items-center space-x-2">
+        {% if page > 1 %}
+        <a href="/admin/users?page={{ page - 1 }}{% if q %}&q={{ q }}{% endif %}" class="px-3 py-1 rounded-lg bg-white border border-[#e7e5e4] text-[#292524] hover:bg-[#f0efed]">Trang trước</a>
+        {% endif %}
+        {% if users|length == 20 %}
+        <a href="/admin/users?page={{ page + 1 }}{% if q %}&q={{ q }}{% endif %}" class="px-3 py-1 rounded-lg bg-white border border-[#e7e5e4] text-[#292524] hover:bg-[#f0efed]">Trang sau</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Create User Modal -->
+<div id="create-user-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0c0a09]/40 backdrop-blur-sm">
+  <div class="w-full max-w-sm card-editorial bg-white border border-[#e7e5e4] rounded-2xl p-6 shadow-2xl space-y-4">
+    <div class="flex items-center justify-between border-b border-[#f0efed] pb-3">
+      <h3 class="font-serif text-lg font-light text-[#0c0a09]">Tạo Người Dùng Mới</h3>
+      <button onclick="closeCreateUserModal()" class="text-[#a8a29e] hover:text-[#0c0a09]"><span class="material-symbols-rounded text-lg">close</span></button>
+    </div>
+    <form action="/admin/users/create" method="POST" class="space-y-3 text-xs">
+      <div>
+        <label class="block font-medium text-[#292524] mb-1">Tên đăng nhập (Username)</label>
+        <input type="text" name="username" required placeholder="vd: user_pro"
+          class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2 text-xs text-[#0c0a09] outline-none transition">
+      </div>
+      <div>
+        <label class="block font-medium text-[#292524] mb-1">Email</label>
+        <input type="email" name="email" required placeholder="user@gmail.com"
+          class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2 text-xs text-[#0c0a09] outline-none transition">
+      </div>
+      <div>
+        <label class="block font-medium text-[#292524] mb-1">Mật khẩu ban đầu</label>
+        <input type="password" name="password" required minlength="6" placeholder="Tối thiểu 6 ký tự"
+          class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2 text-xs text-[#0c0a09] outline-none transition">
+      </div>
+      <div>
+        <label class="block font-medium text-[#292524] mb-1">Vai trò</label>
+        <select name="role" class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2 text-xs text-[#0c0a09] outline-none transition font-medium">
+          <option value="user">Người dùng thông thường (User)</option>
+          <option value="admin">Quản trị viên (Admin)</option>
+        </select>
+      </div>
+      <button type="submit" class="w-full py-2.5 rounded-full bg-[#292524] hover:bg-[#0c0a09] text-white font-medium text-xs transition shadow-sm active:scale-[0.99] mt-2">
+        Tạo Tài Khoản
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="reset-pwd-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0c0a09]/40 backdrop-blur-sm">
+  <div class="w-full max-w-sm card-editorial bg-white border border-[#e7e5e4] rounded-2xl p-6 shadow-2xl space-y-4">
+    <div class="flex items-center justify-between border-b border-[#f0efed] pb-3">
+      <h3 class="font-serif text-lg font-light text-[#0c0a09]">Đặt Lại Mật Khẩu</h3>
+      <button onclick="closeResetPasswordModal()" class="text-[#a8a29e] hover:text-[#0c0a09]"><span class="material-symbols-rounded text-lg">close</span></button>
+    </div>
+    <p class="text-xs text-[#777169]">Đặt mật khẩu mới cho tài khoản: <strong id="reset-username" class="text-[#0c0a09]"></strong></p>
+    <form id="reset-pwd-form" method="POST" class="space-y-3 text-xs">
+      <input type="password" name="new_password" required minlength="6" placeholder="Mật khẩu mới (tối thiểu 6 ký tự)"
+        class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2 text-xs text-[#0c0a09] outline-none transition">
+      <button type="submit" class="w-full py-2.5 rounded-full bg-[#292524] hover:bg-[#0c0a09] text-white font-medium text-xs transition shadow-sm active:scale-[0.99]">
+        Cập Nhật Mật Khẩu
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function openCreateUserModal() {
+    document.getElementById('create-user-modal').classList.remove('hidden');
+  }
+  function closeCreateUserModal() {
+    document.getElementById('create-user-modal').classList.add('hidden');
+  }
+  function openResetPasswordModal(userId, username) {
+    document.getElementById('reset-username').innerText = username;
+    document.getElementById('reset-pwd-form').action = `/admin/users/${userId}/reset-password`;
+    document.getElementById('reset-pwd-modal').classList.remove('hidden');
+  }
+  function closeResetPasswordModal() {
+    document.getElementById('reset-pwd-modal').classList.add('hidden');
+  }
+</script>
+{% endblock %}

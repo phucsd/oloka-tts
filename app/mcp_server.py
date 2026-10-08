@@ -1,0 +1,607 @@
+"""
+OlokaTTS Model Context Protocol (MCP) Server.
+Enables AI models (ChatGPT, Claude Desktop, Cursor, Antigravity, Windsurf) 
+to discover voices, synthesize 48kHz Vietnamese speech, and check GPU worker status.
+"""
+
+import os
+import sys
+import time
+import json
+import asyncio
+import unicodedata
+import requests
+from pathlib import Path
+from typing import Optional, List, Dict, Any
+from mcp.server.fastmcp import FastMCP
+from app.database import SessionLocal
+from app.services.mcp_auth_service import McpAuthService
+from app.services.settings_service import SettingsService
+from app.services.auth_service import AuthService
+
+# Initialize FastMCP Server
+mcp = FastMCP(
+    "OlokaTTS",
+    instructions=(
+        "OlokaTTS is a high-fidelity 48kHz Vietnamese Neural Text-to-Speech engine powered by Kaggle Tesla T4 GPUs. "
+        "Use this server to generate natural Vietnamese speech, explore 25 curated voice presets across Northern, "
+        "Central, and Southern dialects, and control expressiveness using natural emotion tags."
+    )
+)
+
+# Allow remote AI agents (ChatGPT 2026, Claude, Hugging Face proxy) to connect without DNS rebinding 421 errors
+mcp.settings.stateless_http = True
+if hasattr(mcp.settings, "transport_security") and mcp.settings.transport_security:
+    mcp.settings.transport_security.enable_dns_rebinding_protection = False
+    mcp.settings.transport_security.allowed_hosts = ["*"]
+    mcp.settings.transport_security.allowed_origins = ["*"]
+
+# Pre-initialize Streamable HTTP application instance
+streamable_http_app = mcp.streamable_http_app()
+
+# Default voice catalog with metadata
+VOICE_CATALOG = [
+    # 11 Editors' Picks
+    {"id": "vp_haidang", "name": "Hải Đăng", "gender": "Nam", "region": "Nam", "description": "Trẻ trung, hiện đại, phong cách tự nhiên (Mặc định)", "is_editors_pick": True},
+    {"id": "vp_adambua", "name": "Adam bựa", "gender": "Nam", "region": "Bắc", "description": "Hài hước, dí dỏm, độc đáo, tạo tiếng cười", "is_editors_pick": True},
+    {"id": "vp_trucly", "name": "Trúc Ly", "gender": "Nữ", "region": "Bắc", "description": "Trong trẻo, lôi cuốn, phong cách tự nhiên", "is_editors_pick": True},
+    {"id": "vp_anhkhoi", "name": "Anh Khôi", "gender": "Nam", "region": "Bắc", "description": "Trầm ấm, truyền cảm, phong cách kể chuyện", "is_editors_pick": True},
+    {"id": "vp_maianh", "name": "Mai Anh", "gender": "Nữ", "region": "Bắc", "description": "Dịu dàng, chuẩn phát thanh, phong cách tin tức", "is_editors_pick": True},
+    {"id": "vp_minhquan", "name": "Minh Quân Pro", "gender": "Nam", "region": "Bắc", "description": "Đĩnh đạc, rõ ràng, phong cách tự nhiên", "is_editors_pick": True},
+    {"id": "vp_thuydung", "name": "Thùy Dung", "gender": "Nữ", "region": "Nam", "description": "Thanh thoát, chuyên nghiệp, phong cách tin tức", "is_editors_pick": True},
+    {"id": "vp_thientamduc", "name": "Thiền Tâm Đức", "gender": "Nam", "region": "Bắc", "description": "Thong dong, an nhiên, phong cách kể chuyện Phật giáo / tản văn", "is_editors_pick": True},
+    {"id": "vp_ngochuyen", "name": "Ngọc Huyền", "gender": "Nữ", "region": "Bắc", "description": "Tự nhiên, trong sáng, thân thiện", "is_editors_pick": True},
+    {"id": "vp_quangson", "name": "Quang Sơn", "gender": "Nam", "region": "Trung", "description": "Đậm đà, chân thực, phong cách tự nhiên miền Trung", "is_editors_pick": True},
+    {"id": "vp_ngoctran", "name": "Ngọc Trân", "gender": "Nữ", "region": "Trung", "description": "Sâu lắng, ấm áp, phong cách tự nhiên miền Trung", "is_editors_pick": True},
+    # 14 Standard Voices
+    {"id": "vp_minhduc", "name": "Minh Đức", "gender": "Nam", "region": "Bắc", "description": "Trang trọng, chuẩn mực, phong cách tin tức", "is_editors_pick": False},
+    {"id": "vp_phamtuyen", "name": "Phạm Tuyên", "gender": "Nam", "region": "Bắc", "description": "Trầm ấm, phong thái tự nhiên", "is_editors_pick": False},
+    {"id": "vp_thaison", "name": "Thái Sơn", "gender": "Nam", "region": "Nam", "description": "Cuốn hút, phong cách kể chuyện", "is_editors_pick": False},
+    {"id": "vp_xuanvinh", "name": "Xuân Vĩnh", "gender": "Nam", "region": "Bắc", "description": "Mạnh mẽ, phong cách tự nhiên", "is_editors_pick": False},
+    {"id": "vp_thanhbinh", "name": "Thanh Bình", "gender": "Nam", "region": "Bắc", "description": "Điềm tĩnh, phong cách kể chuyện", "is_editors_pick": False},
+    {"id": "vp_ngoclinh", "name": "Ngọc Linh", "gender": "Nữ", "region": "Bắc", "description": "Nhẹ nhàng, phong cách kể chuyện", "is_editors_pick": False},
+    {"id": "vp_doantrang", "name": "Đoan Trang", "gender": "Nữ", "region": "Bắc", "description": "Nữ tính, đằm thắm, phong cách tự nhiên", "is_editors_pick": False},
+    {"id": "vp_thucdoan", "name": "Thục Đoan", "gender": "Nữ", "region": "Nam", "description": "Ngọt ngào, phong cách kể chuyện", "is_editors_pick": False},
+    {"id": "vp_minhtriet", "name": "Minh Triết", "gender": "Nam", "region": "Nam", "description": "Sắc bén, phong cách tin tức", "is_editors_pick": False},
+    {"id": "vp_myduyen", "name": "Mỹ Duyên", "gender": "Nữ", "region": "Nam", "description": "Êm ái, phong cách đọc truyện", "is_editors_pick": False},
+    {"id": "vp_quynhanh", "name": "Quỳnh Anh", "gender": "Nữ", "region": "Bắc", "description": "Truyền cảm, phong cách đọc truyện", "is_editors_pick": False},
+    {"id": "vp_ductri", "name": "Đức Trí", "gender": "Nam", "region": "Nam", "description": "Dày dặn, phong cách đọc truyện", "is_editors_pick": False},
+    {"id": "vp_kimthanh", "name": "Kim Thanh", "gender": "Nữ", "region": "Nam", "description": "Ấm cúng, phong cách đọc truyện", "is_editors_pick": False},
+    {"id": "vp_manhdung", "name": "Mạnh Dũng", "gender": "Nam", "region": "Bắc", "description": "Hào sảng, phong cách tự nhiên", "is_editors_pick": False}
+]
+
+def get_base_url() -> str:
+    """Detects active Gateway URL (custom env > local host check > remote space fallback)."""
+    env_url = os.environ.get("OLOKATTS_GATEWAY_URL") or os.environ.get("GATEWAY_URL")
+    if env_url:
+        return env_url.rstrip("/")
+    
+    # Check if local server is active
+    try:
+        r = requests.get("http://localhost:8000/docs", timeout=0.6)
+        if r.status_code == 200:
+            return "http://localhost:8000"
+    except Exception:
+        pass
+
+    # Default to Hugging Face Space
+    return "https://phucsd-vieneu-gateway.hf.space"
+
+def get_auth_headers() -> dict:
+    """Returns authorization headers if API key is provided."""
+    headers = {"User-Agent": "OlokaTTS-MCP-Client/1.0"}
+    api_key = os.environ.get("OLOKATTS_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    if api_key and api_key != "not-needed":
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
+
+def remove_diacritics(text: str) -> str:
+    """Strip Vietnamese accent marks for tolerant matching."""
+    nfkd = unicodedata.normalize('NFKD', text)
+    return "".join(c for c in nfkd if not unicodedata.combining(c)).replace("đ", "d").replace("Đ", "D")
+
+def resolve_voice_name(voice: str) -> str:
+    """Resolves user/LLM input voice name to the exact preset name."""
+    v_clean = voice.strip()
+    if not v_clean:
+        return "Hải Đăng"
+    # 1. Exact match
+    for item in VOICE_CATALOG:
+        if item["name"].lower() == v_clean.lower():
+            return item["name"]
+    # 2. Accent-insensitive match (e.g. 'Hai Dang' -> 'Hải Đăng')
+    v_no_accents = remove_diacritics(v_clean).lower()
+    for item in VOICE_CATALOG:
+        if remove_diacritics(item["name"]).lower() == v_no_accents:
+            return item["name"]
+    # 3. ID match (e.g. 'vp_haidang')
+    for item in VOICE_CATALOG:
+        if item["id"].lower() == v_clean.lower():
+            return item["name"]
+    return v_clean
+
+# ==============================================================================
+# MCP TOOLS
+# ==============================================================================
+
+@mcp.tool()
+def list_voices(
+    region: Optional[str] = None,
+    gender: Optional[str] = None,
+    editors_pick_only: bool = False
+) -> str:
+    """
+    List available 48kHz Vietnamese neural voice presets with their dialect and characteristics.
+    
+    Parameters:
+      region: Filter by dialect region: 'Bắc' (Northern), 'Trung' (Central), or 'Nam' (Southern).
+      gender: Filter by gender: 'Nam' (Male) or 'Nữ' (Female).
+      editors_pick_only: If True, only returns featured / highest quality voices.
+    """
+    filtered = VOICE_CATALOG
+    if region:
+        r_clean = region.strip().lower()
+        filtered = [v for v in filtered if r_clean in v["region"].lower()]
+    if gender:
+        g_clean = gender.strip().lower()
+        filtered = [v for v in filtered if g_clean in v["gender"].lower()]
+    if editors_pick_only:
+        filtered = [v for v in filtered if v["is_editors_pick"]]
+
+    output = [f"### 🎙️ Danh Sách Giọng Đọc OlokaTTS ({len(filtered)} giọng khả dụng)\n"]
+    for v in filtered:
+        star = " ⭐ [Nổi Bật]" if v["is_editors_pick"] else ""
+        output.append(
+            f"- **{v['name']}**{star} | Miền {v['region']} • {v['gender']}\n"
+            f"  *Đặc trưng:* {v['description']}\n"
+            f"  *ID gọi hàm:* `{v['name']}`"
+        )
+
+    output.append("\n💡 *Mẹo: Sử dụng ID giọng (ví dụ: 'Hải Đăng', 'Mai Anh', 'Quang Sơn') cho tham số `voice` trong `generate_speech`.*")
+    return "\n".join(output)
+
+
+@mcp.tool()
+def link_account(pair_code: Optional[str] = None) -> str:
+    """
+    Check authentication status or get a Magic Pairing Link to link your OlokaTTS account with ChatGPT.
+    
+    Parameters:
+      pair_code: Optional pairing code (e.g. 'OLK-8291') to check or verify.
+    """
+    db = SessionLocal()
+    try:
+        base_url = get_base_url()
+        # 1. If explicit pair_code provided
+        if pair_code and pair_code.strip():
+            user = McpAuthService.resolve_caller(db, pair_code=pair_code.strip())
+            if user:
+                return (
+                    f"✅ **TÀI KHOẢN ĐÃ ĐƯỢC XÁC THỰC THÀNH CÔNG!**\n\n"
+                    f"- **Tài khoản liên kết:** `{user.username}` ({user.email})\n"
+                    f"- **Vai trò:** `{user.role.upper()}`\n"
+                    f"- **Mã phiên:** `{pair_code.strip().upper()}`\n"
+                    f"- **Hạ tầng GPU:** {'Master Kaggle Dual Tesla T4' if user.role == 'admin' else ('Kaggle Cá Nhân (BYOK)' if user.kaggle_username else 'Hạ tầng dùng chung')}\n\n"
+                    f"Bạn có thể sử dụng tất cả các công cụ OlokaTTS bình thường!"
+                )
+            sess = McpAuthService.get_pairing_session(db, pair_code.strip())
+            if sess and sess.status == "pending":
+                auth_url = f"{base_url}/mcp/pair?code={sess.code}"
+                return (
+                    f"⏳ **Mã phiên `{sess.code}` đang chờ cấp quyền trên trình duyệt.**\n\n"
+                    f"👉 Vui lòng nhấp vào liên kết sau để đăng nhập và bấm 'Xác Nhận & Cấp Quyền':\n"
+                    f"[{auth_url}]({auth_url})\n\n"
+                    f"Sau khi xác nhận trên trình duyệt, hãy bảo tôi kiểm tra lại nhé!"
+                )
+
+        # 2. Check for recently created pending session (prevent generating duplicate codes)
+        pending_sess = McpAuthService.get_latest_pending_session(db)
+        if pending_sess:
+            auth_url = f"{base_url}/mcp/pair?code={pending_sess.code}"
+            return (
+                f"🔗 **LIÊN KẾT TÀI KHOẢN OLOKATTS VỚI CHATGPT:**\n\n"
+                f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập và cấp quyền:**\n"
+                f"[{auth_url}]({auth_url})\n\n"
+                f"- **Mã phiên của bạn:** `{pending_sess.code}`\n\n"
+                f"*(Sau khi bạn đăng nhập trên trình duyệt và bấm 'Xác Nhận & Cấp Quyền', hãy bảo tôi tiếp tục nhé!)*"
+            )
+
+        # 4. Generate new session only if no pending session exists
+        new_sess = McpAuthService.create_pairing_session(db, client_name="ChatGPT")
+        auth_url = f"{base_url}/mcp/pair?code={new_sess.code}"
+        return (
+            f"🔗 **LIÊN KẾT TÀI KHOẢN OLOKATTS VỚI PHIÊN CHATGPT:**\n\n"
+            f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập và cấp quyền:**\n"
+            f"[{auth_url}]({auth_url})\n\n"
+            f"- **Mã phiên của bạn:** `{new_sess.code}`\n\n"
+            f"*(Sau khi đăng nhập trên trình duyệt bằng Google hoặc tài khoản của bạn và bấm 'Xác Nhận', hãy nhắn lại cho tôi biết nhé!)*"
+        )
+    finally:
+        db.close()
+
+
+@mcp.tool()
+async def generate_speech(
+    prompt: str,
+    voice: str = "Hải Đăng",
+    speed: float = 1.0,
+    temperature: float = 0.7,
+    pair_code: Optional[str] = None,
+    api_key: Optional[str] = None,
+    save_to_file: bool = True,
+    output_path: Optional[str] = None
+) -> str:
+    """
+    Synthesize high-fidelity 48kHz Vietnamese speech from text using OlokaTTS Neural Workers.
+    
+    Parameters:
+      prompt: Vietnamese text to read. You can embed natural emotion tags to control voice acting:
+              - [cười] (chuckle / laugh)
+              - [thở dài] (sigh)
+              - [thì thầm] (whisper)
+              - [ngập ngừng] (hesitation)
+              - [thở dài] (sigh)
+              - [0.5s] or [1.0s] (pause)
+      voice: Name of voice preset (e.g., 'Hải Đăng', 'Mai Anh', 'Anh Khôi', 'Trúc Ly', 'Quang Sơn', 'Ngọc Trân', 'Adam bựa').
+      speed: Speaking speed multiplier (0.5 to 2.0, default 1.0).
+      temperature: Neural voice expressiveness / prosody variation (0.1 to 1.5, default 0.7).
+      pair_code: Optional pairing code (e.g. 'OLK-xxxxxx') if explicit binding is used.
+      api_key: Optional API key (oloka_live_...) for account attribution.
+      save_to_file: If True, downloads and saves the generated .wav audio locally.
+      output_path: Optional local destination file path.
+    """
+    base_url = get_base_url()
+    voice = resolve_voice_name(voice)
+    db = SessionLocal()
+    auth_user_id = None
+    auth_username = None
+    auth_role = None
+    auth_token = None
+
+    try:
+        authenticated_user = McpAuthService.resolve_caller(db, pair_code=pair_code, api_key=api_key)
+        require_auth = SettingsService.get_bool(db, "mcp_require_auth", default=True)
+
+        if authenticated_user:
+            auth_user_id = authenticated_user.id
+            auth_username = authenticated_user.username
+            auth_role = (authenticated_user.role or "user").upper()
+            auth_token = AuthService.create_token(
+                auth_user_id,
+                auth_username,
+                authenticated_user.role or "user",
+                expires_in_days=1
+            )
+
+        if require_auth and not authenticated_user:
+            # Check if there is an existing pending session to avoid generating new codes constantly
+            pending_sess = None
+            if pair_code and pair_code.strip():
+                pending_sess = McpAuthService.get_pairing_session(db, pair_code.strip())
+            if not pending_sess:
+                pending_sess = McpAuthService.get_latest_pending_session(db)
+
+            if pending_sess and pending_sess.status == "pending":
+                auth_url = f"{base_url}/mcp/pair?code={pending_sess.code}"
+                return (
+                    f"🔒 **YÊU CẦU CẤP QUYỀN TRÊN TRÌNH DUYỆT (MÃ PHIÊN: `{pending_sess.code}`):**\n\n"
+                    f"Phiên kết nối của bạn hiện đang chờ bạn xác nhận trên trình duyệt web.\n\n"
+                    f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
+                    f"[{auth_url}]({auth_url})\n\n"
+                    f"*(Lưu ý cho AI Assistant: Sau khi người dùng xác nhận trên trình duyệt, bạn BẮT BUỘC phải gọi lại hàm `generate_speech` với tham số `pair_code=\"{pending_sess.code}\"`).* "
+                )
+
+            # Generate new session only if none exists
+            new_sess = McpAuthService.create_pairing_session(db, client_name="ChatGPT")
+            auth_url = f"{base_url}/mcp/pair?code={new_sess.code}"
+            return (
+                f"🔒 **YÊU CẦU XÁC THỰC TÀI KHOẢN OLOKATTS:**\n\n"
+                f"Để sử dụng công cụ tạo giọng nói Neural 48kHz và bảo vệ tài nguyên GPU, "
+                f"bạn cần liên kết tài khoản OlokaTTS với phiên trò chuyện này:\n\n"
+                f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
+                f"[{auth_url}]({auth_url})\n\n"
+                f"- **Mã ghép đôi phiên của bạn:** `{new_sess.code}`\n\n"
+                f"*(Lưu ý cho AI Assistant: Sau khi người dùng xác nhận trên trình duyệt, bạn BẮT BUỘC phải gọi lại hàm `generate_speech` với tham số `pair_code=\"{new_sess.code}\"`).* "
+            )
+
+        # ----------------------------------------------------------------------
+        # Direct In-Process Execution (Zero HTTP Loopback Deadlocks on Uvicorn)
+        # ----------------------------------------------------------------------
+        try:
+            from app.services.job_service import JobService
+            from app.models import TTSJob
+
+            job = JobService.create_job(
+                db=db,
+                prompt=prompt.strip(),
+                voice_type="preset",
+                voice_id=voice.strip(),
+                speed=float(speed),
+                temperature=float(temperature),
+                user_id=auth_user_id
+            )
+
+            if job.status == "failed":
+                return f"❌ Lỗi khởi tạo yêu cầu giọng nói: {job.error_message}"
+
+            job_id = job.id
+            job_status = job.status
+            job_audio_path = job.audio_path
+            job_duration = job.duration
+
+            # Release initial db write session to eliminate SQLite locks on /api/worker/jobs/pull
+            db.close()
+
+            # Poll for completion directly - wait until worker synthesizes speech (up to 110s for cold boot)
+            start_time = time.time()
+            max_wait = 110
+            final_job_status = job_status
+            final_audio_path = job_audio_path
+            final_duration = job_duration
+            final_error = None
+
+            while time.time() - start_time < max_wait:
+                await asyncio.sleep(1)
+                # Fresh, lightweight read that closes immediately
+                check_db = SessionLocal()
+                try:
+                    row = check_db.query(
+                        TTSJob.status, TTSJob.error_message, TTSJob.audio_path, TTSJob.duration
+                    ).filter(TTSJob.id == job_id).first()
+                    if row:
+                        final_job_status = row[0]
+                        final_error = row[1]
+                        final_audio_path = row[2]
+                        final_duration = row[3]
+                        if final_job_status in ("completed", "failed"):
+                            break
+                finally:
+                    check_db.close()
+
+            if final_job_status == "failed":
+                return f"❌ Lỗi xử lý từ GPU worker: {final_error or 'Không xác định'}"
+
+            if final_job_status != "completed":
+                return (
+                    f"⏱️ **Tác vụ `#{job_id}` chưa hoàn tất sau {max_wait} giây.** "
+                    f"Trạng thái hiện tại: `{final_job_status}`. "
+                    f"Kaggle GPU Worker có thể đang khởi động lại hoặc gặp trục trặc mạng. Vui lòng thử lại sau giây lát."
+                )
+
+            # Audio generation completed successfully
+            audio_file_path = final_audio_path
+            audio_bytes = b""
+            if audio_file_path and os.path.exists(audio_file_path):
+                with open(audio_file_path, "rb") as f:
+                    audio_bytes = f.read()
+
+            saved_file_str = ""
+            if save_to_file or output_path:
+                out_dir = Path("./output_audio")
+                out_dir.mkdir(parents=True, exist_ok=True)
+                if output_path:
+                    target_path = Path(output_path).resolve()
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                else:
+                    ts = int(time.time())
+                    clean_voice = "".join(c for c in voice if c.isalnum() or c in (' ', '_')).strip().replace(' ', '_')
+                    target_path = (out_dir / f"oloka_{clean_voice}_{ts}.wav").resolve()
+                if audio_bytes:
+                    with open(target_path, "wb") as f:
+                        f.write(audio_bytes)
+                    saved_file_str = f"- **Đường dẫn tệp cục bộ:** `{str(target_path)}`\n"
+
+            est_duration = final_duration or max(0.5, round(len(audio_bytes) / 96000.0, 1))
+            user_str = f"- **Tài khoản xác thực:** `{auth_username}` ({auth_role})\n" if auth_username else ""
+            audio_filename = os.path.basename(audio_file_path) if audio_file_path else f"{job_id}.wav"
+            public_audio_url = f"{base_url}/audio_files/{audio_filename}"
+
+            return (
+                f"✅ **ĐÃ TẠO GIỌNG NÓI THÀNH CÔNG!**\n\n"
+                f"- **Giọng đọc:** {voice}\n"
+                f"- **Định dạng:** 48kHz WAV PCM (Studio Quality)\n"
+                f"- **Thời lượng:** ~{est_duration:.1f} giây\n"
+                f"- **Dung lượng tệp:** {len(audio_bytes) / 1024:.1f} KB\n"
+                f"- **Nghe trực tiếp:** [{public_audio_url}]({public_audio_url})\n"
+                f"{user_str}"
+                f"{saved_file_str}"
+                f"- **Máy chủ xử lý:** `{base_url}`\n\n"
+                f"💬 *Nội dung đã đọc:* \"{prompt[:120]}{'...' if len(prompt) > 120 else ''}\""
+            )
+
+        except Exception as in_proc_err:
+            print(f"⚠️ [MCP] In-process execution exception: {in_proc_err}, falling back to HTTP...")
+
+        # Fallback to HTTP call if in-process is unavailable (e.g. CLI stdio on another machine)
+        headers = get_auth_headers()
+        headers["Content-Type"] = "application/json"
+        if auth_token:
+            headers["Authorization"] = f"Bearer {auth_token}"
+        elif api_key and api_key.strip():
+            headers["Authorization"] = f"Bearer {api_key.strip()}"
+
+        url = f"{base_url}/v1/audio/speech"
+        payload = {
+            "model": "olokatts-v3-turbo",
+            "input": prompt.strip(),
+            "voice": voice.strip(),
+            "speed": float(speed)
+        }
+
+        response = requests.post(url, json=payload, headers=headers, timeout=120)
+        if response.status_code != 200:
+            return (
+                f"❌ Lỗi tạo giọng nói từ OlokaTTS Gateway (Mã {response.status_code}):\n"
+                f"{response.text[:300]}\n"
+                f"Endpoint: {url}"
+            )
+
+        audio_bytes = response.content
+        saved_file_str = ""
+        if save_to_file or output_path:
+            out_dir = Path("./output_audio")
+            out_dir.mkdir(parents=True, exist_ok=True)
+            if output_path:
+                target_path = Path(output_path).resolve()
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+            else:
+                ts = int(time.time())
+                clean_voice = "".join(c for c in voice if c.isalnum() or c in (' ', '_')).strip().replace(' ', '_')
+                target_path = (out_dir / f"oloka_{clean_voice}_{ts}.wav").resolve()
+            with open(target_path, "wb") as f:
+                f.write(audio_bytes)
+            saved_file_str = f"- **Đường dẫn tệp cục bộ:** `{str(target_path)}`\n"
+
+        est_duration = max(0.5, round(len(audio_bytes) / 96000.0, 1))
+        user_str = f"- **Tài khoản xác thực:** `{auth_username}` ({auth_role})\n" if auth_username else ""
+
+        return (
+            f"✅ **Đã tạo giọng nói thành công!**\n\n"
+            f"- **Giọng đọc:** {voice}\n"
+            f"- **Định dạng:** 48kHz WAV PCM (Studio Quality)\n"
+            f"- **Thời lượng ước tính:** ~{est_duration} giây\n"
+            f"- **Dung lượng tệp:** {len(audio_bytes) / 1024:.1f} KB\n"
+            f"{user_str}"
+            f"{saved_file_str}"
+            f"- **Máy chủ xử lý:** `{base_url}`\n\n"
+            f"💬 *Nội dung đã đọc:* \"{prompt[:120]}{'...' if len(prompt) > 120 else ''}\""
+        )
+
+    except requests.exceptions.Timeout:
+        return "⏱️ Yêu cầu tạo giọng nói bị quá thời gian chờ (Timeout 120s). Kaggle GPU Worker có thể đang khởi động lại hoặc bận xử lý hàng đợi."
+    except Exception as e:
+        return f"❌ Lỗi kết nối tới OlokaTTS Gateway ({base_url}): {str(e)}"
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+@mcp.tool()
+def get_system_status() -> str:
+    """
+    Check the operational status of OlokaTTS Gateway, Kaggle Tesla T4 GPU Workers, and queue health.
+    """
+    base_url = get_base_url()
+    headers = get_auth_headers()
+    try:
+        # First try public /api/status
+        resp = requests.get(f"{base_url}/api/status", headers=headers, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            live_workers = data.get("live_worker_count", 0)
+            pending_jobs = data.get("pending_jobs", 0)
+            local_avail = data.get("local_engine", False)
+            status_indicator = "🟢 SẴN SÀNG" if (live_workers > 0 or local_avail) else "🟡 ĐANG CHỜ WORKER"
+
+            return (
+                f"### ⚡ Trạng Thái Hệ Thống OlokaTTS ({status_indicator})\n\n"
+                f"- **Máy chủ Gateway:** `{base_url}`\n"
+                f"- **GPU Worker online:** {live_workers} GPU (Tesla T4 16GB)\n"
+                f"- **Động cơ Local CPU ONNX:** {'Khả dụng' if local_avail else 'Chưa kích hoạt'}\n"
+                f"- **Job đang chờ trong hàng đợi:** {pending_jobs} jobs\n"
+            )
+
+        # Fallback to /api/admin/status if token provided or legacy route
+        resp_admin = requests.get(f"{base_url}/api/admin/status", headers=headers, timeout=5)
+        if resp_admin.status_code == 200:
+            data = resp_admin.json()
+            live_workers = data.get("live_worker_count", 0)
+            pending_jobs = data.get("queue", {}).get("pending_jobs", 0)
+            kaggle_status = data.get("kaggle", {}).get("kernel_status", "UNKNOWN")
+            local_avail = data.get("local_engine", {}).get("available", False)
+
+            status_indicator = "🟢 SẴN SÀNG" if (live_workers > 0 or local_avail) else "🟡 ĐANG CHỜ WORKER"
+
+            return (
+                f"### ⚡ Trạng Thái Hệ Thống OlokaTTS ({status_indicator})\n\n"
+                f"- **Máy chủ Gateway:** `{base_url}`\n"
+                f"- **GPU Worker online:** {live_workers} GPU (Tesla T4 16GB)\n"
+                f"- **Trạng thái Kaggle Kernel:** `{kaggle_status}`\n"
+                f"- **Động cơ Local CPU ONNX:** {'Khả dụng' if local_avail else 'Chưa cấu hình'}\n"
+                f"- **Job đang chờ trong hàng đợi:** {pending_jobs} jobs\n"
+            )
+
+        # Basic fallback to /health
+        resp_health = requests.get(f"{base_url}/health", timeout=5)
+        if resp_health.status_code == 200:
+            return f"🟢 **OlokaTTS Gateway Trực Tuyến**: `{base_url}` (Mã HTTP 200 OK)."
+
+        return f"⚠️ Gateway phản hồi mã HTTP {resp.status_code}. Máy chủ: `{base_url}`"
+    except Exception as e:
+        return f"❌ Không thể kết nối tới Gateway tại `{base_url}`: {str(e)}"
+
+
+@mcp.tool()
+def estimate_speech_duration(text: str, speed: float = 1.0) -> str:
+    """
+    Estimates the speech duration, word count, and character count of a Vietnamese text snippet.
+    
+    Parameters:
+      text: The text to evaluate.
+      speed: The playback speed multiplier (default 1.0).
+    """
+    clean_text = text.strip()
+    chars = len(clean_text)
+    words = len(clean_text.split())
+    # Vietnamese average reading rate is ~3.2 words per second at 1.0x speed
+    eff_speed = max(0.2, float(speed))
+    seconds = max(1, round(words / (3.2 * eff_speed)))
+
+    mins = seconds // 60
+    rem_secs = seconds % 60
+    time_str = f"{mins} phút {rem_secs} giây" if mins > 0 else f"{seconds} giây"
+
+    return (
+        f"📊 **Ước Tính Âm Thanh:**\n"
+        f"- Ký tự: **{chars:,}** ký tự\n"
+        f"- Số từ: **{words:,}** từ\n"
+        f"- Tốc độ: **{speed:.2f}x**\n"
+        f"- Thời lượng dự kiến: **~{time_str}** (~{seconds}s)"
+    )
+
+# ==============================================================================
+# MCP RESOURCES & PROMPTS
+# ==============================================================================
+
+@mcp.resource("olokatts://voices")
+def get_voices_resource() -> str:
+    """Returns raw JSON catalog of all 25 Vietnamese voice presets."""
+    return json.dumps(VOICE_CATALOG, ensure_ascii=False, indent=2)
+
+@mcp.resource("olokatts://system-status")
+def get_status_resource() -> str:
+    """Returns current system health status."""
+    return get_system_status()
+
+@mcp.prompt()
+def vietnamese_storyteller(story_topic: str) -> str:
+    """Generate a Vietnamese dramatic story formatted with natural OlokaTTS emotion tags."""
+    return (
+        f"Hãy viết một câu chuyện ngắn đầy cảm xúc về chủ đề: '{story_topic}'.\n\n"
+        "Yêu cầu:\n"
+        "1. Sử dụng tiếng Việt biểu cảm, văn phong tự nhiên.\n"
+        "2. Đặt các thẻ cảm xúc của OlokaTTS vào đúng ngữ cảnh để diễn tả giọng nói sống động:\n"
+        "   - [cười] khi nhân vật vui vẻ\n"
+        "   - [thở dài] khi buồn bã hoặc bất lực\n"
+        "   - [thì thầm] khi bí mật hoặc hồi hộp\n"
+        "   - [ngập ngừng] khi do dự\n"
+        "   - [0.5s] hoặc [1.0s] để tạo khoảng lặng kịch tính.\n"
+        "3. Đề xuất giọng đọc phù hợp (ví dụ: 'Anh Khôi' hoặc 'Thái Sơn' cho giọng nam trầm ấm kể chuyện)."
+    )
+
+@mcp.prompt()
+def vietnamese_news_anchor(news_topic: str) -> str:
+    """Format a news bulletin ready for formal Vietnamese radio or television TTS broadcast."""
+    return (
+        f"Hãy soạn thảo bản tin thời sự phát thanh chuẩn mực về: '{news_topic}'.\n\n"
+        "Yêu cầu:\n"
+        "1. Văn phong báo chí trang trọng, cô đọng, khách quan.\n"
+        "2. Sử dụng dấu câu chuẩn xác, ngắt câu rõ ràng bằng [0.3s] giữa các luận điểm.\n"
+        "3. Đề xuất sử dụng giọng đọc 'Mai Anh' (Nữ phát thanh chuẩn Bắc) hoặc 'Minh Đức' (Nam tin tức trang trọng)."
+    )
+
+if __name__ == "__main__":
+    # When run directly from CLI (e.g. by Claude Desktop or Cursor), runs stdio transport
+    mcp.run()

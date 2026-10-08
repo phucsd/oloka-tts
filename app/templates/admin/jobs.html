@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <!-- Admin Subnav & Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#e7e5e4]">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+        <span class="material-symbols-rounded text-sm text-[#292524]">queue_music</span>
+        <span>Orchestration &amp; Job Lifecycle</span>
+      </div>
+      <h1 class="font-serif text-3xl sm:text-4xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Quản Lý Hàng Đợi &amp; Job TTS
+      </h1>
+      <p class="text-xs sm:text-sm text-[#777169] mt-1.5">Giám sát toàn bộ tiến trình tổng hợp âm thanh, can thiệp hủy job bị kẹt hoặc chạy lại job lỗi</p>
+    </div>
+
+    <!-- Admin Nav Tabs -->
+    <div class="flex items-center flex-wrap gap-2">
+      <a href="/admin/analytics" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">monitoring</span>
+        <span>Báo Cáo</span>
+      </a>
+      <a href="/admin/settings" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">settings</span>
+        <span>Cấu Hình</span>
+      </a>
+      <a href="/admin/jobs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white shadow-sm flex items-center space-x-1.5">
+        <span class="material-symbols-rounded text-sm">queue_music</span>
+        <span>Hàng Đợi &amp; Job</span>
+      </a>
+      <a href="/admin/voices" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">record_voice_over</span>
+        <span>Giọng Đọc</span>
+      </a>
+      <a href="/admin/users" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">group</span>
+        <span>Người Dùng</span>
+      </a>
+      <a href="/admin/logs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">warning</span>
+        <span>Logs</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Action Notification -->
+  {% if msg %}
+  <div class="p-3.5 rounded-xl bg-white border border-[#16a34a]/30 text-[#16a34a] text-xs font-medium flex items-center space-x-2 shadow-sm">
+    <span class="material-symbols-rounded text-base">check_circle</span>
+    <span>
+      {% if msg == 'retry_success' %}Đã gửi lại job vào hàng đợi thành công!
+      {% elif msg == 'cancel_success' %}Đã hủy job thành công!
+      {% elif msg == 'queue_flushed' %}Đã dọn sạch hàng đợi các job đang chờ!
+      {% elif 'purged' in msg %}Đã giải phóng các file âm thanh cũ thành công!
+      {% else %}{{ msg }}{% endif %}
+    </span>
+  </div>
+  {% endif %}
+
+  <!-- Control & Filter Bar -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    
+    <!-- Status Filter Tabs -->
+    <div class="flex items-center space-x-1.5 text-xs overflow-x-auto no-scrollbar py-1">
+      <span class="text-[#777169] font-medium mr-1 shrink-0">Lọc:</span>
+      <a href="/admin/jobs?status=ALL{% if q %}&q={{ q }}{% endif %}" class="shrink-0 px-3 py-1 rounded-full font-medium transition {% if selected_status == 'ALL' %}bg-[#292524] text-white shadow-sm{% else %}bg-[#f0efed] text-[#4e4e4e] hover:bg-[#e7e5e4]{% endif %}">Tất cả</a>
+      <a href="/admin/jobs?status=queued{% if q %}&q={{ q }}{% endif %}" class="shrink-0 px-3 py-1 rounded-full font-medium transition {% if selected_status == 'queued' %}bg-[#292524] text-white shadow-sm{% else %}bg-[#f0efed] text-[#4e4e4e] hover:bg-[#e7e5e4]{% endif %}">Chờ xử lý</a>
+      <a href="/admin/jobs?status=processing{% if q %}&q={{ q }}{% endif %}" class="shrink-0 px-3 py-1 rounded-full font-medium transition {% if selected_status == 'processing' %}bg-amber-600 text-white shadow-sm{% else %}bg-[#f0efed] text-amber-700 hover:bg-amber-50{% endif %}">Đang chạy</a>
+      <a href="/admin/jobs?status=completed{% if q %}&q={{ q }}{% endif %}" class="shrink-0 px-3 py-1 rounded-full font-medium transition {% if selected_status == 'completed' %}bg-[#16a34a] text-white shadow-sm{% else %}bg-[#f0efed] text-[#16a34a] hover:bg-emerald-50{% endif %}">Hoàn thành</a>
+      <a href="/admin/jobs?status=failed{% if q %}&q={{ q }}{% endif %}" class="shrink-0 px-3 py-1 rounded-full font-medium transition {% if selected_status == 'failed' %}bg-[#dc2626] text-white shadow-sm{% else %}bg-[#f0efed] text-[#dc2626] hover:bg-rose-50{% endif %}">Lỗi / Hủy</a>
+    </div>
+
+    <!-- Storage Cleanup & Flush Queue Buttons -->
+    <div class="flex items-center space-x-2 shrink-0">
+      <form action="/admin/queue/flush" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy tất cả job đang chờ trong hàng đợi?')">
+        <button type="submit" class="px-3.5 py-1.5 rounded-full text-xs font-medium text-[#dc2626] border border-[#dc2626]/30 hover:bg-rose-50 transition flex items-center space-x-1.5 shadow-sm">
+          <span class="material-symbols-rounded text-sm">clear_all</span>
+          <span>Xóa Hàng Đợi</span>
+        </button>
+      </form>
+      <form action="/admin/jobs/purge-storage" method="POST" onsubmit="return confirm('Dọn dẹp file âm thanh tạm cũ hơn 7 ngày để giải phóng dung lượng?')">
+        <input type="hidden" name="days" value="7">
+        <button type="submit" class="px-3.5 py-1.5 rounded-full text-xs font-medium text-[#292524] bg-white border border-[#e7e5e4] hover:bg-[#f0efed] transition flex items-center space-x-1.5 shadow-sm">
+          <span class="material-symbols-rounded text-sm text-[#777169]">cleaning_services</span>
+          <span>Dọn Audio &gt; 7 ngày</span>
+        </button>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Search Input Bar -->
+  <div class="flex items-center justify-between gap-4">
+    <form action="/admin/jobs" method="GET" class="flex items-center space-x-2">
+      <input type="hidden" name="status" value="{{ selected_status }}">
+      <div class="relative">
+        <span class="material-symbols-rounded absolute left-3 top-2.5 text-base text-[#a8a29e]">search</span>
+        <input type="text" name="q" value="{{ q }}" placeholder="Tìm theo nội dung prompt hoặc Job ID..."
+          class="rounded-xl border border-[#e7e5e4] bg-white pl-9 pr-4 py-2 text-xs text-[#0c0a09] placeholder-[#a8a29e] w-64 focus:w-80 transition-all outline-none focus:border-[#292524] shadow-sm">
+      </div>
+      <button type="submit" class="px-4 py-2 rounded-xl text-xs font-medium bg-white hover:bg-[#f0efed] text-[#292524] border border-[#d6d3d1] shadow-sm transition">
+        Tìm
+      </button>
+      {% if q %}
+      <a href="/admin/jobs?status={{ selected_status }}" class="text-xs text-[#777169] hover:text-[#0c0a09] underline">Xóa lọc</a>
+      {% endif %}
+    </form>
+
+    <div class="text-xs text-[#777169]">
+      Tổng cộng: <strong class="text-[#0c0a09] font-medium">{{ total_jobs }}</strong> jobs
+    </div>
+  </div>
+
+  <!-- Jobs Table Card -->
+  <div class="card-editorial bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden shadow-sm">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-[#fafafa] text-[#777169] font-medium uppercase tracking-wider text-[11px] border-b border-[#e7e5e4]">
+          <tr>
+            <th class="p-4">Mã Job / User</th>
+            <th class="p-4">Văn Bản (Prompt)</th>
+            <th class="p-4">Giọng Đọc</th>
+            <th class="p-4">Trạng Thái</th>
+            <th class="p-4">Thời Lượng / RTF</th>
+            <th class="p-4">Thời Gian</th>
+            <th class="p-4 text-right">Hành Động</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#f0efed]">
+          {% for j in jobs %}
+          <tr class="hover:bg-[#fafafa] transition">
+            <td class="p-4">
+              <div class="font-mono font-medium text-[#0c0a09]">#{{ j.id }}</div>
+              <div class="text-[11px] text-[#777169] mt-0.5">
+                {% if j.user_id and user_map[j.user_id] %}
+                <span class="inline-flex items-center text-[#292524]"><span class="material-symbols-rounded text-xs mr-0.5">person</span>{{ user_map[j.user_id] }}</span>
+                {% else %}
+                <span class="italic text-[#a8a29e]">Khách (Demo)</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="p-4 max-w-xs">
+              <div class="font-medium text-[#0c0a09] line-clamp-2 leading-relaxed" title="{{ j.prompt }}">
+                {{ j.prompt }}
+              </div>
+              {% if j.error_message %}
+              <div class="text-[10px] text-[#dc2626] font-mono mt-1 line-clamp-1 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                {{ j.error_message }}
+              </div>
+              {% endif %}
+            </td>
+            <td class="p-4">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#f0efed] text-[#292524] border border-[#e7e5e4]">
+                {{ j.voice_id }}
+              </span>
+              <div class="text-[10px] text-[#777169] mt-1">{{ j.speed }}x • T:{{ j.temperature }}</div>
+            </td>
+            <td class="p-4">
+              {% if j.status == 'completed' %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#f0efed] text-[#16a34a] border border-[#16a34a]/30">Hoàn thành</span>
+              {% elif j.status in ['queued', 'booting_kaggle'] %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-300">Đang chờ</span>
+              {% elif j.status == 'processing' %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-300">Đang chạy</span>
+              {% else %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-[#dc2626] border border-[#dc2626]/30">Lỗi / Hủy</span>
+              {% endif %}
+            </td>
+            <td class="p-4 font-mono">
+              {% if j.duration %}
+              <div class="text-[#0c0a09]">{{ "%.1f"|format(j.duration) }}s</div>
+              <div class="text-[10px] text-[#777169]">
+                {% if j.execution_time %}{{ "%.2f"|format(j.execution_time / j.duration) }}x RTF{% else %}--{% endif %}
+              </div>
+              {% else %}
+              <span class="text-[#a8a29e]">--</span>
+              {% endif %}
+            </td>
+            <td class="p-4 text-[11px] text-[#777169]">
+              <div>{{ j.created_at.strftime('%H:%M:%S') }}</div>
+              <div class="text-[10px] text-[#a8a29e]">{{ j.created_at.strftime('%d/%m/%Y') }}</div>
+            </td>
+            <td class="p-4 text-right">
+              <div class="flex items-center justify-end space-x-1.5">
+                
+                <!-- Play Audio if completed -->
+                {% if j.status == 'completed' and j.audio_url %}
+                <a href="{{ j.audio_url }}" target="_blank" download title="Tải file âm thanh"
+                  class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#292524] border border-[#e7e5e4] transition">
+                  <span class="material-symbols-rounded text-sm">download</span>
+                </a>
+                <button type="button" onclick="playJobAudio('{{ j.audio_url }}', this)" title="Nghe thử"
+                  class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#292524] border border-[#e7e5e4] transition">
+                  <span class="material-symbols-rounded text-sm">volume_up</span>
+                </button>
+                {% endif %}
+
+                <!-- Retry Job -->
+                {% if j.status == 'failed' %}
+                <form action="/admin/jobs/{{ j.id }}/retry" method="POST">
+                  <button type="submit" title="Chạy lại job này"
+                    class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#16a34a] border border-[#16a34a]/30 transition">
+                    <span class="material-symbols-rounded text-sm">replay</span>
+                  </button>
+                </form>
+                {% endif %}
+
+                <!-- Cancel Job if active/queued -->
+                {% if j.status in ['queued', 'booting_kaggle', 'processing'] %}
+                <form action="/admin/jobs/{{ j.id }}/cancel" method="POST" onsubmit="return confirm('Hủy job này?')">
+                  <button type="submit" title="Hủy job"
+                    class="p-1.5 rounded-lg text-xs bg-white hover:bg-rose-50 text-[#dc2626] border border-[#dc2626]/30 transition">
+                    <span class="material-symbols-rounded text-sm">close</span>
+                  </button>
+                </form>
+                {% endif %}
+
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="p-8 text-center text-[#777169]">Không tìm thấy job nào trong hàng đợi.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="p-4 bg-[#fafafa] border-t border-[#e7e5e4] flex items-center justify-between text-xs text-[#777169]">
+      <div>Trang {{ page }}</div>
+      <div class="flex items-center space-x-2">
+        {% if page > 1 %}
+        <a href="/admin/jobs?page={{ page - 1 }}&status={{ selected_status }}{% if q %}&q={{ q }}{% endif %}" class="px-3 py-1 rounded-lg bg-white border border-[#e7e5e4] text-[#292524] hover:bg-[#f0efed]">Trang trước</a>
+        {% endif %}
+        {% if jobs|length == 20 %}
+        <a href="/admin/jobs?page={{ page + 1 }}&status={{ selected_status }}{% if q %}&q={{ q }}{% endif %}" class="px-3 py-1 rounded-lg bg-white border border-[#e7e5e4] text-[#292524] hover:bg-[#f0efed]">Trang sau</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  var currentAudio = null;
+  function playJobAudio(url, btn) {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
+    }
+    const audio = new Audio(url);
+    currentAudio = audio;
+    audio.play();
+    const icon = btn.querySelector('.material-symbols-rounded');
+    icon.innerText = 'stop';
+    audio.onended = () => { icon.innerText = 'volume_up'; };
+  }
+</script>
+{% endblock %}

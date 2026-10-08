@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <!-- Admin Subnav & Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#e7e5e4]">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+        <span class="material-symbols-rounded text-sm text-[#292524]">warning</span>
+        <span>Observability &amp; Logs</span>
+      </div>
+      <h1 class="font-serif text-3xl sm:text-4xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Nhật Ký Lỗi &amp; Giám Sát Hệ Thống
+      </h1>
+      <p class="text-xs sm:text-sm text-[#777169] mt-1.5">Theo dõi các ngoại lệ, job thất bại và nhật ký hoạt động của Kaggle GPU Worker</p>
+    </div>
+
+    <!-- Admin Nav Tabs -->
+    <div class="flex items-center flex-wrap gap-2">
+      <a href="/admin/analytics" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">monitoring</span>
+        <span>Báo Cáo</span>
+      </a>
+      <a href="/admin/settings" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">settings</span>
+        <span>Cấu Hình</span>
+      </a>
+      <a href="/admin/jobs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">queue_music</span>
+        <span>Hàng Đợi &amp; Job</span>
+      </a>
+      <a href="/admin/voices" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">record_voice_over</span>
+        <span>Giọng Đọc</span>
+      </a>
+      <a href="/admin/users" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">group</span>
+        <span>Người Dùng</span>
+      </a>
+      <a href="/admin/logs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white shadow-sm flex items-center space-x-1.5">
+        <span class="material-symbols-rounded text-sm">warning</span>
+        <span>Logs</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Filter & Level Tabs -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center space-x-1.5 text-xs">
+      <span class="text-[#777169] font-medium mr-1">Cấp độ:</span>
+      <a href="/admin/logs?level=ALL" class="px-3 py-1 rounded-full font-medium transition {% if selected_level == 'ALL' %}bg-[#292524] text-white shadow-sm{% else %}bg-[#f0efed] text-[#4e4e4e] hover:bg-[#e7e5e4]{% endif %}">Tất cả</a>
+      <a href="/admin/logs?level=ERROR" class="px-3 py-1 rounded-full font-medium transition {% if selected_level == 'ERROR' %}bg-rose-600 text-white shadow-sm{% else %}bg-[#f0efed] text-[#dc2626] hover:bg-rose-50{% endif %}">ERROR</a>
+      <a href="/admin/logs?level=WARNING" class="px-3 py-1 rounded-full font-medium transition {% if selected_level == 'WARNING' %}bg-[#292524] text-white shadow-sm{% else %}bg-[#f0efed] text-[#4e4e4e] hover:bg-[#e7e5e4]{% endif %}">WARNING</a>
+      <a href="/admin/logs?level=INFO" class="px-3 py-1 rounded-full font-medium transition {% if selected_level == 'INFO' %}bg-[#292524] text-white shadow-sm{% else %}bg-[#f0efed] text-[#4e4e4e] hover:bg-[#e7e5e4]{% endif %}">INFO</a>
+    </div>
+
+    <div class="text-xs text-[#777169]">
+      Hiển thị 50 sự kiện gần nhất
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    
+    <!-- Left Column: Audit / Error Logs (7 cols) -->
+    <div class="lg:col-span-7 space-y-6">
+      <div class="card-editorial bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden shadow-sm">
+        <div class="p-4 bg-[#fafafa] border-b border-[#e7e5e4] flex items-center justify-between">
+          <h3 class="text-xs font-semibold text-[#0c0a09] uppercase tracking-wider">Nhật Ký Hoạt Động &amp; Ngoại Lệ (Audit Logs)</h3>
+          <span class="text-[10px] text-[#777169] font-mono">{{ logs|length }} mục</span>
+        </div>
+
+        <div class="divide-y divide-[#f0efed] max-h-[500px] overflow-y-auto">
+          {% for log in logs %}
+          <div class="p-4 hover:bg-[#fafafa] transition text-xs space-y-1.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                {% if log.level == 'ERROR' %}
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-[#dc2626] border border-[#dc2626]/30">ERROR</span>
+                {% elif log.level == 'WARNING' %}
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-300">WARN</span>
+                {% else %}
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#f0efed] text-[#4e4e4e] border border-[#e7e5e4]">INFO</span>
+                {% endif %}
+                <span class="font-medium text-[#0c0a09] font-mono">{{ log.action }}</span>
+                {% if log.user_id %}
+                <span class="text-[10px] text-[#777169]">({{ log.user_id }})</span>
+                {% endif %}
+              </div>
+              <span class="text-[10px] text-[#777169] font-mono">{{ log.created_at.strftime('%H:%M:%S %d/%m') }}</span>
+            </div>
+            <p class="text-[#4e4e4e] text-xs leading-relaxed">{{ log.message }}</p>
+            {% if log.details %}
+            <div class="pt-1">
+              <button type="button" onclick="showLogDetails('{{ log.action }}', `{{ log.details|replace('`', '\\`') }}`)" 
+                class="text-[11px] text-[#0c0a09] hover:underline font-medium">
+                Xem Stacktrace Chi Tiết
+              </button>
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="p-8 text-center text-xs text-[#777169]">Chưa có bản ghi nhật ký nào.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Failed TTS Jobs List -->
+      <div class="card-editorial bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden shadow-sm">
+        <div class="p-4 bg-[#fafafa] border-b border-[#e7e5e4] flex items-center justify-between">
+          <h3 class="text-xs font-semibold text-[#dc2626] uppercase tracking-wider flex items-center">
+            <span class="material-symbols-rounded text-base mr-1.5 text-[#dc2626]">warning</span>Các Job TTS Bị Lỗi Gần Đây (Failed Jobs)
+          </h3>
+          <span class="text-[10px] text-[#777169] font-mono">{{ failed_jobs|length }} mục</span>
+        </div>
+
+        <div class="divide-y divide-[#f0efed] max-h-60 overflow-y-auto">
+          {% for fj in failed_jobs %}
+          <div class="p-4 text-xs space-y-1.5 hover:bg-[#fafafa] transition">
+            <div class="flex items-center justify-between">
+              <span class="font-mono text-[#777169]">#{{ fj.id }}</span>
+              <span class="text-[10px] text-[#777169]">{{ fj.created_at.strftime('%H:%M:%S %d/%m') }}</span>
+            </div>
+            <div class="text-[#0c0a09] font-medium truncate">{{ fj.prompt }}</div>
+            <div class="text-[#dc2626] font-mono text-[11px] bg-rose-50 p-2 rounded-lg border border-[#dc2626]/20">
+              {{ fj.error_message or 'Lỗi không xác định' }}
+            </div>
+          </div>
+          {% else %}
+          <div class="p-6 text-center text-xs text-[#777169]">Tuyệt vời! Không có job nào bị lỗi.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Live Kaggle Worker Daemon Terminal (5 cols) -->
+    <div class="lg:col-span-5 space-y-4">
+      <div class="card-editorial bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden shadow-sm flex flex-col h-full">
+        <div class="p-4 bg-[#fafafa] border-b border-[#e7e5e4] flex items-center justify-between">
+          <h3 class="text-xs font-semibold text-[#0c0a09] uppercase tracking-wider flex items-center">
+            <span class="material-symbols-rounded text-base mr-1.5 text-[#292524]">terminal</span>Kaggle Daemon Terminal Logs
+          </h3>
+          <div class="flex items-center space-x-2">
+            <button onclick="copyTerminalLogs()" title="Sao chép toàn bộ logs" class="text-[#777169] hover:text-[#0c0a09] transition">
+              <span class="material-symbols-rounded text-base">content_copy</span>
+            </button>
+            <span class="flex items-center text-[10px] text-[#777169]">
+              <span class="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse mr-1.5"></span>Live
+            </span>
+          </div>
+        </div>
+
+        <div id="terminal-logs" class="p-4 bg-[#0c0a09] font-mono text-[11px] text-slate-300 flex-1 overflow-y-auto max-h-[600px] space-y-1.5 leading-relaxed selection:bg-slate-700">
+          {% for wl in worker_logs %}
+          <div class="{% if 'ERROR' in wl or 'FAIL' in wl %}text-rose-400{% elif 'COMPLETED' in wl or 'ready' in wl %}text-emerald-400{% elif 'PULLED' in wl %}text-sky-300{% else %}text-slate-400{% endif %}">
+            {{ wl }}
+          </div>
+          {% else %}
+          <p class="text-slate-600 italic">Chưa nhận được heartbeat từ Kaggle worker daemon.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Log Details Modal -->
+<div id="log-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0c0a09]/40 backdrop-blur-sm">
+  <div class="w-full max-w-2xl card-editorial bg-white border border-[#e7e5e4] rounded-2xl p-6 shadow-2xl space-y-4 flex flex-col max-h-[85vh]">
+    <div class="flex items-center justify-between border-b border-[#f0efed] pb-3">
+      <h3 class="font-serif text-lg font-light text-[#0c0a09] flex items-center">
+        <span class="material-symbols-rounded text-base text-[#dc2626] mr-1.5">bug_report</span>Chi Tiết Ngoại Lệ: <span id="modal-log-action" class="font-mono text-[#0c0a09] ml-1.5"></span>
+      </h3>
+      <button onclick="closeLogDetails()" class="text-[#a8a29e] hover:text-[#0c0a09]"><span class="material-symbols-rounded text-lg">close</span></button>
+    </div>
+    <div class="flex-1 overflow-y-auto bg-[#fafafa] p-4 rounded-xl border border-[#e7e5e4] font-mono text-xs text-[#dc2626] whitespace-pre-wrap leading-relaxed">
+      <pre id="modal-log-details"></pre>
+    </div>
+    <div class="text-right">
+      <button onclick="closeLogDetails()" class="px-5 py-2 rounded-full bg-[#292524] hover:bg-[#0c0a09] text-white font-medium text-xs transition shadow-sm">Đóng</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function showLogDetails(action, details) {
+    document.getElementById('modal-log-action').innerText = action;
+    document.getElementById('modal-log-details').innerText = details;
+    document.getElementById('log-detail-modal').classList.remove('hidden');
+  }
+  function closeLogDetails() {
+    document.getElementById('log-detail-modal').classList.add('hidden');
+  }
+
+  function copyTerminalLogs() {
+    const text = document.getElementById('terminal-logs').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      alert("Đã sao chép toàn bộ logs vào clipboard!");
+    });
+  }
+
+  // Auto-scroll terminal to bottom
+  var term = document.getElementById('terminal-logs');
+  if (term) term.scrollTop = term.scrollHeight;
+</script>
+{% endblock %}

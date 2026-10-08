@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-10">
+  
+  <!-- Header Title -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e7e5e4] pb-6">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+        <span class="material-symbols-rounded text-sm text-[#292524]">record_voice_over</span>
+        <span>Studio Audio Collection</span>
+      </div>
+      <h1 class="font-serif text-3xl sm:text-4xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Thư Viện Giọng Đọc &amp; Voice Cloning
+      </h1>
+      <p class="text-sm text-[#777169] mt-1.5 max-w-2xl leading-relaxed">
+        25 giọng đọc tích hợp sẵn chuẩn 48.000 Hz Hi-Fi cùng công nghệ tách đặc trưng giọng nói từ 3–8s âm thanh mẫu.
+      </p>
+    </div>
+    <div class="flex items-center space-x-3">
+      <a href="#clone-section" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-[#292524] text-white hover:bg-[#0c0a09] text-xs font-medium shadow-sm transition active:scale-[0.99]">
+        <span class="material-symbols-rounded text-sm">add</span>
+        <span>Tạo Giọng Clone Mới</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Presets Section -->
+  <div class="card-editorial bg-white border border-[#e7e5e4] rounded-2xl p-6 sm:p-8 space-y-6 shadow-sm">
+    
+    <!-- Filter Bar & Search -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#f0efed] pb-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="filterVoices('all', this)" class="filter-btn active inline-flex items-center px-4 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white shadow-sm transition">
+          <span class="material-symbols-rounded text-xs mr-1">tune</span>Tất cả (25)
+        </button>
+        <button onclick="filterVoices('editors', this)" class="filter-btn inline-flex items-center px-4 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] text-[#4e4e4e] hover:bg-[#e7e5e4] hover:text-[#0c0a09] transition">
+          <span class="material-symbols-rounded text-xs mr-1 text-[#292524]">star</span>Nổi Bật (10)
+        </button>
+        <button onclick="filterVoices('Bắc', this)" class="filter-btn inline-flex items-center px-4 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] text-[#4e4e4e] hover:bg-[#e7e5e4] hover:text-[#0c0a09] transition">
+          <span class="material-symbols-rounded text-xs mr-1">north</span>Miền Bắc
+        </button>
+        <button onclick="filterVoices('Trung', this)" class="filter-btn inline-flex items-center px-4 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] text-[#4e4e4e] hover:bg-[#e7e5e4] hover:text-[#0c0a09] transition">
+          <span class="material-symbols-rounded text-xs mr-1">explore</span>Miền Trung
+        </button>
+        <button onclick="filterVoices('Nam', this)" class="filter-btn inline-flex items-center px-4 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] text-[#4e4e4e] hover:bg-[#e7e5e4] hover:text-[#0c0a09] transition">
+          <span class="material-symbols-rounded text-xs mr-1">south</span>Miền Nam
+        </button>
+      </div>
+
+      <!-- Quick Search Bar -->
+      <div class="flex items-center space-x-3">
+        <div class="relative">
+          <span class="material-symbols-rounded absolute left-3 top-2 text-sm text-[#a8a29e]">search</span>
+          <input type="text" id="voice-lib-search" placeholder="Tìm theo tên hoặc mô tả..." oninput="searchVoiceCards(this.value)"
+            class="text-xs pl-8 pr-3 py-1.5 rounded-full border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] text-[#0c0a09] placeholder-[#a8a29e] outline-none transition w-48 sm:w-60">
+        </div>
+        <div class="hidden sm:flex text-xs text-[#777169] items-center font-medium">
+          <span class="material-symbols-rounded text-sm text-[#16a34a] mr-1">verified</span>48.000 Hz Studio
+        </div>
+      </div>
+    </div>
+
+    <!-- Voices Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5" id="presets-grid">
+      {% for p in presets %}
+      <div class="voice-card p-5 rounded-2xl bg-white border border-[#e7e5e4] hover:border-[#292524]/40 hover:shadow-md transition-all flex flex-col justify-between"
+           data-name="{{ p.name|lower }}" data-desc="{{ (p.description or '')|lower }}"
+           data-region="{{ p.region }}" data-editors="{{ p.is_editors_pick }}" data-gender="{{ p.gender }}">
+        
+        <div>
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="font-medium text-[#0c0a09] text-sm">{{ p.name }}</span>
+                {% if p.is_editors_pick %}
+                <span class="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-[#f0efed] text-[#292524] border border-[#d6d3d1] font-medium">
+                  <span class="material-symbols-rounded text-[11px] mr-0.5">star</span>Top Pick
+                </span>
+                {% endif %}
+              </div>
+              <div class="text-xs text-[#777169] mt-1 flex items-center space-x-2">
+                <span>{{ p.gender }}</span>
+                <span class="text-[#d6d3d1]">•</span>
+                <span class="font-medium text-[#292524]">Miền {{ p.region }}</span>
+              </div>
+            </div>
+            
+            <div class="w-8 h-8 rounded-full bg-[#f0efed] border border-[#e7e5e4] flex items-center justify-center text-[#292524] text-xs shrink-0">
+              {% if p.gender == 'Nam' %}
+              <span class="material-symbols-rounded text-base">male</span>
+              {% else %}
+              <span class="material-symbols-rounded text-base">female</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <p class="text-xs text-[#777169] mt-3 line-clamp-2 leading-relaxed">{{ p.description or 'Giọng đọc chuẩn chất lượng cao, tự nhiên và mượt mà.' }}</p>
+        </div>
+
+        <div class="mt-4 pt-3.5 border-t border-[#f0efed] flex items-center justify-between">
+          <button type="button" onclick="playPresetSample('{{ p.preview_audio_url or '' }}', '{{ p.name }}', this)" class="preview-btn px-3 py-1.5 rounded-full text-xs font-medium border border-[#d6d3d1] text-[#292524] hover:bg-[#f0efed] flex items-center space-x-1.5 transition">
+            <span class="material-symbols-rounded text-sm text-[#292524]">volume_up</span>
+            <span>Nghe thử</span>
+          </button>
+          <a href="/?voice={{ p.voice_id }}" class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white hover:bg-[#0c0a09] transition active:scale-[0.99]">
+            Chọn giọng này
+          </a>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+
+  <!-- Voice Cloning Section -->
+  <div id="clone-section" class="card-editorial bg-white border border-[#e7e5e4] rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+    <div class="flex items-center justify-between border-b border-[#f0efed] pb-4">
+      <div>
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+          <span class="material-symbols-rounded text-sm text-[#292524]">fingerprint</span>
+          <span>Few-shot Zero-shot Synthesis</span>
+        </div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09] tracking-[-0.02em]">
+          Instant Voice Cloning (Tạo Bản Sao Giọng)
+        </h2>
+        <p class="text-xs text-[#777169] mt-1 leading-relaxed">
+          Chỉ cần tải lên file âm thanh mẫu rõ tiếng từ 3 đến 8 giây. OlokaTTS tự động trích xuất đặc trưng âm sắc và ngữ điệu riêng biệt.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- Upload Form (5 cols) -->
+      <form id="clone-form" class="lg:col-span-5 space-y-4" onsubmit="uploadCloneSample(event)">
+        <div>
+          <label class="block text-xs font-medium text-[#292524] mb-1.5">Tên giọng đọc đại diện</label>
+          <input type="text" id="clone-name" required placeholder="Ví dụ: Giọng Reviewer Công Nghệ" 
+            class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] focus:ring-1 focus:ring-[#292524] px-3.5 py-2.5 text-sm text-[#0c0a09] placeholder-[#a8a29e] transition outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-[#292524] mb-1.5">Nội dung câu nói trong mẫu (Tùy chọn)</label>
+          <input type="text" id="clone-text" placeholder="Gõ đúng câu mà người trong file mẫu đang nói..." 
+            class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] focus:ring-1 focus:ring-[#292524] px-3.5 py-2.5 text-sm text-[#0c0a09] placeholder-[#a8a29e] transition outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-[#292524] mb-1.5">File Audio mẫu (3 - 8 giây: WAV, MP3, M4A)</label>
+          <input type="file" id="clone-file" accept="audio/*" required
+            class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] px-3 py-2 text-xs text-[#777169] file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-medium file:bg-[#292524] file:text-white hover:file:bg-[#0c0a09] cursor-pointer">
+        </div>
+
+        <button type="submit" id="clone-submit-btn" class="w-full py-3 px-4 rounded-full text-xs font-medium text-white bg-[#292524] hover:bg-[#0c0a09] shadow-sm transition active:scale-[0.99] flex items-center justify-center space-x-2">
+          <span class="material-symbols-rounded text-sm">cloud_upload</span>
+          <span>Tải Lên &amp; Tạo Bản Sao Giọng</span>
+        </button>
+      </form>
+
+      <!-- Cloned Voices List (7 cols) -->
+      <div class="lg:col-span-7 space-y-3">
+        <h3 class="text-xs font-semibold text-[#777169] uppercase tracking-wider">Danh sách giọng clone của bạn</h3>
+        <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
+          {% for s in samples %}
+          <div class="p-4 rounded-xl bg-[#fafafa] border border-[#e7e5e4] flex items-center justify-between hover:border-[#d6d3d1] transition">
+            <div>
+              <div class="text-sm font-medium text-[#0c0a09]">{{ s.name }}</div>
+              <div class="text-[11px] text-[#777169] mt-1 flex items-center space-x-2">
+                <span>Thời lượng: {{ "%.1f"|format(s.duration) }}s</span>
+                <span class="text-[#d6d3d1]">•</span>
+                <span>{{ s.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+              </div>
+            </div>
+            <div class="flex items-center space-x-3">
+              <audio controls class="h-8 w-44">
+                <source src="/v1/voices/samples/{{ s.file_path|basename }}" type="audio/wav">
+              </audio>
+              <a href="/?voice=clone:{{ s.id }}" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white hover:bg-[#0c0a09] transition">
+                Dùng
+              </a>
+            </div>
+          </div>
+          {% else %}
+          <div class="p-8 text-center text-xs text-[#777169] rounded-xl border border-dashed border-[#e7e5e4] bg-[#fafafa]">
+            Chưa có giọng clone nào. Hãy tải lên file âm thanh mẫu đầu tiên ở form bên cạnh!
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  var activeFilterType = 'all';
+
+  function filterVoices(type, btn) {
+    activeFilterType = type;
+    const btns = document.querySelectorAll('.filter-btn');
+    btns.forEach(b => {
+      b.classList.remove('bg-[#292524]', 'text-white', 'shadow-sm');
+      b.classList.add('bg-[#f0efed]', 'text-[#4e4e4e]');
+    });
+    btn.classList.remove('bg-[#f0efed]', 'text-[#4e4e4e]');
+    btn.classList.add('bg-[#292524]', 'text-white', 'shadow-sm');
+    applyCardFilters();
+  }
+
+  function searchVoiceCards(q) {
+    applyCardFilters(q.trim().toLowerCase());
+  }
+
+  function applyCardFilters(searchKeyword) {
+    const q = searchKeyword !== undefined ? searchKeyword : document.getElementById('voice-lib-search').value.trim().toLowerCase();
+    const cards = document.querySelectorAll('.voice-card');
+
+    cards.forEach(card => {
+      let matchesCategory = false;
+      if (activeFilterType === 'all') {
+        matchesCategory = true;
+      } else if (activeFilterType === 'editors') {
+        matchesCategory = card.dataset.editors === 'True';
+      } else {
+        matchesCategory = card.dataset.region === activeFilterType;
+      }
+
+      let matchesSearch = true;
+      if (q) {
+        const name = card.dataset.name || '';
+        const desc = card.dataset.desc || '';
+        matchesSearch = name.includes(q) || desc.includes(q);
+      }
+
+      card.style.display = (matchesCategory && matchesSearch) ? 'flex' : 'none';
+    });
+  }
+
+  var currentSampleAudio = null;
+  var currentSampleBtn = null;
+
+  function playPresetSample(audioUrl, voiceName, btn) {
+    if (!audioUrl) {
+      alert(`Chưa có file mẫu sẵn cho giọng ${voiceName}`);
+      return;
+    }
+
+    if (currentSampleAudio && !currentSampleAudio.paused && currentSampleBtn === btn) {
+      currentSampleAudio.pause();
+      btn.dataset.playing = "false";
+      btn.innerHTML = `<span class="material-symbols-rounded text-sm text-[#292524]">volume_up</span><span>Nghe thử</span>`;
+      return;
+    }
+
+    if (currentSampleAudio) {
+      currentSampleAudio.pause();
+      currentSampleAudio.currentTime = 0;
+    }
+    document.querySelectorAll('.preview-btn').forEach(b => {
+      b.dataset.playing = "false";
+      b.innerHTML = `<span class="material-symbols-rounded text-sm text-[#292524]">volume_up</span><span>Nghe thử</span>`;
+    });
+
+    currentSampleBtn = btn;
+    currentSampleAudio = new Audio(audioUrl);
+    btn.dataset.playing = "true";
+    btn.innerHTML = `<span class="material-symbols-rounded text-sm text-[#dc2626]">stop</span><span>Dừng</span>`;
+
+    currentSampleAudio.onended = () => {
+      btn.dataset.playing = "false";
+      btn.innerHTML = `<span class="material-symbols-rounded text-sm text-[#292524]">volume_up</span><span>Nghe thử</span>`;
+      currentSampleAudio = null;
+      currentSampleBtn = null;
+    };
+
+    currentSampleAudio.onerror = (e) => {
+      console.error("Lỗi phát audio mẫu:", audioUrl, e);
+      btn.dataset.playing = "false";
+      btn.innerHTML = `<span class="material-symbols-rounded text-sm text-[#292524]">volume_up</span><span>Nghe thử</span>`;
+      alert("Không thể tải file âm thanh mẫu.");
+    };
+
+    currentSampleAudio.play().catch(err => {
+      console.warn("Audio play blocked or failed:", err);
+      btn.dataset.playing = "false";
+      btn.innerHTML = `<span class="material-symbols-rounded text-sm text-[#292524]">volume_up</span><span>Nghe thử</span>`;
+    });
+  }
+
+  async function uploadCloneSample(e) {
+    e.preventDefault();
+    const btn = document.getElementById('clone-submit-btn');
+    btn.disabled = true;
+    btn.innerText = "Đang tải lên...";
+
+    const formData = new FormData();
+    formData.append('name', document.getElementById('clone-name').value);
+    formData.append('ref_text', document.getElementById('clone-text').value);
+    formData.append('file', document.getElementById('clone-file').files[0]);
+
+    try {
+      const res = await fetch('/v1/voices/samples', {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) throw new Error("Tải lên thất bại");
+      alert("Đã tạo mẫu giọng clone thành công!");
+      window.location.reload();
+    } catch (err) {
+      alert("Lỗi: " + err.message);
+      btn.disabled = false;
+      btn.innerText = "Tải Lên & Tạo Bản Sao Giọng";
+    }
+  }
+</script>
+{% endblock %}

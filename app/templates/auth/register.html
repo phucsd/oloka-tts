@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-[75vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full card-editorial bg-white rounded-2xl p-8 sm:p-10 shadow-sm border border-[#e7e5e4] space-y-6">
+    
+    <!-- Header -->
+    <div class="text-center space-y-2">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-[#292524] mb-1">
+        <span class="material-symbols-rounded text-2xl text-[#292524]">person_add</span>
+      </div>
+      <h2 class="font-serif text-3xl font-light text-[#0c0a09] tracking-[-0.03em]">Đăng Ký Tài Khoản</h2>
+      <p class="text-xs sm:text-sm text-[#777169]">Tạo tài khoản để sử dụng GPU Kaggle miễn phí của bạn</p>
+    </div>
+
+    <!-- Error Alert -->
+    {% if error %}
+    <div class="p-3.5 rounded-xl bg-white border border-[#dc2626]/30 text-[#dc2626] text-xs font-medium flex items-center space-x-2 shadow-sm">
+      <span class="material-symbols-rounded text-base text-[#dc2626]">error</span>
+      <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Form -->
+    <form class="space-y-4" action="/register" method="POST" data-spa="false">
+      <div>
+        <label for="username" class="block text-xs font-medium text-[#292524] mb-1.5">
+          Tên đăng nhập (Username)
+        </label>
+        <div class="relative">
+          <input id="username" name="username" type="text" required value="{{ username or '' }}"
+            class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] focus:ring-1 focus:ring-[#292524] pl-10 pr-4 py-3 text-sm text-[#0c0a09] placeholder-[#a8a29e] transition outline-none"
+            placeholder="Tối thiểu 3 ký tự (chữ và số)">
+          <span class="material-symbols-rounded absolute left-3 top-3 text-lg text-[#a8a29e]">person</span>
+        </div>
+      </div>
+
+      <div>
+        <label for="email" class="block text-xs font-medium text-[#292524] mb-1.5">
+          Email
+        </label>
+        <div class="relative">
+          <input id="email" name="email" type="email" required value="{{ email or '' }}"
+            class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] focus:ring-1 focus:ring-[#292524] pl-10 pr-4 py-3 text-sm text-[#0c0a09] placeholder-[#a8a29e] transition outline-none"
+            placeholder="yourname@gmail.com">
+          <span class="material-symbols-rounded absolute left-3 top-3 text-lg text-[#a8a29e]">mail</span>
+        </div>
+      </div>
+
+      <div>
+        <label for="password" class="block text-xs font-medium text-[#292524] mb-1.5">
+          Mật khẩu
+        </label>
+        <div class="relative">
+          <input id="password" name="password" type="password" required
+            class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] focus:ring-1 focus:ring-[#292524] pl-10 pr-10 py-3 text-sm text-[#0c0a09] placeholder-[#a8a29e] transition outline-none"
+            placeholder="Tối thiểu 6 ký tự">
+          <span class="material-symbols-rounded absolute left-3 top-3 text-lg text-[#a8a29e]">key</span>
+          <button type="button" onclick="togglePasswordVisibility('password', this)" class="absolute right-3 top-3 text-[#a8a29e] hover:text-[#0c0a09] transition">
+            <span class="material-symbols-rounded text-lg">visibility</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label for="confirm_password" class="block text-xs font-medium text-[#292524] mb-1.5">
+          Xác nhận mật khẩu
+        </label>
+        <div class="relative">
+          <input id="confirm_password" name="confirm_password" type="password" required
+            class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] focus:ring-1 focus:ring-[#292524] pl-10 pr-10 py-3 text-sm text-[#0c0a09] placeholder-[#a8a29e] transition outline-none"
+            placeholder="Nhập lại mật khẩu ở trên">
+          <span class="material-symbols-rounded absolute left-3 top-3 text-lg text-[#a8a29e]">lock</span>
+          <button type="button" onclick="togglePasswordVisibility('confirm_password', this)" class="absolute right-3 top-3 text-[#a8a29e] hover:text-[#0c0a09] transition">
+            <span class="material-symbols-rounded text-lg">visibility</span>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" 
+        class="w-full py-3.5 px-4 rounded-full font-medium text-white bg-[#292524] hover:bg-[#0c0a09] shadow-sm transition active:scale-[0.99] text-sm">
+        Tạo Tài Khoản
+      </button>
+    </form>
+
+    <!-- Social Register (Google) -->
+    <div class="space-y-4 pt-1">
+      <div class="relative flex items-center justify-center">
+        <div class="border-t border-[#e7e5e4] w-full"></div>
+        <div class="bg-white px-3 text-[11px] text-[#a8a29e] uppercase tracking-wider relative font-medium">hoặc</div>
+      </div>
+
+      <a href="/auth/google" data-spa="false"
+        class="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-full font-medium text-[#292524] bg-[#fafafa] hover:bg-[#f0efed] border border-[#e7e5e4] shadow-sm transition active:scale-[0.99] text-sm">
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <span>Đăng ký với Google</span>
+      </a>
+    </div>
+
+    <!-- Footer info -->
+    <div class="pt-4 border-t border-[#f0efed] text-center text-xs text-[#777169]">
+      <p>Đã có tài khoản? 
+        <a href="/login" class="font-medium text-[#0c0a09] underline hover:text-black transition">Đăng nhập tại đây</a>
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('.material-symbols-rounded');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.innerText = 'visibility_off';
+    } else {
+      input.type = 'password';
+      icon.innerText = 'visibility';
+    }
+  }
+</script>
+{% endblock %}

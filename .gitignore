@@ -1,0 +1,52 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Environments & Credentials (CRITICAL: Do NOT commit secrets)
+.env
+.env.*
+!.env.example
+kaggle.json
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+storage/*.db*
+
+# Logs & diagnostic outputs
+*.log
+tmp_output/
+temp_kaggle_out/
+kaggle_dump/
+kaggle_logs/
+kaggle_output_dump/
+kaggle_pulled/
+
+# Root test/benchmark WAV files
+/*.wav
+
+# Storage generated audio & samples
+storage/audio/*
+storage/samples/*
+!storage/audio/.gitkeep
+!storage/samples/.gitkeep
+
+# Ensure 25 voice presets are preserved
+!app/static/samples/presets/*.wav
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

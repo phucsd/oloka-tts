@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+  
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e7e5e4] pb-6">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+        <span class="material-symbols-rounded text-[#292524] text-sm">dns</span>
+        <span>Kaggle GPU Orchestration</span>
+      </div>
+      <h1 class="font-serif text-3xl sm:text-4xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Bảng Giám Sát Dual Tesla T4 Worker
+      </h1>
+      <p class="text-xs sm:text-sm text-[#777169] mt-1.5 leading-relaxed">
+        Theo dõi thời gian thực phiên GPU Kaggle, mức sử dụng VRAM, nhịp tim Heartbeat và hàng đợi job. Tự động tắt sau 15 phút không có job.
+      </p>
+    </div>
+    <div class="flex items-center space-x-3">
+      <button onclick="triggerKernelStop()" id="stop-btn" class="px-4 py-2.5 rounded-full text-xs font-medium text-[#dc2626] border border-[#dc2626]/30 hover:bg-rose-50 shadow-sm flex items-center space-x-2 transition">
+        <span class="material-symbols-rounded text-sm">power_settings_new</span>
+        <span>Dừng Worker (Tiết Kiệm GPU)</span>
+      </button>
+      <button onclick="triggerKernelPush()" id="repush-btn" class="px-5 py-2.5 rounded-full text-xs font-medium text-white bg-[#292524] hover:bg-[#0c0a09] shadow-sm flex items-center space-x-2 transition active:scale-[0.99]">
+        <span class="material-symbols-rounded text-sm">sync</span>
+        <span>Khởi Động Worker Kaggle</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Metric Overview Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm">
+      <div class="text-[#777169] text-xs font-medium">GPU Worker Hoạt Động</div>
+      <div class="mt-2 flex items-baseline justify-between">
+        <div id="stat-worker-count" class="text-3xl font-light text-[#0c0a09]">0</div>
+        <span class="text-xs text-[#a8a29e] font-mono">Tesla T4 x 2</span>
+      </div>
+      <div class="mt-3 text-[11px] text-[#777169] flex items-center">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#16a34a] mr-1.5"></span>
+        <span>Dual Process Parallel</span>
+      </div>
+    </div>
+
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm">
+      <div class="text-[#777169] text-xs font-medium">Trạng Thái Kaggle Kernel</div>
+      <div class="mt-2 flex items-baseline justify-between">
+        <div id="stat-kaggle-status" class="text-lg font-medium text-[#0c0a09]">Đang kiểm tra...</div>
+      </div>
+      <div class="mt-3 text-[11px] text-[#777169] flex items-center">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#292524] mr-1.5"></span>
+        <span id="stat-kaggle-ref" class="truncate font-mono">--</span>
+      </div>
+    </div>
+
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm">
+      <div class="text-[#777169] text-xs font-medium">Job Trong Hàng Đợi</div>
+      <div class="mt-2 flex items-baseline justify-between">
+        <div id="stat-pending-jobs" class="text-3xl font-light text-[#0c0a09]">0</div>
+        <span class="text-xs text-[#a8a29e]">Đang chờ xử lý</span>
+      </div>
+      <div class="mt-3 text-[11px] text-[#777169] flex items-center">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#777169] mr-1.5"></span>
+        <span>FIFO Pull Queue</span>
+      </div>
+    </div>
+
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm">
+      <div class="text-[#777169] text-xs font-medium">Động Cơ Local CPU (Fallback)</div>
+      <div class="mt-2 flex items-baseline justify-between">
+        <div id="stat-local-engine" class="text-base font-medium text-[#0c0a09]">Sẵn Sàng</div>
+      </div>
+      <div class="mt-3 text-[11px] text-[#777169] flex items-center">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#16a34a] mr-1.5"></span>
+        <span>ONNX Runtime (RTF 0.5)</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Live Worker Sessions Table -->
+  <div class="card-editorial bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-[#e7e5e4] space-y-4">
+    <div class="flex items-center justify-between">
+      <h2 class="text-base font-medium text-[#0c0a09] flex items-center">
+        <span class="material-symbols-rounded text-[#292524] mr-2 text-lg">memory</span>Danh Sách Phiên Worker Đang Chạy
+      </h2>
+      <span class="text-xs text-[#777169] flex items-center">
+        <span class="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse mr-1.5"></span>Tự động cập nhật mỗi 5 giây
+      </span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="text-[#777169] border-b border-[#e7e5e4] bg-[#fafafa] uppercase tracking-wider text-[11px]">
+          <tr>
+            <th class="py-3 px-4 font-medium">Worker ID</th>
+            <th class="py-3 px-4 font-medium">GPU Device</th>
+            <th class="py-3 px-4 font-medium">VRAM Sử Dụng</th>
+            <th class="py-3 px-4 font-medium">Trạng Thái</th>
+            <th class="py-3 px-4 font-medium">Heartbeat Gần Nhất</th>
+          </tr>
+        </thead>
+        <tbody id="workers-tbody" class="divide-y divide-[#f0efed]">
+          <tr>
+            <td colspan="5" class="py-6 text-center text-[#a8a29e]">Đang quét danh sách worker...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- Kaggle Guide & Troubleshooting Box -->
+  <div class="p-5 sm:p-6 rounded-2xl bg-[#fafafa] border border-[#e7e5e4] space-y-3">
+    <h3 class="text-xs font-semibold text-[#0c0a09] uppercase tracking-wider flex items-center">
+      <span class="material-symbols-rounded text-[#292524] mr-2 text-base">info</span>Kinh Nghiệm Vận Hành Kaggle Dual T4
+    </h3>
+    <ul class="text-xs text-[#4e4e4e] space-y-2 list-disc list-inside leading-relaxed">
+      <li><strong>Tự động khôi phục:</strong> Nếu phiên Kaggle kết thúc (`KernelWorkerStatus.COMPLETE` sau 9h), Gateway sẽ tự động phát hiện và kích hoạt đẩy lại code (`kernels_push`) khi có job mới mà không làm hỏng request.</li>
+      <li><strong>Tối ưu 2x GPU:</strong> Kaggle cấp 2 GPU Tesla T4 (16GB mỗi card). Kịch bản worker tự động chia tải 2 tiến trình trên `CUDA:0` và `CUDA:1`, giúp xử lý song song 2 luồng công việc độc lập.</li>
+      <li><strong>Fallback thông minh:</strong> Khi worker đang trong quá trình nạp model (~1-2 phút), bạn vẫn có thể bật tùy chọn "Ưu tiên CPU" ở Studio để nhận kết quả tức thì bằng động cơ ONNX.</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+  async function refreshMonitor() {
+    try {
+      const res = await fetch('/api/admin/status');
+      if (!res.ok) return;
+      const data = await res.json();
+
+      document.getElementById('stat-worker-count').innerText = data.live_worker_count;
+      document.getElementById('stat-kaggle-status').innerText = data.kaggle.kernel_status || 'NOT CONFIGURED';
+      document.getElementById('stat-kaggle-ref').innerText = data.kaggle.kernel_ref || '--';
+      document.getElementById('stat-pending-jobs').innerText = data.queue.pending_jobs;
+      document.getElementById('stat-local-engine').innerText = data.local_engine.available ? 'Sẵn Sàng (ONNX)' : 'Chưa Khởi Tạo';
+
+      const tbody = document.getElementById('workers-tbody');
+      if (data.workers && data.workers.length > 0) {
+        tbody.innerHTML = data.workers.map(w => `
+          <tr class="hover:bg-[#fafafa] transition">
+            <td class="py-3 px-4 font-mono font-medium text-[#0c0a09]">${w.worker_id}</td>
+            <td class="py-3 px-4 font-medium text-[#4e4e4e]">CUDA:${w.gpu_index} (${w.gpu_name})</td>
+            <td class="py-3 px-4 font-mono text-[#4e4e4e]">${w.vram_used_mb} MB / ${w.vram_total_mb} MB</td>
+            <td class="py-3 px-4">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#f0efed] text-[#16a34a] border border-[#16a34a]/30">
+                ${w.status.toUpperCase()}
+              </span>
+            </td>
+            <td class="py-3 px-4 font-mono text-[#777169]">${w.last_heartbeat_seconds_ago !== null ? w.last_heartbeat_seconds_ago + 's trước' : '--'}</td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-8 text-center text-[#777169]">
+              <span class="material-symbols-rounded text-[#292524] text-2xl mb-2 block mx-auto">info</span>
+              Hiện tại chưa có Kaggle GPU Worker nào đang kết nối.<br>
+              Bấm nút "Khởi Động Worker Kaggle" ở trên để tự động kích hoạt phiên GPU!
+            </td>
+          </tr>
+        `;
+      }
+    } catch (e) {
+      console.error("Monitor refresh error", e);
+    }
+  }
+
+  async function triggerKernelPush() {
+    const btn = document.getElementById('repush-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-rounded text-sm animate-spin">progress_activity</span><span>Đang đẩy lên Kaggle...</span>';
+    
+    try {
+      const res = await fetch('/api/admin/kaggle/push?force=true', { method: 'POST' });
+      const data = await res.json();
+      alert(data.message || 'Đã gửi lệnh kích hoạt tới Kaggle CLI!');
+      refreshMonitor();
+    } catch (e) {
+      alert("Lỗi: " + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-rounded text-sm">sync</span><span>Khởi Động Worker Kaggle</span>';
+    }
+  }
+
+  async function triggerKernelStop() {
+    if (!confirm("Bạn có chắc chắn muốn ngắt kết nối các Kaggle Worker đang chạy để giải phóng GPU và bảo lưu quota không?")) return;
+    const btn = document.getElementById('stop-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-rounded text-sm animate-spin">progress_activity</span><span>Đang gửi lệnh ngắt...</span>';
+
+    try {
+      const res = await fetch('/api/admin/kaggle/stop', { method: 'POST' });
+      const data = await res.json();
+      alert(data.message || 'Đã gửi lệnh dừng tới toàn bộ worker!');
+      refreshMonitor();
+    } catch (e) {
+      alert("Lỗi: " + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-rounded text-sm">power_settings_new</span><span>Dừng Worker (Tiết Kiệm GPU)</span>';
+    }
+  }
+
+  refreshMonitor();
+  setInterval(refreshMonitor, 5000);
+</script>
+{% endblock %}

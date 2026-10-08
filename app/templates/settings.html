@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl xl:max-w-6xl mx-auto space-y-8 py-2">
+
+  <!-- Welcome / Flash Messages -->
+  {% if welcome %}
+  <div class="p-5 rounded-2xl bg-white border border-[#d6d3d1] text-[#292524] text-sm flex items-start space-x-3.5 shadow-sm">
+    <span class="material-symbols-rounded text-xl text-[#292524] mt-0.5">celebration</span>
+    <div>
+      <div class="font-medium text-[#0c0a09] text-base">Chào mừng bạn đến với OlokaTTS!</div>
+      <p class="text-xs text-[#777169] mt-1 leading-relaxed">Để bắt đầu sử dụng GPU Dual Tesla T4 miễn phí 30 giờ/tuần, vui lòng thiết lập tài khoản Kaggle của bạn ở bên dưới.</p>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if msg == 'kaggle_saved' %}
+  <div class="p-4 rounded-xl bg-white border border-[#16a34a]/30 text-[#16a34a] text-xs font-medium flex items-center space-x-2 shadow-sm">
+    <span class="material-symbols-rounded text-base">check_circle</span>
+    <span>Đã lưu thành công thông tin xác thực Kaggle API của bạn!</span>
+  </div>
+  {% elif msg == 'password_changed' %}
+  <div class="p-4 rounded-xl bg-white border border-[#16a34a]/30 text-[#16a34a] text-xs font-medium flex items-center space-x-2 shadow-sm">
+    <span class="material-symbols-rounded text-base">check_circle</span>
+    <span>Mật khẩu của bạn đã được cập nhật thành công!</span>
+  </div>
+  {% elif msg == 'api_key_regenerated' %}
+  <div class="p-4 rounded-xl bg-white border border-[#16a34a]/30 text-[#16a34a] text-xs font-medium flex items-center space-x-2 shadow-sm">
+    <span class="material-symbols-rounded text-base">check_circle</span>
+    <span>Đã cấp lại mã API Key mới thành công!</span>
+  </div>
+  {% endif %}
+
+  {% if error %}
+  <div class="p-4 rounded-xl bg-white border border-[#dc2626]/30 text-[#dc2626] text-xs font-medium flex items-center space-x-2 shadow-sm">
+    <span class="material-symbols-rounded text-base">error</span>
+    <span>
+      {% if error == 'wrong_old_password' %}Mật khẩu cũ không chính xác!
+      {% elif error == 'password_too_short' %}Mật khẩu mới phải có ít nhất 6 ký tự!
+      {% elif error == 'password_mismatch' %}Mật khẩu xác nhận không khớp!
+      {% else %}Có lỗi xảy ra: {{ error }}{% endif %}
+    </span>
+  </div>
+  {% endif %}
+
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e7e5e4] pb-6">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+        <span class="material-symbols-rounded text-sm text-[#292524]">settings</span>
+        <span>User Profile &amp; GPU BYOK</span>
+      </div>
+      <h1 class="font-serif text-3xl sm:text-4xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Cài Đặt Tài Khoản &amp; Hạ Tầng GPU
+      </h1>
+      <p class="text-xs sm:text-sm text-[#777169] mt-1.5 leading-relaxed">Quản lý định danh cá nhân và thiết lập tài nguyên Kaggle GPU phục vụ tạo giọng nói</p>
+    </div>
+    <div class="flex items-center space-x-2">
+      <span class="text-xs px-3.5 py-1.5 rounded-full bg-white text-[#292524] border border-[#e7e5e4] font-medium shadow-sm">
+        Vai trò: <strong class="text-[#0c0a09] uppercase">{{ user.role }}</strong>
+      </span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+    
+    <!-- Left Column: Kaggle BYOK Setup (7 cols) -->
+    <div class="md:col-span-7 space-y-6">
+      
+      <!-- Kaggle BYOK Card -->
+      <div class="card-editorial bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-[#e7e5e4] space-y-5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-[#292524] flex items-center justify-center font-bold text-base">
+              K
+            </div>
+            <div>
+              <h2 class="text-sm font-medium text-[#0c0a09]">Cấu Hình Kaggle API (BYOK)</h2>
+              <p class="text-xs text-[#777169]">Sử dụng hạn mức 30 giờ GPU/tuần miễn phí của riêng bạn</p>
+            </div>
+          </div>
+          {% if user.kaggle_username and user.kaggle_key %}
+          <span class="px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] text-[#16a34a] border border-[#16a34a]/30 flex items-center space-x-1.5">
+            <span class="material-symbols-rounded text-sm">check</span>
+            <span>Đã cấu hình</span>
+          </span>
+          {% else %}
+          <span class="px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] text-[#dc2626] border border-[#dc2626]/30 flex items-center space-x-1.5">
+            <span class="material-symbols-rounded text-sm">warning</span>
+            <span>Chưa có Key</span>
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- Form -->
+        <form action="/settings/kaggle" method="POST" class="space-y-4">
+          <div>
+            <label for="kaggle_username" class="block text-xs font-medium text-[#292524] mb-1.5">
+              Kaggle Username
+            </label>
+            <input id="kaggle_username" name="kaggle_username" type="text" required 
+              value="{{ user.kaggle_username or '' }}"
+              placeholder="Ví dụ: nguyenvana123"
+              class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] focus:ring-1 focus:ring-[#292524] px-4 py-2.5 text-sm text-[#0c0a09] placeholder-[#a8a29e] transition outline-none font-mono">
+          </div>
+
+          <div>
+            <label for="kaggle_key" class="block text-xs font-medium text-[#292524] mb-1.5">
+              Kaggle API Key / Token
+            </label>
+            <input id="kaggle_key" name="kaggle_key" type="password" required 
+              value="{{ user.kaggle_key or '' }}"
+              placeholder="Dán mã key từ tệp kaggle.json vào đây"
+              class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] focus:ring-1 focus:ring-[#292524] px-4 py-2.5 text-sm text-[#0c0a09] placeholder-[#a8a29e] transition outline-none font-mono">
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex flex-wrap items-center gap-3 pt-2">
+            <button type="submit" 
+              class="flex-1 py-2.5 px-5 rounded-full font-medium text-white bg-[#292524] hover:bg-[#0c0a09] transition shadow-sm text-xs flex items-center justify-center space-x-1.5 active:scale-[0.99]">
+              <span class="material-symbols-rounded text-sm">save</span>
+              <span>Lưu Cấu Hình</span>
+            </button>
+
+            <button type="button" onclick="testKaggleConnection()" id="test-kaggle-btn"
+              class="py-2.5 px-5 rounded-full font-medium text-[#0c0a09] bg-white hover:bg-[#f0efed] border border-[#d6d3d1] transition text-xs flex items-center justify-center space-x-1.5">
+              <span class="material-symbols-rounded text-sm text-[#777169]">experiment</span>
+              <span id="test-kaggle-txt">Kiểm Tra Kết Nối</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Test Feedback Area -->
+        <div id="test-feedback-box" class="hidden p-3.5 rounded-xl text-xs space-y-1"></div>
+
+        <!-- Instructions Accordion / Card -->
+        <div class="mt-4 p-4 rounded-xl bg-[#fafafa] border border-[#e7e5e4] text-xs text-[#777169] space-y-2">
+          <div class="font-medium text-[#0c0a09] flex items-center">
+            <span class="material-symbols-rounded text-sm text-[#292524] mr-1.5">help</span>
+            <span>Hướng dẫn lấy Kaggle API Token:</span>
+          </div>
+          <ol class="list-decimal list-inside space-y-1.5 text-[#4e4e4e] pl-1 leading-relaxed">
+            <li>Truy cập mục cài đặt tài khoản: <a href="https://www.kaggle.com/settings/api" target="_blank" class="text-[#0c0a09] font-medium underline inline-flex items-center">kaggle.com/settings/api <span class="material-symbols-rounded text-[11px] ml-0.5">open_in_new</span></a></li>
+            <li>Cuộn xuống phần <strong>API</strong> và bấm nút <strong>"Create New Token"</strong>.</li>
+            <li>Trình duyệt sẽ tải về tệp <code class="text-[#0c0a09] font-mono bg-[#f0efed] px-1 py-0.5 rounded">kaggle.json</code>.</li>
+            <li>Mở tệp này bằng Notepad, copy giá trị <code class="text-[#0c0a09] font-mono">"username"</code> và <code class="text-[#0c0a09] font-mono">"key"</code> dán vào ô bên trên.</li>
+          </ol>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Right Column: API Key & Change Password (5 cols) -->
+    <div class="md:col-span-5 space-y-6">
+      
+      <!-- Developer API Keys Card -->
+      <div class="card-editorial bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-[#e7e5e4] space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-[#292524] flex items-center justify-center text-sm">
+              <span class="material-symbols-rounded text-lg">vpn_key</span>
+            </div>
+            <div>
+              <h2 class="text-sm font-medium text-[#0c0a09]">Developer API Keys</h2>
+              <p class="text-xs text-[#777169]">Quản lý mã truy cập API</p>
+            </div>
+          </div>
+          <button type="button" onclick="openCreateKeyModal()" class="px-3 py-1.5 rounded-full bg-[#292524] text-white text-xs font-medium hover:bg-[#0c0a09] transition flex items-center space-x-1 shadow-sm">
+            <span class="material-symbols-rounded text-sm">add</span>
+            <span>Tạo Key Mới</span>
+          </button>
+        </div>
+
+        <!-- List of Keys -->
+        <div class="space-y-3" id="api-keys-list">
+          {% if api_keys %}
+            {% for k in api_keys %}
+            <div class="p-3.5 rounded-xl border border-[#e7e5e4] bg-[#fafafa] space-y-2 text-xs" id="key-item-{{ k.id }}">
+              <div class="flex items-center justify-between">
+                <div class="font-medium text-[#0c0a09] flex items-center space-x-1.5">
+                  <span>{{ k.name }}</span>
+                  {% if k.is_active %}
+                  <span class="px-2 py-0.2 rounded-full text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">Hoạt động</span>
+                  {% else %}
+                  <span class="px-2 py-0.2 rounded-full text-[10px] bg-slate-100 text-slate-500 border border-slate-200 font-medium">Đã thu hồi</span>
+                  {% endif %}
+                </div>
+                <div class="flex items-center space-x-1">
+                  {% if k.is_active %}
+                  <button type="button" onclick="revokeKey('{{ k.id }}')" title="Thu hồi key" class="text-rose-600 hover:text-rose-800 text-xs px-2 py-0.5 rounded hover:bg-rose-50 transition">
+                    Thu hồi
+                  </button>
+                  {% endif %}
+                  <button type="button" onclick="deleteKey('{{ k.id }}')" title="Xóa vĩnh viễn" class="text-[#777169] hover:text-[#0c0a09] text-xs p-1 rounded hover:bg-[#f0efed] transition">
+                    <span class="material-symbols-rounded text-sm">delete</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between font-mono text-[11px] text-[#777169] bg-white p-2 rounded-lg border border-[#e7e5e4]">
+                <span>{{ k.key_prefix }}</span>
+                <span class="text-[10px] uppercase text-[#a8a29e] font-sans">{{ k.scopes }}</span>
+              </div>
+
+              <div class="flex items-center justify-between text-[11px] text-[#777169] pt-1 border-t border-[#f0efed]">
+                <span>Đã gọi: <strong class="text-[#292524]">{{ k.total_requests or 0 }}</strong> lượt</span>
+                <span>{% if k.last_used_at %}Dùng: {{ k.last_used_at.strftime('%d/%m/%Y') }}{% else %}Chưa sử dụng{% endif %}</span>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="p-4 rounded-xl border border-dashed border-[#d6d3d1] text-center text-xs text-[#777169] bg-[#fafafa]">
+              Bạn chưa có API Key nào. Hãy bấm "Tạo Key Mới" để bắt đầu tích hợp.
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="pt-2">
+          <a href="/docs/api" class="text-xs text-[#292524] hover:underline flex items-center space-x-1 font-medium">
+            <span class="material-symbols-rounded text-sm">menu_book</span>
+            <span>Xem hướng dẫn tích hợp API Documentation &rarr;</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Change Password Card -->
+      <div class="card-editorial bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-[#e7e5e4] space-y-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-[#292524] flex items-center justify-center text-sm">
+            <span class="material-symbols-rounded text-lg">shield</span>
+          </div>
+          <div>
+            <h2 class="text-sm font-medium text-[#0c0a09]">Đổi Mật Khẩu</h2>
+            <p class="text-xs text-[#777169]">Bảo mật tài khoản cá nhân</p>
+          </div>
+        </div>
+
+        <form action="/settings/password" method="POST" class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-[#292524] mb-1">Mật khẩu hiện tại</label>
+            <input name="old_password" type="password" required
+              class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2 text-xs text-[#0c0a09] transition outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-[#292524] mb-1">Mật khẩu mới</label>
+            <input name="new_password" type="password" required
+              class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2 text-xs text-[#0c0a09] transition outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-[#292524] mb-1">Xác nhận mật khẩu mới</label>
+            <input name="confirm_new_password" type="password" required
+              class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2 text-xs text-[#0c0a09] transition outline-none">
+          </div>
+
+          <button type="submit" 
+            class="w-full py-2.5 px-4 rounded-full font-medium text-[#292524] hover:bg-[#f0efed] border border-[#d6d3d1] transition text-xs">
+            Cập Nhật Mật Khẩu
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+  </div>
+
+  </div>
+
+  <!-- MODAL: Tạo API Key Mới -->
+  <div id="modal-create-key" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div class="card-editorial bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-5 animate-in fade-in duration-200">
+      <div class="flex items-center justify-between border-b border-[#f0efed] pb-3">
+        <div class="flex items-center space-x-2.5">
+          <span class="material-symbols-rounded text-xl text-[#292524]">vpn_key</span>
+          <h3 class="font-serif text-lg font-medium text-[#0c0a09]">Tạo API Key Mới</h3>
+        </div>
+        <button type="button" onclick="closeCreateKeyModal()" class="text-[#777169] hover:text-[#0c0a09]">
+          <span class="material-symbols-rounded text-lg">close</span>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block font-medium text-[#292524] mb-1.5">Tên Gợi Nhớ (Tên Ứng Dụng)</label>
+          <input type="text" id="new-key-name" placeholder="Ví dụ: Chatbot Zalo, Mobile App, Test Dev" 
+            class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2.5 text-xs text-[#0c0a09] transition outline-none">
+        </div>
+
+        <div>
+          <label class="block font-medium text-[#292524] mb-1.5">Phân Quyền (Scopes)</label>
+          <select id="new-key-scopes" class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2.5 text-xs text-[#0c0a09] transition outline-none">
+            <option value="tts:generate,voices:read">Tạo giọng nói &amp; Đọc danh mục (Mặc định)</option>
+            <option value="full:access">Toàn quyền (Full Access)</option>
+            <option value="voices:read">Chỉ đọc danh mục giọng (Read-only)</option>
+          </select>
+        </div>
+
+        <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-relaxed flex items-start space-x-2">
+          <span class="material-symbols-rounded text-base text-amber-700 shrink-0 mt-0.5">info</span>
+          <span>Khóa bí mật sẽ chỉ hiển thị <strong>1 lần duy nhất</strong> sau khi tạo. Hãy đảm bảo bạn sao chép và lưu trữ an toàn.</span>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end space-x-2 pt-2">
+        <button type="button" onclick="closeCreateKeyModal()" class="px-4 py-2 rounded-full border border-[#d6d3d1] hover:bg-[#f0efed] text-xs font-medium text-[#292524] transition">
+          Hủy bỏ
+        </button>
+        <button type="button" id="btn-submit-create-key" onclick="submitCreateKey()" class="px-4 py-2 rounded-full bg-[#292524] hover:bg-[#0c0a09] text-white text-xs font-medium transition shadow-sm">
+          Tạo Mã Khóa
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Hiển Thị Secret Key 1 Lần Duy Nhất -->
+  <div id="modal-reveal-secret" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="card-editorial bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 animate-in fade-in duration-200">
+      <div class="flex items-center space-x-3 text-emerald-800">
+        <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+          <span class="material-symbols-rounded text-xl text-emerald-700">check_circle</span>
+        </div>
+        <div>
+          <h3 class="font-serif text-lg font-medium text-[#0c0a09]">Lưu Khóa Bí Mật Của Bạn</h3>
+          <p class="text-xs text-[#777169]">Khóa bí mật vừa được tạo thành công</p>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <div class="relative">
+          <input type="text" id="revealed-secret-input" readonly
+            class="w-full rounded-xl border border-emerald-300 bg-emerald-50/50 p-3.5 pr-24 font-mono text-xs text-[#0c0a09] select-all">
+          <button type="button" onclick="copyRevealedSecret()" id="btn-copy-secret"
+            class="absolute right-2 top-2 px-3 py-1.5 rounded-lg bg-[#292524] hover:bg-[#0c0a09] text-white text-xs font-medium transition flex items-center space-x-1 shadow-sm">
+            <span class="material-symbols-rounded text-xs">content_copy</span>
+            <span>Sao chép</span>
+          </button>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs leading-relaxed space-y-1">
+          <div class="font-medium flex items-center space-x-1 text-amber-800">
+            <span class="material-symbols-rounded text-sm">warning</span>
+            <span>Lưu ý quan trọng:</span>
+          </div>
+          <p class="text-[11px] text-amber-800/90">
+            Vì lý do bảo mật, bạn sẽ <strong>không thể xem lại</strong> khóa bí mật này sau khi đóng hộp thoại. Nếu làm mất, bạn sẽ phải tạo một khóa mới.
+          </p>
+        </div>
+      </div>
+
+      <div class="pt-2">
+        <button type="button" onclick="closeRevealModalAndRefresh()" class="w-full py-2.5 rounded-full bg-[#292524] hover:bg-[#0c0a09] text-white text-xs font-medium transition shadow-sm">
+          Tôi Đã Lưu Khóa An Toàn &bull; Hoàn Tất
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function openCreateKeyModal() {
+    document.getElementById('new-key-name').value = '';
+    document.getElementById('modal-create-key').classList.remove('hidden');
+  }
+
+  function closeCreateKeyModal() {
+    document.getElementById('modal-create-key').classList.add('hidden');
+  }
+
+  async function submitCreateKey() {
+    const nameInput = document.getElementById('new-key-name');
+    const scopesInput = document.getElementById('new-key-scopes');
+    const btn = document.getElementById('btn-submit-create-key');
+
+    const name = nameInput.value.trim() || 'API Key';
+    const scopes = scopesInput.value;
+
+    btn.disabled = true;
+    btn.innerText = 'Đang tạo...';
+
+    try {
+      const res = await fetch('/api/user/api-keys/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ name, scopes })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        closeCreateKeyModal();
+        // Show secret reveal modal
+        document.getElementById('revealed-secret-input').value = data.secret;
+        document.getElementById('modal-reveal-secret').classList.remove('hidden');
+      } else {
+        alert('Lỗi tạo API Key: ' + (data.detail || data.message || 'Không xác định'));
+      }
+    } catch (e) {
+      alert('Lỗi kết nối máy chủ: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerText = 'Tạo Mã Khóa';
+    }
+  }
+
+  function copyRevealedSecret() {
+    const input = document.getElementById('revealed-secret-input');
+    navigator.clipboard.writeText(input.value);
+    const btn = document.getElementById('btn-copy-secret');
+    btn.innerHTML = '<span class="material-symbols-rounded text-xs">check</span><span>Đã chép</span>';
+    setTimeout(() => {
+      btn.innerHTML = '<span class="material-symbols-rounded text-xs">content_copy</span><span>Sao chép</span>';
+    }, 2000);
+  }
+
+  function closeRevealModalAndRefresh() {
+    document.getElementById('modal-reveal-secret').classList.add('hidden');
+    window.location.reload();
+  }
+
+  async function revokeKey(keyId) {
+    if (!confirm('Bạn có chắc chắn muốn thu hồi API Key này? Tất cả ứng dụng đang sử dụng mã này sẽ bị từ chối truy cập!')) return;
+    try {
+      const res = await fetch(`/api/user/api-keys/${keyId}/revoke`, { method: 'POST' });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        alert('Lỗi thu hồi: ' + (err.detail || 'Không thể thu hồi'));
+      }
+    } catch(e) {
+      alert('Lỗi mạng: ' + e.message);
+    }
+  }
+
+  async function deleteKey(keyId) {
+    if (!confirm('Bạn có chắc chắn muốn xóa vĩnh viễn API Key này khỏi hệ thống?')) return;
+    try {
+      const res = await fetch(`/api/user/api-keys/${keyId}/delete`, { method: 'POST' });
+      if (res.ok) {
+        const el = document.getElementById(`key-item-${keyId}`);
+        if (el) el.remove();
+        else window.location.reload();
+      } else {
+        const err = await res.json();
+        alert('Lỗi xóa: ' + (err.detail || 'Không thể xóa'));
+      }
+    } catch(e) {
+      alert('Lỗi mạng: ' + e.message);
+    }
+  }
+
+  async function testKaggleConnection() {
+    const uInput = document.getElementById('kaggle_username');
+    const kInput = document.getElementById('kaggle_key');
+    const btn = document.getElementById('test-kaggle-btn');
+    const txt = document.getElementById('test-kaggle-txt');
+    const box = document.getElementById('test-feedback-box');
+
+    const username = uInput.value.trim();
+    const key = kInput.value.trim();
+
+    if (!username || !key) {
+      alert("Vui lòng điền đầy đủ Kaggle Username và Key trước khi kiểm tra!");
+      return;
+    }
+
+    btn.disabled = true;
+    txt.innerText = "Đang kiểm tra...";
+    box.classList.add('hidden');
+
+    try {
+      const res = await fetch('/api/user/kaggle/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kaggle_username: username, kaggle_key: key })
+      });
+      const data = await res.json();
+
+      box.classList.remove('hidden');
+      if (res.ok && data.status === 'success') {
+        box.className = "p-3.5 rounded-xl text-xs bg-white border border-[#16a34a]/30 text-[#16a34a] flex items-center space-x-2";
+        box.innerHTML = `<span class="material-symbols-rounded text-sm text-[#16a34a]">check_circle</span><span>${data.message}</span>`;
+      } else {
+        box.className = "p-3.5 rounded-xl text-xs bg-white border border-[#dc2626]/30 text-[#dc2626] flex items-center space-x-2";
+        box.innerHTML = `<span class="material-symbols-rounded text-sm text-[#dc2626]">warning</span><span>${data.message || data.detail || 'Lỗi không xác định'}</span>`;
+      }
+    } catch (err) {
+      box.classList.remove('hidden');
+      box.className = "p-3.5 rounded-xl text-xs bg-white border border-[#dc2626]/30 text-[#dc2626] flex items-center space-x-2";
+      box.innerHTML = `<span class="material-symbols-rounded text-sm text-[#dc2626]">warning</span><span>Lỗi mạng: ${err.message}</span>`;
+    } finally {
+      btn.disabled = false;
+      txt.innerText = "Kiểm Tra Kết Nối";
+    }
+  }
+</script>
+{% endblock %}

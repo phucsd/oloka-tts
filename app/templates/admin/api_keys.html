@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <!-- Admin Subnav & Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#e7e5e4]">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+        <span class="material-symbols-rounded text-sm text-[#292524]">vpn_key</span>
+        <span>Developer Access &amp; API Key Governance</span>
+      </div>
+      <h1 class="font-serif text-3xl sm:text-4xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Quản Lý API Keys Toàn Hệ Thống
+      </h1>
+      <p class="text-xs sm:text-sm text-[#777169] mt-1.5">Giám sát các mã khóa tích hợp của toàn bộ người dùng, số lượt gọi và quản lý quyền truy cập API</p>
+    </div>
+
+    <!-- Admin Nav Tabs -->
+    <div class="flex items-center flex-wrap gap-2">
+      <a href="/admin/analytics" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">monitoring</span>
+        <span>Báo Cáo</span>
+      </a>
+      <a href="/admin/settings" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">settings</span>
+        <span>Cấu Hình</span>
+      </a>
+      <a href="/admin/jobs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">queue_music</span>
+        <span>Hàng Đợi</span>
+      </a>
+      <a href="/admin/voices" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">record_voice_over</span>
+        <span>Giọng Đọc</span>
+      </a>
+      <a href="/admin/users" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">group</span>
+        <span>Người Dùng</span>
+      </a>
+      <a href="/admin/api-keys" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white shadow-sm flex items-center space-x-1.5">
+        <span class="material-symbols-rounded text-sm">vpn_key</span>
+        <span>API Keys</span>
+      </a>
+      <a href="/admin/logs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">warning</span>
+        <span>Logs</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm space-y-1">
+      <div class="flex items-center justify-between text-[#777169] text-xs font-medium">
+        <span>Tổng Số API Keys</span>
+        <span class="material-symbols-rounded text-lg text-[#292524]">vpn_key</span>
+      </div>
+      <div class="text-3xl font-light text-[#0c0a09]">{{ total_keys }}</div>
+      <div class="text-[11px] text-[#777169]">Tất cả người dùng</div>
+    </div>
+
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm space-y-1">
+      <div class="flex items-center justify-between text-[#777169] text-xs font-medium">
+        <span>Keys Đang Kích Hoạt</span>
+        <span class="material-symbols-rounded text-lg text-emerald-600">check_circle</span>
+      </div>
+      <div class="text-3xl font-light text-emerald-600">{{ active_keys }}</div>
+      <div class="text-[11px] text-[#777169]">Đang sẵn sàng nhận request</div>
+    </div>
+
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm space-y-1">
+      <div class="flex items-center justify-between text-[#777169] text-xs font-medium">
+        <span>Tổng Lượt Gọi API</span>
+        <span class="material-symbols-rounded text-lg text-indigo-600">api</span>
+      </div>
+      <div class="text-3xl font-light text-[#0c0a09]">{{ "{:,}".format(total_requests) }}</div>
+      <div class="text-[11px] text-[#777169]">Tổng request qua API</div>
+    </div>
+
+    <div class="card-editorial bg-white rounded-2xl p-5 border border-[#e7e5e4] shadow-sm space-y-1">
+      <div class="flex items-center justify-between text-[#777169] text-xs font-medium">
+        <span>Tổng Ký Tự Phục Vụ</span>
+        <span class="material-symbols-rounded text-lg text-amber-600">text_snippet</span>
+      </div>
+      <div class="text-3xl font-light text-[#0c0a09]">{{ "{:,}".format(total_chars) }}</div>
+      <div class="text-[11px] text-[#777169]">Ký tự tiếng Việt đã tổng hợp</div>
+    </div>
+  </div>
+
+  <!-- Search & Filter Bar -->
+  <div class="card-editorial bg-white rounded-2xl p-4 border border-[#e7e5e4] shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+    <form action="/admin/api-keys" method="GET" class="w-full sm:w-80 flex items-center space-x-2">
+      <div class="relative w-full">
+        <input type="text" name="q" value="{{ search_query }}" placeholder="Tìm theo tên key, username, prefix..."
+          class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] pl-9 pr-4 py-2 text-xs text-[#0c0a09] outline-none focus:bg-white focus:border-[#292524] transition">
+        <span class="material-symbols-rounded absolute left-2.5 top-2.5 text-base text-[#a8a29e]">search</span>
+      </div>
+      <button type="submit" class="px-3.5 py-2 rounded-xl bg-[#292524] hover:bg-[#0c0a09] text-white text-xs font-medium shrink-0 transition">
+        Tìm
+      </button>
+    </form>
+    <div class="text-xs text-[#777169]">
+      Hiển thị <strong>{{ key_tuples|length }}</strong> API keys
+    </div>
+  </div>
+
+  <!-- Table Card -->
+  <div class="card-editorial bg-white rounded-2xl border border-[#e7e5e4] shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-[#f0efed] text-[#0c0a09] font-medium border-b border-[#e7e5e4]">
+          <tr>
+            <th class="p-3.5">Tên Key &bull; Tiền Tố</th>
+            <th class="p-3.5">Chủ Sở Hữu</th>
+            <th class="p-3.5">Quyền Hạn (Scopes)</th>
+            <th class="p-3.5">Số Lượt Gọi</th>
+            <th class="p-3.5">Ký Tự</th>
+            <th class="p-3.5">Dùng Gần Nhất</th>
+            <th class="p-3.5">Trạng Thái</th>
+            <th class="p-3.5 text-right">Thao Tác</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#e7e5e4] text-[#4e4e4e]">
+          {% if key_tuples %}
+            {% for k, u in key_tuples %}
+            <tr class="hover:bg-[#fafafa] transition">
+              <td class="p-3.5">
+                <div class="font-medium text-[#0c0a09]">{{ k.name }}</div>
+                <div class="font-mono text-[11px] text-[#777169] mt-0.5">{{ k.key_prefix }}</div>
+              </td>
+              <td class="p-3.5">
+                <div class="flex items-center space-x-2">
+                  <div class="w-5 h-5 rounded-full bg-[#292524] text-white flex items-center justify-center text-[10px] font-medium">
+                    {{ u.username[:1].upper() }}
+                  </div>
+                  <div>
+                    <div class="font-medium text-[#0c0a09]">{{ u.username }}</div>
+                    <div class="text-[10px] text-[#777169]">{{ u.email }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="p-3.5">
+                <span class="px-2 py-0.5 rounded-full bg-[#f0efed] text-[10px] text-[#292524] border border-[#e7e5e4] font-mono">
+                  {{ k.scopes }}
+                </span>
+              </td>
+              <td class="p-3.5 font-medium text-[#0c0a09]">
+                {{ "{:,}".format(k.total_requests or 0) }}
+              </td>
+              <td class="p-3.5 text-[#777169]">
+                {{ "{:,}".format(k.total_characters or 0) }}
+              </td>
+              <td class="p-3.5 text-[#777169]">
+                {% if k.last_used_at %}{{ k.last_used_at.strftime('%d/%m/%Y %H:%M') }}{% else %}Chưa dùng{% endif %}
+              </td>
+              <td class="p-3.5">
+                {% if k.is_active %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                  Hoạt động
+                </span>
+                {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>
+                  Đã khóa
+                </span>
+                {% endif %}
+              </td>
+              <td class="p-3.5 text-right space-x-2">
+                <form action="/admin/api-keys/{{ k.id }}/toggle-status" method="POST" class="inline" data-spa="false">
+                  <button type="submit" class="px-2.5 py-1 rounded-lg text-xs font-medium border border-[#e7e5e4] hover:bg-[#f0efed] transition {% if k.is_active %}text-rose-600{% else %}text-emerald-700{% endif %}">
+                    {% if k.is_active %}Khóa Key{% else %}Kích Hoạt{% endif %}
+                  </button>
+                </form>
+                <form action="/admin/api-keys/{{ k.id }}/delete" method="POST" class="inline" data-spa="false" onsubmit="return confirm('Bạn có chắc muốn xóa vĩnh viễn key này?')">
+                  <button type="submit" class="p-1 rounded-lg text-[#777169] hover:text-[#dc2626] hover:bg-rose-50 transition" title="Xóa key">
+                    <span class="material-symbols-rounded text-base">delete</span>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" class="p-8 text-center text-xs text-[#777169]">
+                Không tìm thấy API Key nào.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,643 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="w-full space-y-10 py-2">
+
+  <!-- Header Banner (ElevenLabs Editorial) -->
+  <div class="text-center max-w-3xl mx-auto space-y-3">
+    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-xs font-semibold uppercase tracking-wider text-[#777169]">
+      <span class="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse"></span>
+      <span>REST API v1 &bull; OpenAI Compatible &bull; 48kHz Studio</span>
+    </div>
+    <h1 class="font-serif text-3xl sm:text-5xl font-light text-[#0c0a09] tracking-tight leading-tight">
+      OlokaTTS API Reference
+    </h1>
+    <p class="text-sm sm:text-base text-[#4e4e4e] max-w-2xl mx-auto leading-relaxed">
+      Tài liệu đặc tả toàn diện cho lập trình viên. Tích hợp công nghệ tổng hợp giọng nói tiếng Việt chuẩn phòng thu 48kHz, nhân bản giọng đọc và kiểm soát cảm xúc vào ứng dụng của bạn.
+    </p>
+  </div>
+
+  <!-- Gateway Quick Status Card -->
+  <div class="card-editorial p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-white via-[#fafafa] to-white">
+    <div class="flex items-center space-x-3.5">
+      <div class="w-10 h-10 rounded-2xl bg-[#292524] text-white flex items-center justify-center shadow-sm">
+        <span class="material-symbols-rounded text-xl">dns</span>
+      </div>
+      <div>
+        <div class="text-xs font-semibold text-[#777169] uppercase tracking-wider">Production API Base URL</div>
+        <div class="font-mono text-sm text-[#0c0a09] font-medium mt-0.5 break-all select-all">
+          {{ gateway_url }}
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center space-x-2">
+      <button onclick="copyText('{{ gateway_url }}', 'Đã sao chép Base URL!')" class="px-3.5 py-1.5 rounded-full border border-[#e7e5e4] bg-white text-xs font-medium text-[#292524] hover:bg-[#f0efed] transition flex items-center space-x-1.5 shadow-sm">
+        <span class="material-symbols-rounded text-sm">content_copy</span>
+        <span>Sao chép Base URL</span>
+      </button>
+      <a href="/settings" class="px-3.5 py-1.5 rounded-full bg-[#292524] text-white text-xs font-medium hover:bg-[#0c0a09] transition flex items-center space-x-1.5 shadow-sm">
+        <span class="material-symbols-rounded text-sm">vpn_key</span>
+        <span>Lấy API Key Của Bạn</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Main Grid: Left TOC Sidebar + Right Content -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- Sticky TOC Sidebar (3 cols) -->
+    <div class="hidden lg:block lg:col-span-3 sticky top-24 space-y-4 text-xs">
+      <div class="card-editorial p-4 bg-white border border-[#e7e5e4] rounded-2xl space-y-3">
+        <div class="font-bold text-[#0c0a09] uppercase tracking-wider text-[11px] text-[#777169]">Mục Lục Tài Liệu</div>
+        <nav class="space-y-1 font-medium">
+          <a href="#section-auth" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">1. Xác Thực (Authentication)</a>
+          <a href="#section-speech" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">2. POST /v1/audio/speech</a>
+          <a href="#section-jobs" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">3. POST /v1/tts/jobs</a>
+          <a href="#section-job-status" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">4. GET /v1/tts/jobs/{id}</a>
+          <a href="#section-voices" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">5. GET /v1/voices</a>
+          <a href="#section-clone" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">6. POST /v1/voices/clone</a>
+          <a href="#section-emotions" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">7. Thẻ Cảm Xúc (Emotion Tags)</a>
+          <a href="#section-errors" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">8. Mã Lỗi &amp; Xử Lý Lỗi</a>
+        </nav>
+      </div>
+
+      <div class="card-editorial p-4 bg-white border border-[#e7e5e4] rounded-2xl space-y-2 text-xs">
+        <div class="font-medium text-[#0c0a09] flex items-center space-x-1.5">
+          <span class="material-symbols-rounded text-sm text-indigo-600">bolt</span>
+          <span>Dành cho AI Agents</span>
+        </div>
+        <p class="text-[11px] text-[#777169] leading-relaxed">
+          Bạn muốn kết nối qua Model Context Protocol hoặc ChatGPT Actions?
+        </p>
+        <a href="/docs/mcp" class="inline-block text-xs font-semibold text-[#0c0a09] hover:underline pt-1">
+          Xem hướng dẫn MCP &rarr;
+        </a>
+      </div>
+    </div>
+
+    <!-- Main Content Body (9 cols) -->
+    <div class="lg:col-span-9 space-y-12">
+
+      <!-- SECTION 1: AUTHENTICATION -->
+      <section id="section-auth" class="card-editorial p-6 sm:p-8 space-y-5 scroll-mt-24">
+        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-[#777169]">
+          <span class="material-symbols-rounded text-base text-[#292524]">lock</span>
+          <span>1. Xác Thực (Authentication)</span>
+        </div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">Cơ Chế Xác Thực Bằng API Key</h2>
+        <p class="text-xs sm:text-sm text-[#4e4e4e] leading-relaxed">
+          Mọi yêu cầu gọi đến OlokaTTS API phải được xác thực thông qua HTTP Header <code class="font-mono bg-[#f0efed] px-1.5 py-0.5 rounded text-[#0c0a09]">Authorization</code> với định dạng Bearer Token.
+        </p>
+
+        <div class="p-3.5 rounded-xl bg-[#fafafa] border border-[#e7e5e4] font-mono text-xs select-all text-[#0c0a09]">
+          Authorization: Bearer oloka_live_9f8a3c4b1e2d0a8b7c6d5e4f3a2b1c0d
+        </div>
+
+        <div class="text-xs text-[#777169] space-y-2">
+          <p>&bull; Bạn có thể tạo và quản lý nhiều API Key tại trang <a href="/settings" class="text-[#0c0a09] underline font-medium">Cài Đặt &gt; Developer API Keys</a>.</p>
+          <p>&bull; Khóa bí mật có tiền tố <code class="font-mono text-[#0c0a09]">oloka_live_</code> và chỉ được hiển thị 1 lần duy nhất khi vừa tạo.</p>
+        </div>
+      </section>
+
+      <!-- SECTION 2: POST /v1/audio/speech (OPENAI DROP-IN) -->
+      <section id="section-speech" class="card-editorial p-6 sm:p-8 space-y-6 scroll-mt-24">
+        <div class="flex items-center justify-between border-b border-[#f0efed] pb-4">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#292524] text-white">POST</span>
+              <span class="font-mono text-sm sm:text-base font-semibold text-[#0c0a09]">/v1/audio/speech</span>
+            </div>
+            <p class="text-xs text-[#777169]">Tạo file âm thanh đồng bộ tương thích 100% chuẩn OpenAI TTS</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">48kHz Audio Stream</span>
+        </div>
+
+        <!-- Parameters Table -->
+        <div class="space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wider text-[#777169]">Request Body (JSON)</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border border-[#e7e5e4] rounded-xl overflow-hidden">
+              <thead class="bg-[#f0efed] text-[#0c0a09] font-medium">
+                <tr>
+                  <th class="p-3">Thuộc tính</th>
+                  <th class="p-3">Kiểu</th>
+                  <th class="p-3">Bắt buộc</th>
+                  <th class="p-3">Mặc định</th>
+                  <th class="p-3">Mô tả</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[#e7e5e4] text-[#4e4e4e]">
+                <tr>
+                  <td class="p-3 font-mono font-semibold text-[#0c0a09]">input</td>
+                  <td class="p-3 font-mono">string</td>
+                  <td class="p-3 text-rose-600 font-semibold">Có</td>
+                  <td class="p-3 text-[#777169]">-</td>
+                  <td class="p-3">Nội dung văn bản tiếng Việt cần đọc. Hỗ trợ emotion tags như [cười], [thở dài], [0.5s].</td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-mono font-semibold text-[#0c0a09]">voice</td>
+                  <td class="p-3 font-mono">string</td>
+                  <td class="p-3 text-[#777169]">Không</td>
+                  <td class="p-3 font-mono text-[#0c0a09]">"Hải Đăng"</td>
+                  <td class="p-3">Tên giọng đọc (ví dụ: Hải Đăng, Mai Anh, Anh Khôi, Trúc Ly, Quang Sơn, Adam bựa).</td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-mono font-semibold text-[#0c0a09]">speed</td>
+                  <td class="p-3 font-mono">float</td>
+                  <td class="p-3 text-[#777169]">Không</td>
+                  <td class="p-3 font-mono text-[#0c0a09]">1.0</td>
+                  <td class="p-3">Tốc độ phát âm thanh (từ 0.5x đến 2.0x).</td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-mono font-semibold text-[#0c0a09]">model</td>
+                  <td class="p-3 font-mono">string</td>
+                  <td class="p-3 text-[#777169]">Không</td>
+                  <td class="p-3 font-mono text-[#0c0a09]">"olokatts-v3-turbo"</td>
+                  <td class="p-3">Tên mô hình neural (VieNeu v3 48kHz).</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Code Samples -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-[#777169]">Code Mẫu Tích Hợp:</span>
+            <div class="flex space-x-1">
+              <button onclick="switchCodeSnippet('speech', 'py-openai')" id="btn-speech-py-openai" class="code-tab-btn active px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#292524] text-white">Python (openai)</button>
+              <button onclick="switchCodeSnippet('speech', 'py-req')" id="btn-speech-py-req" class="code-tab-btn px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#f0efed] text-[#777169]">Python (requests)</button>
+              <button onclick="switchCodeSnippet('speech', 'js')" id="btn-speech-js" class="code-tab-btn px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#f0efed] text-[#777169]">Node.js / Fetch</button>
+              <button onclick="switchCodeSnippet('speech', 'curl')" id="btn-speech-curl" class="code-tab-btn px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#f0efed] text-[#777169]">cURL</button>
+            </div>
+          </div>
+
+          <!-- Python OpenAI snippet -->
+          <div id="snippet-speech-py-openai" class="code-block relative">
+            <pre class="p-4 rounded-2xl bg-[#0c0a09] text-sky-400 font-mono text-xs overflow-x-auto leading-relaxed">from openai import OpenAI
+
+# Khởi tạo OpenAI Client trỏ về OlokaTTS Base URL
+client = OpenAI(
+    base_url="{{ gateway_url }}/v1",
+    api_key="oloka_live_your_api_key_here"  # Điền API Key của bạn
+)
+
+# Gọi hàm tạo âm thanh tiếng Việt 48kHz
+response = client.audio.speech.create(
+    model="olokatts-v3-turbo",
+    voice="Hải Đăng",
+    input="Chào bạn! [cười] Tôi là giọng đọc trí tuệ nhân tạo OlokaTTS 48kHz.",
+    speed=1.0
+)
+
+# Lưu trực tiếp ra file âm thanh WAV Studio
+response.stream_to_file("output.wav")
+print("Đã tạo file output.wav thành công!")</pre>
+            <button onclick="copyPreText('snippet-speech-py-openai', 'Đã sao chép Code Python!')" class="absolute top-3 right-3 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition text-xs flex items-center space-x-1">
+              <span class="material-symbols-rounded text-xs">content_copy</span>
+              <span>Copy</span>
+            </button>
+          </div>
+
+          <!-- Python Requests snippet -->
+          <div id="snippet-speech-py-req" class="code-block hidden relative">
+            <pre class="p-4 rounded-2xl bg-[#0c0a09] text-emerald-400 font-mono text-xs overflow-x-auto leading-relaxed">import requests
+
+url = "{{ gateway_url }}/v1/audio/speech"
+headers = {
+    "Authorization": "Bearer oloka_live_your_api_key_here",
+    "Content-Type": "application/json"
+}
+payload = {
+    "model": "olokatts-v3-turbo",
+    "voice": "Mai Anh",
+    "input": "Hôm nay thời tiết Hà Nội trời nắng ráo [0.5s], nhiệt độ dao động 25 độ C.",
+    "speed": 1.0
+}
+
+response = requests.post(url, json=payload, headers=headers)
+if response.status_code == 200:
+    with open("thoi_tiet.wav", "wb") as f:
+        f.write(response.content)
+    print("Đã lưu thoi_tiet.wav!")</pre>
+            <button onclick="copyPreText('snippet-speech-py-req', 'Đã sao chép Code!')" class="absolute top-3 right-3 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition text-xs flex items-center space-x-1">
+              <span class="material-symbols-rounded text-xs">content_copy</span>
+              <span>Copy</span>
+            </button>
+          </div>
+
+          <!-- Node.js / Fetch snippet -->
+          <div id="snippet-speech-js" class="code-block hidden relative">
+            <pre class="p-4 rounded-2xl bg-[#0c0a09] text-amber-300 font-mono text-xs overflow-x-auto leading-relaxed">import fs from 'fs';
+
+async function generateSpeech() {
+  const response = await fetch("{{ gateway_url }}/v1/audio/speech", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer oloka_live_your_api_key_here",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      input: "Xin chào! Đây là âm thanh tạo từ Node.js với chất lượng 48kHz.",
+      voice: "Hải Đăng",
+      speed: 1.0
+    })
+  });
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  fs.writeFileSync("output_speech.wav", buffer);
+  console.log("Đã lưu file output_speech.wav!");
+}
+
+generateSpeech();</pre>
+            <button onclick="copyPreText('snippet-speech-js', 'Đã sao chép Code Node.js!')" class="absolute top-3 right-3 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition text-xs flex items-center space-x-1">
+              <span class="material-symbols-rounded text-xs">content_copy</span>
+              <span>Copy</span>
+            </button>
+          </div>
+
+          <!-- cURL snippet -->
+          <div id="snippet-speech-curl" class="code-block hidden relative">
+            <pre class="p-4 rounded-2xl bg-[#0c0a09] text-purple-300 font-mono text-xs overflow-x-auto leading-relaxed">curl -X POST "{{ gateway_url }}/v1/audio/speech" \
+  -H "Authorization: Bearer oloka_live_your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "olokatts-v3-turbo",
+    "voice": "Quang Sơn",
+    "input": "Chào các bạn miền Trung thương yêu! [cười]",
+    "speed": 1.0
+  }' \
+  --output "quang_son.wav"</pre>
+            <button onclick="copyPreText('snippet-speech-curl', 'Đã sao chép cURL!')" class="absolute top-3 right-3 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition text-xs flex items-center space-x-1">
+              <span class="material-symbols-rounded text-xs">content_copy</span>
+              <span>Copy</span>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- SECTION 3: POST /v1/tts/jobs (ASYNC JOB QUEUE) -->
+      <section id="section-jobs" class="card-editorial p-6 sm:p-8 space-y-6 scroll-mt-24">
+        <div class="flex items-center justify-between border-b border-[#f0efed] pb-4">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#292524] text-white">POST</span>
+              <span class="font-mono text-sm sm:text-base font-semibold text-[#0c0a09]">/v1/tts/jobs</span>
+            </div>
+            <p class="text-xs text-[#777169]">Tạo tác vụ hàng đợi bất đồng bộ (Dành cho văn bản dài, sách nói, podcast)</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">Async Job Queue</span>
+        </div>
+
+        <p class="text-xs sm:text-sm text-[#4e4e4e] leading-relaxed">
+          Endpoint này lập tức trả về mã <code class="font-mono bg-[#f0efed] px-1 py-0.5 rounded text-[#0c0a09]">job_id</code> và phân phối việc xử lý song song trên hạ tầng GPU Kaggle Dual Tesla T4 (hoặc Local CPU). Ứng dụng của bạn có thể thăm dò (poll) trạng thái cho đến khi hoàn thành.
+        </p>
+
+        <!-- Parameters Table -->
+        <div class="space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wider text-[#777169]">Request Body (JSON)</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border border-[#e7e5e4] rounded-xl overflow-hidden">
+              <thead class="bg-[#f0efed] text-[#0c0a09] font-medium">
+                <tr>
+                  <th class="p-3">Thuộc tính</th>
+                  <th class="p-3">Kiểu</th>
+                  <th class="p-3">Bắt buộc</th>
+                  <th class="p-3">Mặc định</th>
+                  <th class="p-3">Mô tả</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[#e7e5e4] text-[#4e4e4e]">
+                <tr>
+                  <td class="p-3 font-mono font-semibold text-[#0c0a09]">prompt</td>
+                  <td class="p-3 font-mono">string</td>
+                  <td class="p-3 text-rose-600 font-semibold">Có</td>
+                  <td class="p-3 text-[#777169]">-</td>
+                  <td class="p-3">Đoạn văn bản cần đọc (không giới hạn độ dài câu).</td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-mono font-semibold text-[#0c0a09]">voice_id</td>
+                  <td class="p-3 font-mono">string</td>
+                  <td class="p-3 text-[#777169]">Không</td>
+                  <td class="p-3 font-mono text-[#0c0a09]">"Hải Đăng"</td>
+                  <td class="p-3">Tên giọng đọc preset.</td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-mono font-semibold text-[#0c0a09]">voice_type</td>
+                  <td class="p-3 font-mono">string</td>
+                  <td class="p-3 text-[#777169]">Không</td>
+                  <td class="p-3 font-mono text-[#0c0a09]">"preset"</td>
+                  <td class="p-3">"preset" hoặc "clone" (nếu clone, truyền ref_sample_id).</td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-mono font-semibold text-[#0c0a09]">temperature</td>
+                  <td class="p-3 font-mono">float</td>
+                  <td class="p-3 text-[#777169]">Không</td>
+                  <td class="p-3 font-mono text-[#0c0a09]">0.7</td>
+                  <td class="p-3">Độ biến thiên cảm xúc &amp; prosody (0.1 đến 1.5).</td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-mono font-semibold text-[#0c0a09]">silence_p</td>
+                  <td class="p-3 font-mono">float</td>
+                  <td class="p-3 text-[#777169]">Không</td>
+                  <td class="p-3 font-mono text-[#0c0a09]">0.15</td>
+                  <td class="p-3">Độ dài khoảng lặng giữa các câu.</td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-mono font-semibold text-[#0c0a09]">force_local</td>
+                  <td class="p-3 font-mono">boolean</td>
+                  <td class="p-3 text-[#777169]">Không</td>
+                  <td class="p-3 font-mono text-[#0c0a09]">false</td>
+                  <td class="p-3">Bắt buộc xử lý trên Local CPU ONNX thay vì chờ GPU Kaggle.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sample Response -->
+        <div class="space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wider text-[#777169]">Response (200 OK)</div>
+          <pre class="p-4 rounded-2xl bg-[#0c0a09] text-sky-400 font-mono text-xs overflow-x-auto leading-relaxed">{
+  "id": "job_3891239732d7",
+  "prompt": "Trời Hà Nội mùa này đẹp lắm...",
+  "voice_type": "preset",
+  "voice_id": "Hải Đăng",
+  "status": "queued",
+  "sample_rate": 48000,
+  "audio_url": null,
+  "duration": null,
+  "created_at": "2026-10-07T10:15:30.123456"
+}</pre>
+        </div>
+      </section>
+
+      <!-- SECTION 4: GET /v1/tts/jobs/{id} -->
+      <section id="section-job-status" class="card-editorial p-6 sm:p-8 space-y-6 scroll-mt-24">
+        <div class="flex items-center justify-between border-b border-[#f0efed] pb-4">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#f0efed] text-[#292524] border border-[#e7e5e4]">GET</span>
+              <span class="font-mono text-sm sm:text-base font-semibold text-[#0c0a09]">/v1/tts/jobs/{job_id}</span>
+            </div>
+            <p class="text-xs text-[#777169]">Tra cứu trạng thái và nhận đường dẫn tải file âm thanh hoàn tất</p>
+          </div>
+        </div>
+
+        <p class="text-xs sm:text-sm text-[#4e4e4e] leading-relaxed">
+          Trường <code class="font-mono bg-[#f0efed] px-1 py-0.5 rounded text-[#0c0a09]">status</code> sẽ lần lượt chuyển qua các giai đoạn:
+          <strong class="text-[#0c0a09]">queued</strong> &rarr; 
+          <strong class="text-[#0c0a09]">booting_kaggle</strong> (nếu worker GPU đang khởi động) &rarr; 
+          <strong class="text-[#0c0a09]">processing</strong> &rarr; 
+          <strong class="text-[#16a34a]">completed</strong>.
+        </p>
+
+        <!-- Completed Response -->
+        <div class="space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wider text-[#777169]">Response Khi Hoàn Tất (200 OK)</div>
+          <pre class="p-4 rounded-2xl bg-[#0c0a09] text-emerald-400 font-mono text-xs overflow-x-auto leading-relaxed">{
+  "id": "job_3891239732d7",
+  "status": "completed",
+  "audio_url": "{{ gateway_url }}/audio_files/tts_job_3891239732d7.wav",
+  "duration": 8.45,
+  "sample_rate": 48000,
+  "worker_id": "kaggle_t4_gpu0_f7a1",
+  "execution_time": 1.42
+}</pre>
+        </div>
+      </section>
+
+      <!-- SECTION 5: GET /v1/voices -->
+      <section id="section-voices" class="card-editorial p-6 sm:p-8 space-y-6 scroll-mt-24">
+        <div class="flex items-center justify-between border-b border-[#f0efed] pb-4">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#f0efed] text-[#292524] border border-[#e7e5e4]">GET</span>
+              <span class="font-mono text-sm sm:text-base font-semibold text-[#0c0a09]">/v1/voices</span>
+            </div>
+            <p class="text-xs text-[#777169]">Lấy danh sách 25 giọng đọc tuyển chọn 3 miền Bắc – Trung – Nam</p>
+          </div>
+        </div>
+
+        <p class="text-xs sm:text-sm text-[#4e4e4e] leading-relaxed">
+          Hỗ trợ lọc theo tham số Query: <code class="font-mono bg-[#f0efed] px-1 py-0.5 rounded text-[#0c0a09]">?region=Nam</code> hoặc <code class="font-mono bg-[#f0efed] px-1 py-0.5 rounded text-[#0c0a09]">?gender=Nữ</code>.
+        </p>
+
+        <pre class="p-4 rounded-2xl bg-[#0c0a09] text-sky-400 font-mono text-xs overflow-x-auto leading-relaxed">[
+  {
+    "id": "vp_haidang",
+    "name": "Hải Đăng",
+    "gender": "Nam",
+    "region": "Nam",
+    "description": "Trẻ trung, hiện đại, phong cách tự nhiên (Mặc định)",
+    "is_editors_pick": true,
+    "preview_audio_url": "{{ gateway_url }}/static/previews/haidang.mp3"
+  },
+  {
+    "id": "vp_maianh",
+    "name": "Mai Anh",
+    "gender": "Nữ",
+    "region": "Bắc",
+    "description": "Dịu dàng, chuẩn phát thanh, phong cách tin tức",
+    "is_editors_pick": true
+  }
+]</pre>
+      </section>
+
+      <!-- SECTION 6: POST /v1/voices/clone (VOICE CLONING) -->
+      <section id="section-clone" class="card-editorial p-6 sm:p-8 space-y-6 scroll-mt-24">
+        <div class="flex items-center justify-between border-b border-[#f0efed] pb-4">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#292524] text-white">POST</span>
+              <span class="font-mono text-sm sm:text-base font-semibold text-[#0c0a09]">/v1/voices/clone</span>
+            </div>
+            <p class="text-xs text-[#777169]">Tải lên mẫu giọng 3–8 giây để nhân bản giọng đọc tức thì (Instant Voice Cloning)</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 shrink-0">Multipart Form</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border border-[#e7e5e4] rounded-xl overflow-hidden">
+            <thead class="bg-[#f0efed] text-[#0c0a09] font-medium">
+              <tr>
+                <th class="p-3">Field Form</th>
+                <th class="p-3">Kiểu</th>
+                <th class="p-3">Mô tả</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#e7e5e4] text-[#4e4e4e]">
+              <tr>
+                <td class="p-3 font-mono font-semibold text-[#0c0a09]">name</td>
+                <td class="p-3 font-mono">string</td>
+                <td class="p-3">Tên gợi nhớ của mẫu giọng clone (ví dụ: "Giọng Sếp", "Kendy").</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-mono font-semibold text-[#0c0a09]">file</td>
+                <td class="p-3 font-mono">binary file</td>
+                <td class="p-3">File âm thanh .wav hoặc .mp3 độ dài từ 3 đến 8 giây.</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-mono font-semibold text-[#0c0a09]">ref_text</td>
+                <td class="p-3 font-mono">string (tùy chọn)</td>
+                <td class="p-3">Văn bản tương ứng với câu nói trong file audio để tăng độ chuẩn xác.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 7: EMOTION TAGS -->
+      <section id="section-emotions" class="card-editorial p-6 sm:p-8 space-y-6 scroll-mt-24">
+        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-[#777169]">
+          <span class="material-symbols-rounded text-base text-[#292524]">theater_comedy</span>
+          <span>7. Thẻ Cảm Xúc (Emotion Tags)</span>
+        </div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">Diễn Xuất Biểu Cảm Tự Nhiên</h2>
+        <p class="text-xs sm:text-sm text-[#4e4e4e] leading-relaxed">
+          OlokaTTS hỗ trợ chèn trực tiếp các nhãn cảm xúc vào văn bản đầu vào. Mô hình neural sẽ tự động điều chỉnh ngữ điệu, hơi thở và sinh ra âm thanh chân thực tương ứng.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="p-4 rounded-xl bg-[#fafafa] border border-[#e7e5e4] space-y-1">
+            <div class="font-mono font-bold text-amber-700 text-sm">[cười]</div>
+            <p class="text-xs text-[#777169]">Tạo tiếng cười nhẹ hoặc ngữ điệu tươi vui, phấn khởi.</p>
+            <div class="font-mono text-[11px] text-[#0c0a09] bg-white p-2 rounded-lg border border-[#e7e5e4] mt-2">
+              "Thật tuyệt vời quá [cười], tôi không ngờ là làm được!"
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[#fafafa] border border-[#e7e5e4] space-y-1">
+            <div class="font-mono font-bold text-rose-700 text-sm">[thở dài]</div>
+            <p class="text-xs text-[#777169]">Thở dài, thể hiện tâm trạng buồn bã, bất lực hoặc sâu lắng.</p>
+            <div class="font-mono text-[11px] text-[#0c0a09] bg-white p-2 rounded-lg border border-[#e7e5e4] mt-2">
+              "Đã cố hết sức rồi [thở dài], nhưng mọi chuyện vẫn thế."
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[#fafafa] border border-[#e7e5e4] space-y-1">
+            <div class="font-mono font-bold text-indigo-700 text-sm">[thì thầm]</div>
+            <p class="text-xs text-[#777169]">Hạ thấp âm lượng, giọng nói thì thầm bí mật hoặc hồi hộp.</p>
+            <div class="font-mono text-[11px] text-[#0c0a09] bg-white p-2 rounded-lg border border-[#e7e5e4] mt-2">
+              "Đừng nói cho ai biết nhé [thì thầm], bí mật đấy!"
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[#fafafa] border border-[#e7e5e4] space-y-1">
+            <div class="font-mono font-bold text-emerald-700 text-sm">[0.5s] hoặc [1.0s]</div>
+            <p class="text-xs text-[#777169]">Tạo khoảng lặng ngắt nghỉ kịch tính giữa các ý.</p>
+            <div class="font-mono text-[11px] text-[#0c0a09] bg-white p-2 rounded-lg border border-[#e7e5e4] mt-2">
+              "Và người chiến thắng chính là... [1.0s] Nguyễn Văn A!"
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 8: ERROR HANDLING -->
+      <section id="section-errors" class="card-editorial p-6 sm:p-8 space-y-6 scroll-mt-24">
+        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-[#777169]">
+          <span class="material-symbols-rounded text-base text-[#292524]">error</span>
+          <span>8. Mã Lỗi &amp; Xử Lý Lỗi</span>
+        </div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">Bảng Mã Phản Hồi HTTP</h2>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border border-[#e7e5e4] rounded-xl overflow-hidden">
+            <thead class="bg-[#f0efed] text-[#0c0a09] font-medium">
+              <tr>
+                <th class="p-3">Mã HTTP</th>
+                <th class="p-3">Ý nghĩa</th>
+                <th class="p-3">Nguyên nhân &amp; Khắc phục</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#e7e5e4] text-[#4e4e4e]">
+              <tr>
+                <td class="p-3 font-mono font-bold text-emerald-600">200 OK</td>
+                <td class="p-3">Thành công</td>
+                <td class="p-3">Yêu cầu được xử lý trọn vẹn. Trả về binary WAV hoặc JSON kết quả.</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-mono font-bold text-amber-600">400 Bad Request</td>
+                <td class="p-3">Dữ liệu không hợp lệ</td>
+                <td class="p-3">Thiếu tham số bắt buộc `input` hoặc chưa cấu hình Kaggle API Key.</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-mono font-bold text-rose-600">401 Unauthorized</td>
+                <td class="p-3">Chưa xác thực</td>
+                <td class="p-3">API Key bị thiếu hoặc không chính xác. Kiểm tra lại header Authorization.</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-mono font-bold text-rose-600">403 Forbidden</td>
+                <td class="p-3">Bị từ chối quyền</td>
+                <td class="p-3">API Key đã bị thu hồi hoặc không có quyền gọi endpoint này.</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-mono font-bold text-purple-600">504 Gateway Timeout</td>
+                <td class="p-3">Quá thời gian chờ</td>
+                <td class="p-3">Worker Kaggle GPU bận hoặc đang khởi động lại kernel. Nên chuyển sang Async Job `/v1/tts/jobs`.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Copy Toast Notification -->
+<div id="copy-toast" class="fixed bottom-6 right-6 z-50 transform translate-y-12 opacity-0 transition-all duration-200 bg-[#292524] text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg flex items-center space-x-2 pointer-events-none">
+  <span class="material-symbols-rounded text-sm text-emerald-400">check_circle</span>
+  <span id="copy-toast-msg">Đã sao chép vào bộ nhớ tạm!</span>
+</div>
+
+<script>
+  function switchCodeSnippet(group, tab) {
+    const parent = document.getElementById(`section-${group}`);
+    if (!parent) return;
+
+    parent.querySelectorAll('.code-block').forEach(el => el.classList.add('hidden'));
+    parent.querySelectorAll('.code-tab-btn').forEach(btn => {
+      btn.classList.remove('bg-[#292524]', 'text-white');
+      btn.classList.add('bg-[#f0efed]', 'text-[#777169]');
+    });
+
+    const targetBlock = document.getElementById(`snippet-${group}-${tab}`);
+    if (targetBlock) targetBlock.classList.remove('hidden');
+
+    const targetBtn = document.getElementById(`btn-${group}-${tab}`);
+    if (targetBtn) {
+      targetBtn.classList.remove('bg-[#f0efed]', 'text-[#777169]');
+      targetBtn.classList.add('bg-[#292524]', 'text-white');
+    }
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('copy-toast');
+    const toastMsg = document.getElementById('copy-toast-msg');
+    toastMsg.textContent = msg;
+    toast.classList.remove('translate-y-12', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+    setTimeout(() => {
+      toast.classList.remove('translate-y-0', 'opacity-100');
+      toast.classList.add('translate-y-12', 'opacity-0');
+    }, 2200);
+  }
+
+  function copyText(text, msg) {
+    navigator.clipboard.writeText(text).then(() => showToast(msg));
+  }
+
+  function copyPreText(containerId, msg) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const pre = container.querySelector('pre');
+    if (pre) {
+      navigator.clipboard.writeText(pre.innerText || pre.textContent).then(() => showToast(msg));
+    }
+  }
+</script>
+{% endblock %}

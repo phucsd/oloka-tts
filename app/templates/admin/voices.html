@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+
+  <!-- Admin Subnav & Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#e7e5e4]">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+        <span class="material-symbols-rounded text-sm text-[#292524]">record_voice_over</span>
+        <span>Voice Catalog &amp; Cloning Governance</span>
+      </div>
+      <h1 class="font-serif text-3xl sm:text-4xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Quản Trị Thư Viện Giọng Đọc
+      </h1>
+      <p class="text-xs sm:text-sm text-[#777169] mt-1.5">Bật/tắt giọng đọc, tùy biến nhãn Nổi Bật (Editor's Pick), chỉnh sửa metadata và kiểm duyệt mẫu clone</p>
+    </div>
+
+    <!-- Admin Nav Tabs -->
+    <div class="flex items-center flex-wrap gap-2">
+      <a href="/admin/analytics" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">monitoring</span>
+        <span>Báo Cáo</span>
+      </a>
+      <a href="/admin/settings" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">settings</span>
+        <span>Cấu Hình</span>
+      </a>
+      <a href="/admin/jobs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">queue_music</span>
+        <span>Hàng Đợi &amp; Job</span>
+      </a>
+      <a href="/admin/voices" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white shadow-sm flex items-center space-x-1.5">
+        <span class="material-symbols-rounded text-sm">record_voice_over</span>
+        <span>Giọng Đọc</span>
+      </a>
+      <a href="/admin/users" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">group</span>
+        <span>Người Dùng</span>
+      </a>
+      <a href="/admin/logs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">warning</span>
+        <span>Logs</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Notification Banner -->
+  {% if msg %}
+  <div class="p-3.5 rounded-xl bg-white border border-[#16a34a]/30 text-[#16a34a] text-xs font-medium flex items-center space-x-2 shadow-sm">
+    <span class="material-symbols-rounded text-base">check_circle</span>
+    <span>
+      {% if msg == 'pick_updated' %}Đã cập nhật trạng thái Top Pick thành công!
+      {% elif msg == 'enable_updated' %}Đã cập nhật trạng thái Bật/Tắt giọng đọc thành công!
+      {% elif msg == 'metadata_updated' %}Đã cập nhật thông tin giọng đọc thành công!
+      {% elif msg == 'sample_deleted' %}Đã xóa mẫu clone thành công!
+      {% else %}{{ msg }}{% endif %}
+    </span>
+  </div>
+  {% endif %}
+
+  <!-- Section 1: Standard 25 Voice Presets -->
+  <div class="card-editorial bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden shadow-sm space-y-4">
+    <div class="p-5 border-b border-[#e7e5e4] flex items-center justify-between">
+      <div>
+        <h2 class="text-sm font-semibold text-[#0c0a09] flex items-center">
+          <span class="material-symbols-rounded text-base mr-2 text-[#292524]">graphic_eq</span>
+          Danh Sách 25 Giọng Chuẩn 48.000 Hz
+        </h2>
+        <p class="text-xs text-[#777169] mt-0.5">Bật/tắt hiển thị trong Studio hoặc thay đổi nhãn Nổi Bật</p>
+      </div>
+      <span class="text-xs font-mono text-[#777169]">{{ presets|length }} giọng</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-[#fafafa] text-[#777169] font-medium uppercase tracking-wider text-[11px] border-b border-[#e7e5e4]">
+          <tr>
+            <th class="p-4">Tên Giọng</th>
+            <th class="p-4">Vùng Miền &amp; Giới Tính</th>
+            <th class="p-4">Mô Tả Phong Cách</th>
+            <th class="p-4">Top Pick</th>
+            <th class="p-4">Trạng Thái</th>
+            <th class="p-4">Nghe Thử</th>
+            <th class="p-4 text-right">Chỉnh Sửa</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#f0efed]">
+          {% for p in presets %}
+          <tr class="hover:bg-[#fafafa] transition">
+            <td class="p-4 font-medium text-[#0c0a09]">
+              <div class="flex items-center space-x-2">
+                <span>{{ p.name }}</span>
+                {% if p.is_editors_pick %}
+                <span class="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-[#f0efed] text-[#292524] border border-[#d6d3d1]">
+                  <span class="material-symbols-rounded text-xs mr-0.5 text-[#292524]">star</span>Pick
+                </span>
+                {% endif %}
+              </div>
+              <div class="text-[10px] font-mono text-[#a8a29e] mt-0.5">{{ p.voice_id }}</div>
+            </td>
+            <td class="p-4">
+              <span class="font-medium text-[#292524]">Miền {{ p.region }}</span>
+              <span class="text-[#a8a29e] mx-1">•</span>
+              <span class="text-[#4e4e4e]">{{ p.gender }}</span>
+            </td>
+            <td class="p-4 max-w-xs text-[#777169] line-clamp-1 leading-relaxed" title="{{ p.description }}">
+              {{ p.description or '--' }}
+            </td>
+            <td class="p-4">
+              <form action="/admin/voices/{{ p.id }}/toggle-pick" method="POST">
+                <button type="submit" title="Bật/Tắt cờ Nổi Bật"
+                  class="px-2.5 py-1 rounded-full text-[11px] font-medium transition border {% if p.is_editors_pick %}bg-[#292524] text-white border-[#292524]{% else %}bg-white text-[#777169] border-[#e7e5e4] hover:bg-[#f0efed]{% endif %}">
+                  {{ 'Có' if p.is_editors_pick else 'Không' }}
+                </button>
+              </form>
+            </td>
+            <td class="p-4">
+              <form action="/admin/voices/{{ p.id }}/toggle-enable" method="POST">
+                <button type="submit" title="Bật/Tắt giọng đọc"
+                  class="px-2.5 py-1 rounded-full text-[11px] font-medium transition border {% if p.is_enabled %}bg-[#f0efed] text-[#16a34a] border-[#16a34a]/30{% else %}bg-rose-50 text-[#dc2626] border-[#dc2626]/30{% endif %}">
+                  {{ 'Hiển thị' if p.is_enabled else 'Đang ẩn' }}
+                </button>
+              </form>
+            </td>
+            <td class="p-4">
+              {% if p.preview_audio_url %}
+              <button type="button" onclick="playVoicePreview('{{ p.preview_audio_url }}', this)"
+                class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#292524] border border-[#e7e5e4] transition flex items-center space-x-1" title="Phát mẫu 48kHz">
+                <span class="material-symbols-rounded text-sm">volume_up</span>
+                <span class="text-[10px]">48kHz</span>
+              </button>
+              {% else %}
+              <span class="text-[#a8a29e] text-[11px]">--</span>
+              {% endif %}
+            </td>
+            <td class="p-4 text-right">
+              <button type="button" onclick="openEditVoiceModal('{{ p.id }}', '{{ p.name }}', '{{ p.region }}', `{{ p.description or '' }}`)"
+                class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#777169] hover:text-[#0c0a09] border border-[#e7e5e4] transition" title="Sửa thông tin">
+                <span class="material-symbols-rounded text-sm">edit</span>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section 2: User Voice Clone Samples -->
+  <div class="card-editorial bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden shadow-sm space-y-4">
+    <div class="p-5 border-b border-[#e7e5e4] flex items-center justify-between">
+      <div>
+        <h2 class="text-sm font-semibold text-[#0c0a09] flex items-center">
+          <span class="material-symbols-rounded text-base mr-2 text-[#292524]">fingerprint</span>
+          Các Mẫu Thu Âm Clone Của Người Dùng
+        </h2>
+        <p class="text-xs text-[#777169] mt-0.5">Kiểm duyệt các file mẫu âm thanh 3–8 giây do thành viên tải lên</p>
+      </div>
+      <span class="text-xs font-mono text-[#777169]">{{ clone_samples|length }} mẫu</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-[#fafafa] text-[#777169] font-medium uppercase tracking-wider text-[11px] border-b border-[#e7e5e4]">
+          <tr>
+            <th class="p-4">Tên Mẫu</th>
+            <th class="p-4">Thời Lượng</th>
+            <th class="p-4">Văn Bản Đối Chiếu</th>
+            <th class="p-4">Ngày Tải</th>
+            <th class="p-4">Nghe Thử</th>
+            <th class="p-4 text-right">Xóa</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#f0efed]">
+          {% for s in clone_samples %}
+          <tr class="hover:bg-[#fafafa] transition">
+            <td class="p-4 font-medium text-[#0c0a09]">{{ s.name }}</td>
+            <td class="p-4 font-mono text-[#4e4e4e]">{{ "%.1f"|format(s.duration) }}s</td>
+            <td class="p-4 text-[#777169] max-w-xs truncate">{{ s.ref_text or '--' }}</td>
+            <td class="p-4 text-[11px] text-[#777169]">{{ s.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td class="p-4">
+              <button type="button" onclick="playVoicePreview('/v1/voices/samples/{{ s.file_path|basename }}', this)"
+                class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#292524] border border-[#e7e5e4] transition">
+                <span class="material-symbols-rounded text-sm">volume_up</span>
+              </button>
+            </td>
+            <td class="p-4 text-right">
+              <form action="/admin/voices/samples/{{ s.id }}/delete" method="POST" onsubmit="return confirm('Xác nhận xóa mẫu clone này?')">
+                <button type="submit" class="p-1.5 rounded-lg text-xs bg-white hover:bg-rose-50 text-[#dc2626] border border-[#dc2626]/30 transition">
+                  <span class="material-symbols-rounded text-sm">delete</span>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="p-8 text-center text-[#777169]">Chưa có người dùng nào tạo mẫu clone.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Edit Voice Metadata Modal -->
+<div id="edit-voice-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0c0a09]/40 backdrop-blur-sm">
+  <div class="w-full max-w-md card-editorial bg-white border border-[#e7e5e4] rounded-2xl p-6 shadow-2xl space-y-4">
+    <div class="flex items-center justify-between border-b border-[#f0efed] pb-3">
+      <h3 class="font-serif text-lg font-light text-[#0c0a09]">Chỉnh Sửa Thông Tin Giọng</h3>
+      <button onclick="closeEditVoiceModal()" class="text-[#a8a29e] hover:text-[#0c0a09]">
+        <span class="material-symbols-rounded text-lg">close</span>
+      </button>
+    </div>
+
+    <form id="edit-voice-form" method="POST" class="space-y-3.5 text-xs">
+      <div>
+        <label class="block font-medium text-[#292524] mb-1">Tên Hiển Thị</label>
+        <input type="text" id="edit-voice-name" name="name" required
+          class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2.5 text-xs text-[#0c0a09] outline-none transition">
+      </div>
+
+      <div>
+        <label class="block font-medium text-[#292524] mb-1">Vùng Miền</label>
+        <select id="edit-voice-region" name="region"
+          class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-3.5 py-2.5 text-xs text-[#0c0a09] outline-none transition font-medium">
+          <option value="Bắc">Miền Bắc</option>
+          <option value="Trung">Miền Trung</option>
+          <option value="Nam">Miền Nam</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-medium text-[#292524] mb-1">Mô Tả Phong Cách</label>
+        <textarea id="edit-voice-desc" name="description" rows="3"
+          class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] p-3 text-xs text-[#0c0a09] outline-none transition"></textarea>
+      </div>
+
+      <div class="pt-2">
+        <button type="submit" class="w-full py-2.5 rounded-full bg-[#292524] hover:bg-[#0c0a09] text-white font-medium text-xs transition shadow-sm active:scale-[0.99]">
+          Cập Nhật Thông Tin
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  var currentPreviewAudio = null;
+  function playVoicePreview(url, btn) {
+    if (currentPreviewAudio) {
+      currentPreviewAudio.pause();
+      currentPreviewAudio = null;
+    }
+    const audio = new Audio(url);
+    currentPreviewAudio = audio;
+    audio.play();
+    const icon = btn.querySelector('.material-symbols-rounded');
+    icon.innerText = 'stop';
+    audio.onended = () => { icon.innerText = 'volume_up'; };
+  }
+
+  function openEditVoiceModal(voiceId, name, region, desc) {
+    document.getElementById('edit-voice-name').value = name;
+    document.getElementById('edit-voice-region').value = region;
+    document.getElementById('edit-voice-desc').value = desc;
+    document.getElementById('edit-voice-form').action = `/admin/voices/${voiceId}/update`;
+    document.getElementById('edit-voice-modal').classList.remove('hidden');
+  }
+
+  function closeEditVoiceModal() {
+    document.getElementById('edit-voice-modal').classList.add('hidden');
+  }
+</script>
+{% endblock %}

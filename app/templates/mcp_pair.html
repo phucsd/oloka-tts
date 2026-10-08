@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-[75vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-lg w-full card-editorial bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-[#e7e5e4] space-y-6">
+    
+    <!-- Top Header -->
+    <div class="text-center space-y-3">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#292524] text-white shadow-sm mb-1">
+        <span class="material-symbols-rounded text-3xl">smart_toy</span>
+      </div>
+      <h1 class="font-serif text-3xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Liên Kết Phiên AI Agent
+      </h1>
+      <p class="text-xs sm:text-sm text-[#777169]">
+        Xác thực và cấp quyền sử dụng giọng đọc 48kHz OlokaTTS cho phiên ChatGPT / MCP Client
+      </p>
+    </div>
+
+    <!-- Error state -->
+    {% if error %}
+    <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start space-x-3">
+      <span class="material-symbols-rounded text-lg shrink-0 mt-0.5">error</span>
+      <div>
+        <div class="font-semibold">Không thể liên kết</div>
+        <div class="text-[11px] mt-0.5">{{ error }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Success state -->
+    {% if success %}
+    <div class="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs space-y-2 text-center">
+      <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-2">
+        <span class="material-symbols-rounded text-2xl">check_circle</span>
+      </div>
+      <div class="font-semibold text-sm">Đã Cấp Quyền Thành Công!</div>
+      <p class="text-[12px] text-emerald-700 leading-relaxed">
+        Phiên ChatGPT <strong class="font-mono bg-emerald-100 px-1.5 py-0.5 rounded">{{ code }}</strong> đã được liên kết với tài khoản <strong class="text-emerald-950">{{ user.username }}</strong>.
+      </p>
+      <div class="pt-2 text-[11px] text-emerald-600">
+        👉 Bạn có thể quay lại cuộc trò chuyện ChatGPT ngay bây giờ và tiếp tục sử dụng.
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Pending / Approval state -->
+    {% if not success and not error and session %}
+    <div class="p-5 rounded-2xl bg-[#fafafa] border border-[#e7e5e4] space-y-4 text-xs">
+      
+      <!-- Pair Code Highlight -->
+      <div class="flex items-center justify-between pb-3 border-b border-[#f0efed]">
+        <span class="text-[#777169] font-medium">Mã ghép đôi phiên:</span>
+        <span class="font-mono text-base font-bold text-[#0c0a09] bg-white px-3 py-1 rounded-xl border border-[#e7e5e4] shadow-2xs">
+          {{ session.code }}
+        </span>
+      </div>
+
+      <!-- Client Name -->
+      <div class="flex items-center justify-between pb-3 border-b border-[#f0efed]">
+        <span class="text-[#777169] font-medium">Ứng dụng yêu cầu:</span>
+        <span class="font-medium text-[#0c0a09] flex items-center gap-1.5">
+          <span class="material-symbols-rounded text-base text-[#16a34a]">verified</span>
+          <span>{{ session.client_name }}</span>
+        </span>
+      </div>
+
+      <!-- Bound Account Info -->
+      <div class="flex items-center justify-between">
+        <span class="text-[#777169] font-medium">Tài khoản cấp quyền:</span>
+        <div class="text-right">
+          <div class="font-semibold text-[#0c0a09]">{{ user.username }}</div>
+          <div class="text-[11px] text-[#777169]">{{ user.email }}</div>
+        </div>
+      </div>
+
+      <!-- Role & Quota Badge -->
+      <div class="p-3 rounded-xl bg-white border border-[#e7e5e4] text-[11px] text-[#777169] flex items-center justify-between">
+        <span>Quyền hạn &amp; Quota:</span>
+        {% if user.role == 'admin' %}
+        <span class="font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+          Quản Trị Viên (Full Master GPU)
+        </span>
+        {% elif user.kaggle_username %}
+        <span class="font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+          Kaggle Cá Nhân (BYOK)
+        </span>
+        {% else %}
+        <span class="font-medium text-stone-700 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200">
+          Người Dùng Tiêu Chuẩn
+        </span>
+        {% endif %}
+      </div>
+
+    </div>
+
+    <!-- Action Form -->
+    <form action="/mcp/pair/approve" method="POST" class="space-y-3 pt-2" data-spa="false">
+      <input type="hidden" name="code" value="{{ session.code }}">
+
+      <button type="submit"
+        class="w-full py-3.5 px-6 rounded-full font-medium text-white bg-[#292524] hover:bg-[#0c0a09] shadow-sm transition active:scale-[0.99] text-sm flex items-center justify-center space-x-2">
+        <span class="material-symbols-rounded text-lg">check</span>
+        <span>Xác Nhận &amp; Cấp Quyền Cho ChatGPT</span>
+      </button>
+
+      <a href="/"
+        class="w-full py-2.5 px-4 rounded-full font-medium text-[#777169] hover:text-[#0c0a09] text-xs transition flex items-center justify-center">
+        Từ chối / Quay về Trang chủ
+      </a>
+    </form>
+    {% endif %}
+
+    <!-- Manual Code Input if no code in URL -->
+    {% if not session and not error and not success %}
+    <form action="/mcp/pair" method="GET" class="space-y-4 text-xs" data-spa="false">
+      <div>
+        <label for="code" class="block font-medium text-[#292524] mb-1.5">
+          Nhập mã ghép đôi (Hiển thị trên ChatGPT):
+        </label>
+        <input type="text" id="code" name="code" required placeholder="OLK-XXXXXX"
+          class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] px-4 py-3 text-sm font-mono text-center uppercase text-[#0c0a09] tracking-wider outline-none transition">
+      </div>
+
+      <button type="submit"
+        class="w-full py-3.5 px-4 rounded-full font-medium text-white bg-[#292524] hover:bg-[#0c0a09] shadow-sm transition active:scale-[0.99] text-sm">
+        Kiểm Tra &amp; Cấp Quyền
+      </button>
+    </form>
+    {% endif %}
+
+    <!-- Footer Note -->
+    <div class="pt-4 border-t border-[#f0efed] text-center text-[11px] text-[#a8a29e]">
+      Phiên kết nối được mã hóa an toàn và chỉ có hiệu lực cho tài khoản của bạn.
+    </div>
+
+  </div>
+</div>
+{% endblock %}

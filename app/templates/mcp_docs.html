@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="w-full space-y-10 py-2">
+
+  <!-- Header Section (ElevenLabs Editorial) -->
+  <div class="text-center max-w-3xl mx-auto space-y-3">
+    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-xs font-semibold uppercase tracking-wider text-[#777169]">
+      <span class="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse"></span>
+      <span>Model Context Protocol &bull; OpenAPI &bull; REST</span>
+    </div>
+    <h1 class="font-serif text-3xl sm:text-5xl font-light text-[#0c0a09] tracking-tight leading-tight">
+      Kết Nối OlokaTTS Với AI Agents
+    </h1>
+    <p class="text-sm sm:text-base text-[#4e4e4e] max-w-2xl mx-auto leading-relaxed">
+      Tích hợp engine tạo giọng nói tiếng Việt chuẩn phòng thu 48kHz trực tiếp vào 
+      <strong class="text-[#0c0a09]">ChatGPT</strong>, 
+      <strong class="text-[#0c0a09]">Claude Desktop</strong>, 
+      <strong class="text-[#0c0a09]">Cursor</strong>, 
+      <strong class="text-[#0c0a09]">Antigravity</strong> và bất kỳ ứng dụng nào của bạn.
+    </p>
+  </div>
+
+  <!-- Gateway Live Status Bar -->
+  <div class="card-editorial p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-white via-[#fafafa] to-white">
+    <div class="flex items-center space-x-3.5">
+      <div class="w-10 h-10 rounded-2xl bg-[#292524] text-white flex items-center justify-center shadow-sm">
+        <span class="material-symbols-rounded text-xl">hub</span>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="text-xs font-semibold text-[#777169] uppercase tracking-wider">Gateway Public URL</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Online</span>
+        </div>
+        <div class="font-mono text-sm text-[#0c0a09] font-medium mt-0.5 break-all">
+          {{ gateway_url }}
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center space-x-2 shrink-0">
+      <button onclick="copyText('{{ gateway_url }}', 'Đã sao chép Gateway URL!')" class="px-3.5 py-1.5 rounded-full border border-[#e7e5e4] bg-white text-xs font-medium text-[#292524] hover:bg-[#f0efed] transition flex items-center space-x-1.5 shadow-sm">
+        <span class="material-symbols-rounded text-sm">content_copy</span>
+        <span>Sao chép URL</span>
+      </button>
+      <a href="/openapi.json" target="_blank" class="px-3.5 py-1.5 rounded-full bg-[#292524] text-white text-xs font-medium hover:bg-[#0c0a09] transition flex items-center space-x-1.5 shadow-sm">
+        <span class="material-symbols-rounded text-sm">code</span>
+        <span>Xem openapi.json</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="flex items-center justify-center space-x-2 border-b border-[#e7e5e4] pb-4 overflow-x-auto no-scrollbar">
+    <button onclick="switchTab('tab-chatgpt')" id="btn-tab-chatgpt" class="doc-tab-btn active px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition flex items-center space-x-2 shrink-0 bg-[#292524] text-white shadow-sm">
+      <span class="material-symbols-rounded text-base">smart_toy</span>
+      <span>1. ChatGPT (Custom GPT)</span>
+    </button>
+    <button onclick="switchTab('tab-claude')" id="btn-tab-claude" class="doc-tab-btn px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition flex items-center space-x-2 shrink-0 bg-transparent text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/50">
+      <span class="material-symbols-rounded text-base">terminal</span>
+      <span>2. Claude Desktop &amp; Cursor (MCP)</span>
+    </button>
+    <button onclick="switchTab('tab-openai')" id="btn-tab-openai" class="doc-tab-btn px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition flex items-center space-x-2 shrink-0 bg-transparent text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/50">
+      <span class="material-symbols-rounded text-base">api</span>
+      <span>3. OpenAI SDK / REST API</span>
+    </button>
+    <button onclick="switchTab('tab-tools')" id="btn-tab-tools" class="doc-tab-btn px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition flex items-center space-x-2 shrink-0 bg-transparent text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/50">
+      <span class="material-symbols-rounded text-base">list_alt</span>
+      <span>4. Danh Sách Tools &amp; Tag Cảm Xúc</span>
+    </button>
+  </div>
+
+  <!-- TAB 1: CHATGPT WEB (CUSTOM GPT) -->
+  <div id="tab-chatgpt" class="doc-tab-content space-y-8">
+    <div class="card-editorial p-6 sm:p-8 space-y-6">
+      <div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">Tích Hợp Vào ChatGPT (Custom GPT Actions)</h2>
+        <p class="text-sm text-[#777169] mt-1">
+          ChatGPT kết nối với OlokaTTS thông qua giao thức tiêu chuẩn <strong class="text-[#0c0a09]">OpenAPI Actions</strong>. Sau khi kết nối, bạn chỉ cần chat với GPT là bot có thể tự sinh giọng nói ngay trong cửa sổ chat!
+        </p>
+      </div>
+
+      <!-- Step by step visual instructions -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-4 rounded-2xl bg-[#fafafa] border border-[#e7e5e4] space-y-2">
+          <div class="w-7 h-7 rounded-full bg-[#292524] text-white flex items-center justify-center text-xs font-semibold">1</div>
+          <h3 class="text-xs font-bold text-[#0c0a09] uppercase tracking-wider">Tạo GPT &amp; Mở Cấu Hình</h3>
+          <p class="text-xs text-[#4e4e4e] leading-relaxed">
+            Vào <strong>Explore GPTs &gt; Create a GPT</strong>, chuyển sang tab <strong>Cấu hình (Configure)</strong>.
+          </p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#fafafa] border border-[#e7e5e4] space-y-2">
+          <div class="w-7 h-7 rounded-full bg-[#292524] text-white flex items-center justify-center text-xs font-semibold">2</div>
+          <h3 class="text-xs font-bold text-[#0c0a09] uppercase tracking-wider">Cuộn Xuống "Hành Động"</h3>
+          <p class="text-xs text-[#4e4e4e] leading-relaxed">
+            Lăn chuột xuống dưới cùng của cột bên trái (dưới mục <em>Tính năng</em>), bấm nút <strong>Tạo hành động mới</strong> (Create new action).
+          </p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#fafafa] border border-[#e7e5e4] space-y-2">
+          <div class="w-7 h-7 rounded-full bg-[#292524] text-white flex items-center justify-center text-xs font-semibold">3</div>
+          <h3 class="text-xs font-bold text-[#0c0a09] uppercase tracking-wider">Nhập URL OpenAPI Hoặc Dán Schema</h3>
+          <p class="text-xs text-[#4e4e4e] leading-relaxed">
+            Bấm nút <strong>Nhập từ URL</strong> rồi dán link OpenAPI, hoặc dán đoạn mã Schema có sẵn bên dưới.
+          </p>
+        </div>
+      </div>
+
+      <!-- Option A: Import via URL -->
+      <div class="p-5 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-3">
+        <div class="flex items-center space-x-2 text-amber-900 font-medium text-sm">
+          <span class="material-symbols-rounded text-lg">bolt</span>
+          <span>Cách Nhanh Nhất: Bấm "Nhập từ URL" (Import from URL)</span>
+        </div>
+        <div class="flex flex-col sm:flex-row items-center gap-2">
+          <input type="text" readonly value="{{ gateway_url }}/openapi.json" id="chatgpt-openapi-url" class="w-full font-mono text-xs p-2.5 rounded-xl border border-amber-300 bg-white text-[#0c0a09]">
+          <button onclick="copyInput('chatgpt-openapi-url', 'Đã sao chép link OpenAPI URL!')" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-amber-900 text-white text-xs font-medium shrink-0 hover:bg-amber-950 transition flex items-center justify-center space-x-1.5 shadow-sm">
+            <span class="material-symbols-rounded text-sm">content_copy</span>
+            <span>Sao chép Link</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Option B: Raw YAML Schema -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-[#777169]">Hoặc Dán Đoạn Schema Này Vào Ô Schema:</span>
+          <button onclick="copySnippet('snippet-chatgpt-schema', 'Đã sao chép Schema OpenAPI!')" class="px-3 py-1 rounded-full text-xs font-medium border border-[#e7e5e4] bg-white hover:bg-[#f0efed] transition flex items-center space-x-1 text-[#292524]">
+            <span class="material-symbols-rounded text-xs">content_copy</span>
+            <span>Sao chép Schema</span>
+          </button>
+        </div>
+        <pre id="snippet-chatgpt-schema" class="p-4 rounded-2xl bg-[#0c0a09] text-emerald-400 font-mono text-xs overflow-x-auto leading-relaxed max-h-72">openapi: 3.1.0
+info:
+  title: OlokaTTS Voice Generator
+  description: High-fidelity 48kHz Vietnamese Neural Speech Engine powered by Kaggle Tesla T4.
+  version: 1.0.0
+servers:
+  - url: {{ gateway_url }}
+paths:
+  /v1/audio/speech:
+    post:
+      operationId: generateSpeech
+      summary: Synthesize Vietnamese text to 48kHz audio speech
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - input
+              properties:
+                model:
+                  type: string
+                  default: "olokatts-v3-turbo"
+                input:
+                  type: string
+                  description: "Nội dung tiếng Việt cần đọc, có thể chèn [cười], [thở dài], [0.5s]"
+                voice:
+                  type: string
+                  default: "Hải Đăng"
+                  description: "Tên giọng đọc (ví dụ: Hải Đăng, Mai Anh, Anh Khôi, Trúc Ly, Quang Sơn)"
+                speed:
+                  type: number
+                  default: 1.0
+      responses:
+        "200":
+          description: Audio WAV stream
+          content:
+            audio/wav:
+              schema:
+                type: string
+                format: binary</pre>
+      </div>
+
+      <!-- Instructions Prompt for GPT -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-[#777169]">Hướng Dẫn (Instructions) Điền Cho GPT:</span>
+          <button onclick="copySnippet('snippet-chatgpt-prompt', 'Đã sao chép Prompt hướng dẫn!')" class="px-3 py-1 rounded-full text-xs font-medium border border-[#e7e5e4] bg-white hover:bg-[#f0efed] transition flex items-center space-x-1 text-[#292524]">
+            <span class="material-symbols-rounded text-xs">content_copy</span>
+            <span>Sao chép Prompt</span>
+          </button>
+        </div>
+        <pre id="snippet-chatgpt-prompt" class="p-4 rounded-2xl bg-[#f0efed] text-[#0c0a09] font-mono text-xs overflow-x-auto leading-relaxed">Bạn là trợ lý lồng tiếng và đọc văn bản tiếng Việt chuyên nghiệp OlokaTTS.
+Khi người dùng yêu cầu đọc văn bản hoặc chuyển đổi thành giọng nói:
+1. Tự động chọn một giọng đọc phù hợp (hoặc hỏi người dùng):
+   - 'Hải Đăng' (Nam miền Nam, tự nhiên, hiện đại - Mặc định)
+   - 'Mai Anh' (Nữ miền Bắc, giọng đọc phát thanh viên tin tức)
+   - 'Anh Khôi' (Nam miền Bắc, truyền cảm, trầm ấm kể chuyện)
+   - 'Quang Sơn' (Nam miền Trung, chân thực, sâu lắng)
+   - 'Trúc Ly' (Nữ miền Bắc, trong trẻo, thu hút)
+2. Bạn có thể tự nhiên thêm các thẻ cảm xúc như [cười], [thở dài], [thì thầm], [0.5s] vào câu đọc để âm thanh giàu sắc thái biểu cảm.
+3. Gọi hành động (action) `generateSpeech` với văn bản và giọng đọc đã chọn.</pre>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAB 2: CLAUDE DESKTOP & CURSOR (LOCAL MCP) -->
+  <div id="tab-claude" class="doc-tab-content hidden space-y-8">
+    <div class="card-editorial p-6 sm:p-8 space-y-6">
+      <div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">Tích Hợp Vào Claude Desktop &amp; Cursor (MCP)</h2>
+        <p class="text-sm text-[#777169] mt-1">
+          Sử dụng giao thức tiêu chuẩn <strong class="text-[#0c0a09]">Model Context Protocol (MCP)</strong> qua giao tiếp Stdio hoặc SSE Remote. AI Agent sẽ nhận diện được các Tools để đọc văn bản và lưu file âm thanh tự động về máy tính của bạn.
+        </p>
+      </div>
+
+      <!-- Config File Location -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-4 rounded-2xl bg-[#fafafa] border border-[#e7e5e4] space-y-1">
+          <div class="flex items-center space-x-1.5 text-xs font-bold text-[#0c0a09] uppercase tracking-wider">
+            <span class="material-symbols-rounded text-base">desktop_windows</span>
+            <span>Windows Path</span>
+          </div>
+          <div class="font-mono text-xs text-[#777169] break-all select-all">
+            %APPDATA%\Claude\claude_desktop_config.json
+          </div>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#fafafa] border border-[#e7e5e4] space-y-1">
+          <div class="flex items-center space-x-1.5 text-xs font-bold text-[#0c0a09] uppercase tracking-wider">
+            <span class="material-symbols-rounded text-base">laptop_mac</span>
+            <span>macOS Path</span>
+          </div>
+          <div class="font-mono text-xs text-[#777169] break-all select-all">
+            ~/Library/Application Support/Claude/claude_desktop_config.json
+          </div>
+        </div>
+      </div>
+
+      <!-- JSON Configuration Snippet -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-[#777169]">Cấu hình JSON cho Claude Desktop / Cursor / Antigravity:</span>
+          <button onclick="copySnippet('snippet-claude-config', 'Đã sao chép cấu hình MCP JSON!')" class="px-3 py-1 rounded-full text-xs font-medium border border-[#e7e5e4] bg-white hover:bg-[#f0efed] transition flex items-center space-x-1 text-[#292524]">
+            <span class="material-symbols-rounded text-xs">content_copy</span>
+            <span>Sao chép JSON</span>
+          </button>
+        </div>
+        <pre id="snippet-claude-config" class="p-4 rounded-2xl bg-[#0c0a09] text-sky-400 font-mono text-xs overflow-x-auto leading-relaxed">{
+  "mcpServers": {
+    "olokatts": {
+      "command": "python",
+      "args": [
+        "E:/Phuc's Data/Github/vieneu-gateway/mcp_server.py"
+      ],
+      "env": {
+        "OLOKATTS_GATEWAY_URL": "{{ gateway_url }}",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}</pre>
+      </div>
+
+      <!-- Remote SSE Server Endpoint -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#e7e5e4]">
+            <span class="font-mono text-xs text-[#0c0a09] select-all"><strong>Streamable HTTP:</strong> {{ gateway_url }}/mcp</span>
+            <button onclick="copyText('{{ gateway_url }}/mcp', 'Đã sao chép MCP URL!')" class="text-xs text-[#292524] hover:underline font-medium">Copy</button>
+          </div>
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#e7e5e4]">
+            <span class="font-mono text-xs text-[#0c0a09] select-all"><strong>SSE URL:</strong> {{ gateway_url }}/mcp/sse</span>
+            <button onclick="copyText('{{ gateway_url }}/mcp/sse', 'Đã sao chép SSE URL!')" class="text-xs text-[#292524] hover:underline font-medium">Copy</button>
+          </div>
+        </div>
+
+        <!-- Magic Link Pairing Box -->
+        <div class="mt-4 p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-xs space-y-1.5">
+          <div class="flex items-center space-x-1.5 text-emerald-900 font-semibold">
+            <span class="material-symbols-rounded text-base text-emerald-700">link</span>
+            <span>Cơ Chế Xác Thực 1-Click (Magic Pairing Link):</span>
+          </div>
+          <p class="text-emerald-800 text-[11px] leading-relaxed">
+            Bạn không cần nhập API Key vào cấu hình ChatGPT/MCP! Chỉ cần kết nối tới URL công khai <code>{{ gateway_url }}/mcp</code>. Khi gọi công cụ lần đầu, hệ thống sẽ trả về đường link xác thực ngắn. Bạn chỉ cần bấm vào link, đăng nhập Google và bấm <strong>"Xác Nhận &amp; Cấp Quyền"</strong> là phiên làm việc sẽ tự động liên kết với tài khoản của bạn!
+          </p>
+          <div class="pt-1">
+            <a href="/mcp/pair" class="inline-flex items-center space-x-1 text-emerald-900 font-medium underline text-[11px] hover:text-emerald-950">
+              <span>Trang quản lý phiên ghép đôi &rarr;</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAB 3: OPENAI SDK / REST API -->
+  <div id="tab-openai" class="doc-tab-content hidden space-y-8">
+    <div class="card-editorial p-6 sm:p-8 space-y-6">
+      <div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">OpenAI SDK Drop-in &amp; REST API</h2>
+        <p class="text-sm text-[#777169] mt-1">
+          OlokaTTS hỗ trợ trực tiếp endpoint <code class="font-mono text-xs bg-[#f0efed] px-1.5 py-0.5 rounded text-[#0c0a09]">POST /v1/audio/speech</code> chuẩn của OpenAI. Bạn có thể thay đổi <code class="font-mono text-xs bg-[#f0efed] px-1.5 py-0.5 rounded text-[#0c0a09]">base_url</code> trong thư viện OpenAI chính thức mà không cần sửa code ứng dụng!
+        </p>
+      </div>
+
+      <!-- Python OpenAI SDK Example -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-[#777169]">Code Mẫu Python (Sử Dụng openai SDK):</span>
+          <button onclick="copySnippet('snippet-python-openai', 'Đã sao chép Code Python!')" class="px-3 py-1 rounded-full text-xs font-medium border border-[#e7e5e4] bg-white hover:bg-[#f0efed] transition flex items-center space-x-1 text-[#292524]">
+            <span class="material-symbols-rounded text-xs">content_copy</span>
+            <span>Sao chép Code</span>
+          </button>
+        </div>
+        <pre id="snippet-python-openai" class="p-4 rounded-2xl bg-[#0c0a09] text-amber-300 font-mono text-xs overflow-x-auto leading-relaxed">from openai import OpenAI
+
+# Khởi tạo client trỏ về OlokaTTS Gateway
+client = OpenAI(
+    base_url="{{ gateway_url }}/v1",
+    api_key="not-needed"  # Hoặc API Key của bạn nếu đã kích hoạt
+)
+
+# Gọi hàm tạo giọng nói tiếng Việt 48kHz
+response = client.audio.speech.create(
+    model="olokatts-v3-turbo",
+    voice="Hải Đăng",  # Hải Đăng, Mai Anh, Anh Khôi, Quang Sơn, Trúc Ly...
+    input="Xin chào quý vị! [cười] Đây là giọng đọc trí tuệ nhân tạo OlokaTTS 48kHz.",
+    speed=1.0
+)
+
+# Lưu trực tiếp ra file âm thanh WAV
+response.stream_to_file("vietnamese_output.wav")
+print("Đã tạo file vietnamese_output.wav thành công!")</pre>
+      </div>
+
+      <!-- cURL Example -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-[#777169]">Lệnh cURL Thử Nhanh:</span>
+          <button onclick="copySnippet('snippet-curl-example', 'Đã sao chép cURL!')" class="px-3 py-1 rounded-full text-xs font-medium border border-[#e7e5e4] bg-white hover:bg-[#f0efed] transition flex items-center space-x-1 text-[#292524]">
+            <span class="material-symbols-rounded text-xs">content_copy</span>
+            <span>Sao chép cURL</span>
+          </button>
+        </div>
+        <pre id="snippet-curl-example" class="p-4 rounded-2xl bg-[#0c0a09] text-emerald-300 font-mono text-xs overflow-x-auto leading-relaxed">curl -X POST "{{ gateway_url }}/v1/audio/speech" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "olokatts-v3-turbo",
+    "voice": "Mai Anh",
+    "input": "Hôm nay thời tiết Hà Nội trời nắng ráo [0.5s], nhiệt độ dao động từ 24 đến 28 độ C.",
+    "speed": 1.0
+  }' \
+  --output "thoi_tiet.wav"</pre>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAB 4: TOOLS & EMOTIONS LIST -->
+  <div id="tab-tools" class="doc-tab-content hidden space-y-8">
+    <div class="card-editorial p-6 sm:p-8 space-y-6">
+      <div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">Chi Tiết MCP Tools &amp; Thẻ Cảm Xúc (Emotion Tags)</h2>
+        <p class="text-sm text-[#777169] mt-1">
+          Các công cụ và thẻ điều khiển giọng đọc mà các AI Agent có thể sử dụng khi tương tác với OlokaTTS.
+        </p>
+      </div>
+
+      <!-- Tools Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border border-[#e7e5e4] rounded-xl overflow-hidden">
+          <thead class="bg-[#f0efed] text-[#0c0a09] font-bold">
+            <tr>
+              <th class="p-3 border-b border-[#e7e5e4]">Tên Hàm (MCP Tool)</th>
+              <th class="p-3 border-b border-[#e7e5e4]">Tham Số Chính</th>
+              <th class="p-3 border-b border-[#e7e5e4]">Mô Tả &amp; Kết Quả</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#e7e5e4] text-[#4e4e4e]">
+            <tr>
+              <td class="p-3 font-mono font-semibold text-[#0c0a09]">generate_speech</td>
+              <td class="p-3 font-mono">prompt, voice, speed, output_path</td>
+              <td class="p-3">Tạo file âm thanh 48kHz WAV, tải về máy cục bộ, hỗ trợ biểu cảm.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-mono font-semibold text-[#0c0a09]">list_voices</td>
+              <td class="p-3 font-mono">region, gender, editors_pick_only</td>
+              <td class="p-3">Tra cứu danh sách 25 giọng đọc theo vùng miền (Bắc/Trung/Nam) và giới tính.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-mono font-semibold text-[#0c0a09]">get_system_status</td>
+              <td class="p-3 font-mono">không</td>
+              <td class="p-3">Kiểm tra trạng thái GPU Worker Kaggle Dual Tesla T4 và hàng đợi.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-mono font-semibold text-[#0c0a09]">estimate_speech_duration</td>
+              <td class="p-3 font-mono">text, speed</td>
+              <td class="p-3">Ước tính số từ, số ký tự và thời lượng phát thanh dự kiến.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Emotion Tags Table -->
+      <div class="space-y-3">
+        <h3 class="text-xs font-bold text-[#0c0a09] uppercase tracking-wider">Thẻ Cảm Xúc Biểu Cảm (Emotion Tags)</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="p-3 rounded-xl bg-[#fafafa] border border-[#e7e5e4] text-xs">
+            <span class="font-mono font-bold text-amber-700">[cười]</span>
+            <div class="text-[#777169] mt-0.5">Tiếng cười nhẹ, vui vẻ</div>
+          </div>
+          <div class="p-3 rounded-xl bg-[#fafafa] border border-[#e7e5e4] text-xs">
+            <span class="font-mono font-bold text-rose-700">[thở dài]</span>
+            <div class="text-[#777169] mt-0.5">Thở dài, sâu lắng, buồn</div>
+          </div>
+          <div class="p-3 rounded-xl bg-[#fafafa] border border-[#e7e5e4] text-xs">
+            <span class="font-mono font-bold text-indigo-700">[thì thầm]</span>
+            <div class="text-[#777169] mt-0.5">Giọng nói thì thầm bí mật</div>
+          </div>
+          <div class="p-3 rounded-xl bg-[#fafafa] border border-[#e7e5e4] text-xs">
+            <span class="font-mono font-bold text-emerald-700">[0.5s]</span>
+            <div class="text-[#777169] mt-0.5">Chèn khoảng lặng ngắt nghỉ</div>
+          </div>
+          <div class="p-3 rounded-xl bg-[#fafafa] border border-[#e7e5e4] text-xs">
+            <span class="font-mono font-bold text-cyan-700">[hắng giọng]</span>
+            <div class="text-[#777169] mt-0.5">Hắng giọng trước khi nói</div>
+          </div>
+          <div class="p-3 rounded-xl bg-[#fafafa] border border-[#e7e5e4] text-xs">
+            <span class="font-mono font-bold text-purple-700">[ngập ngừng]</span>
+            <div class="text-[#777169] mt-0.5">Do dự, ngập ngừng</div>
+          </div>
+          <div class="p-3 rounded-xl bg-[#fafafa] border border-[#e7e5e4] text-xs">
+            <span class="font-mono font-bold text-red-700">[hét lên]</span>
+            <div class="text-[#777169] mt-0.5">Hét lớn, cao giọng gay gắt</div>
+          </div>
+          <div class="p-3 rounded-xl bg-[#fafafa] border border-[#e7e5e4] text-xs">
+            <span class="font-mono font-bold text-slate-700">[1.0s]</span>
+            <div class="text-[#777169] mt-0.5">Khoảng lặng kịch tính dài</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Copy Toast Notification -->
+<div id="copy-toast" class="fixed bottom-6 right-6 z-50 transform translate-y-12 opacity-0 transition-all duration-200 bg-[#292524] text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg flex items-center space-x-2 pointer-events-none">
+  <span class="material-symbols-rounded text-sm text-emerald-400">check_circle</span>
+  <span id="copy-toast-msg">Đã sao chép vào bộ nhớ tạm!</span>
+</div>
+
+<script>
+  function switchTab(tabId) {
+    document.querySelectorAll('.doc-tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.doc-tab-btn').forEach(btn => {
+      btn.classList.remove('bg-[#292524]', 'text-white', 'shadow-sm');
+      btn.classList.add('bg-transparent', 'text-[#777169]');
+    });
+
+    const activeTab = document.getElementById(tabId);
+    if (activeTab) activeTab.classList.remove('hidden');
+
+    const activeBtn = document.getElementById('btn-' + tabId);
+    if (activeBtn) {
+      activeBtn.classList.remove('bg-transparent', 'text-[#777169]');
+      activeBtn.classList.add('bg-[#292524]', 'text-white', 'shadow-sm');
+    }
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('copy-toast');
+    const toastMsg = document.getElementById('copy-toast-msg');
+    toastMsg.textContent = msg;
+    toast.classList.remove('translate-y-12', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+    setTimeout(() => {
+      toast.classList.remove('translate-y-0', 'opacity-100');
+      toast.classList.add('translate-y-12', 'opacity-0');
+    }, 2200);
+  }
+
+  function copyText(text, msg) {
+    navigator.clipboard.writeText(text).then(() => showToast(msg));
+  }
+
+  function copyInput(inputId, msg) {
+    const el = document.getElementById(inputId);
+    if (el) {
+      navigator.clipboard.writeText(el.value).then(() => showToast(msg));
+    }
+  }
+
+  function copySnippet(snippetId, msg) {
+    const el = document.getElementById(snippetId);
+    if (el) {
+      navigator.clipboard.writeText(el.innerText || el.textContent).then(() => showToast(msg));
+    }
+  }
+</script>
+{% endblock %}
