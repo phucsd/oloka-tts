@@ -12,7 +12,7 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-GATEWAY_URL = "https://phucsd-vieneu-gateway.hf.space"
+GATEWAY_URL = os.environ.get("GATEWAY_URL", "https://tts.oloka.net")
 KAGGLE_KERNEL_REF = "phcnguynhukendykerry/vieneu-tts-dual-t4-worker"
 
 def run_benchmark():

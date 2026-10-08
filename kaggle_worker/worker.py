@@ -38,7 +38,7 @@ def install_dependencies():
         import vieneu
         print("✅ Vieneu SDK installed successfully.")
 
-GATEWAY_URL = os.environ.get("PUBLIC_API_BASE_URL", "https://phucsd-vieneu-gateway.hf.space")
+GATEWAY_URL = os.environ.get("PUBLIC_API_BASE_URL", "https://tts.oloka.net")
 WORKER_TOKEN = os.environ.get("WORKER_TOKEN", "vieneu_secure_worker_token_2026")
 
 def run_worker_process(device_id: int, worker_name: str):

@@ -10,6 +10,7 @@ from app.models import VoicePreset, VoiceSample, TTSJob, User
 from app.services.job_service import JobService
 from app.services.local_engine import LocalEngine
 from app.services.auth_service import get_current_user_optional
+from app.config import settings
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -100,7 +101,7 @@ def mcp_docs_page(request: Request, user: Optional[User] = Depends(get_current_u
         context={
             "page_title": "Tài Liệu Kết Nối MCP & ChatGPT - OlokaTTS",
             "user": user,
-            "gateway_url": "https://phucsd-vieneu-gateway.hf.space"
+            "gateway_url": settings.PUBLIC_API_BASE_URL.rstrip("/")
         }
     )
 
@@ -112,6 +113,6 @@ def api_docs_page(request: Request, user: Optional[User] = Depends(get_current_u
         context={
             "page_title": "API Documentation & Reference - OlokaTTS 48kHz",
             "user": user,
-            "gateway_url": "https://phucsd-vieneu-gateway.hf.space"
+            "gateway_url": settings.PUBLIC_API_BASE_URL.rstrip("/")
         }
     )

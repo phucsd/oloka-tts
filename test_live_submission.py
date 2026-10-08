@@ -5,7 +5,8 @@ import sys
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
 
-BASE_URL = "https://phucsd-vieneu-gateway.hf.space"
+import os
+BASE_URL = os.environ.get("BASE_URL", "https://tts.oloka.net")
 
 payload = {
     "prompt": "Xin chào Việt Nam! [cười] Tôi là mô hình VieNeu-TTS v3 Turbo đang xử lý siêu tốc trên GPU Tesla T4 của Kaggle. Âm thanh bốn mươi tám kilohertz cực kỳ sống động!",

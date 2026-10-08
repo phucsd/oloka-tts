@@ -84,8 +84,8 @@ def get_base_url() -> str:
     except Exception:
         pass
 
-    # Default to Hugging Face Space
-    return "https://phucsd-vieneu-gateway.hf.space"
+    # Default to production custom domain
+    return "https://tts.oloka.net"
 
 def get_auth_headers() -> dict:
     """Returns authorization headers if API key is provided."""

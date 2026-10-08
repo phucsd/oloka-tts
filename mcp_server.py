@@ -18,7 +18,7 @@ Configuration example for Claude Desktop / Cursor:
           "command": "python",
           "args": ["<FULL_PATH_TO_VIENEU_GATEWAY>/mcp_server.py"],
           "env": {
-            "OLOKATTS_GATEWAY_URL": "https://phucsd-vieneu-gateway.hf.space"
+            "OLOKATTS_GATEWAY_URL": "https://tts.oloka.net"
           }
         }
       }

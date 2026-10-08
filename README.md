@@ -14,6 +14,10 @@ Hệ thống Text-to-Speech (TTS) tiếng Việt thế hệ mới với âm than
 
 Dự án được kế thừa và nâng cấp toàn diện từ kinh nghiệm thực chiến của `Omnivoice Gateway`.
 
+> 🌐 **Domain chính thức (Production):** [https://tts.oloka.net](https://tts.oloka.net)  
+> ☁️ **Hạ tầng Cloud Backend:** [Hugging Face Spaces (`phucsd/vieneu-gateway`)](https://huggingface.co/spaces/phucsd/vieneu-gateway)  
+> 🔌 **Điểm cuối MCP Server:** `https://tts.oloka.net/mcp` (Xác thực ghép nối: `https://tts.oloka.net/mcp/pair?code=...`)
+
 ---
 
 ## ✨ Điểm Nổi Bật

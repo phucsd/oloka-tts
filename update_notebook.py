@@ -12,7 +12,7 @@ import subprocess
 import traceback
 import tempfile
 
-GATEWAY_URL = os.environ.get("PUBLIC_API_BASE_URL", "https://phucsd-vieneu-gateway.hf.space")
+GATEWAY_URL = os.environ.get("PUBLIC_API_BASE_URL", "https://tts.oloka.net")
 WORKER_TOKEN = os.environ.get("WORKER_TOKEN", "vieneu_secure_worker_token_2026")
 
 def report(worker_name, message):
@@ -322,7 +322,7 @@ nb = {
             "metadata": {},
             "source": [
                 "# VieNeu-TTS Dual Tesla T4 Worker Daemon\n",
-                "Automated worker connecting to VieNeu Gateway at `https://phucsd-vieneu-gateway.hf.space`"
+                "Automated worker connecting to VieNeu Gateway at `https://tts.oloka.net`"
             ]
         },
         {

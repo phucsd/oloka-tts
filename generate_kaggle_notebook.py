@@ -11,7 +11,7 @@ nb_content = {
             "metadata": {},
             "source": [
                 "# 🎙️ VieNeu-TTS Dual Tesla T4 Worker Daemon\n",
-                "Tự động kết nối với VieNeu Gateway tại Hugging Face Space: `https://phucsd-vieneu-gateway.hf.space`"
+                "Tự động kết nối với VieNeu Gateway tại: `https://tts.oloka.net`"
             ]
         },
         {
