@@ -247,6 +247,76 @@ def validate_redirect_uri_against_client(client: OAuthClient, redirect_uri: str)
                     return True
     return False
 
+def resolve_or_create_cimd_client(db: Session, client_id: str, redirect_uri: Optional[str] = None) -> Optional[OAuthClient]:
+    """
+    Resolves an OAuth client by client_id. If client_id is an HTTPS URL (Client ID Metadata
+    Document / CIMD per OAuth 2.0 draft), dynamically fetches or registers the client
+    record with verified redirect_uris.
+    """
+    if not client_id or not isinstance(client_id, str):
+        return None
+    clean_client_id = client_id.strip()
+    client_obj = db.query(OAuthClient).filter(OAuthClient.client_id == clean_client_id).first()
+    if client_obj:
+        if redirect_uri and validate_redirect_uri_format(redirect_uri):
+            try:
+                uris = json.loads(client_obj.redirect_uris) if client_obj.redirect_uris else []
+            except Exception:
+                uris = []
+            if redirect_uri not in uris and clean_client_id.startswith("https://"):
+                uris.append(redirect_uri)
+                client_obj.redirect_uris = json.dumps(uris)
+                db.commit()
+        return client_obj
+
+    if not clean_client_id.startswith("https://"):
+        return None
+
+    client_name = "ChatGPT Remote MCP Client"
+    valid_uris = []
+    if redirect_uri and validate_redirect_uri_format(redirect_uri):
+        valid_uris.append(redirect_uri)
+
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            clean_client_id,
+            headers={"Accept": "application/json", "User-Agent": "OlokaTTS-OAuth-Server/1.0"}
+        )
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode("utf-8"))
+                if isinstance(data, dict):
+                    if data.get("client_name"):
+                        client_name = str(data["client_name"])[:128]
+                    doc_uris = data.get("redirect_uris") or []
+                    for u in doc_uris:
+                        if isinstance(u, str) and validate_redirect_uri_format(u) and u not in valid_uris:
+                            valid_uris.append(u)
+    except Exception:
+        pass
+
+    try:
+        parsed = urllib.parse.urlsplit(clean_client_id)
+        if client_name == "ChatGPT Remote MCP Client" and parsed.netloc:
+            client_name = f"MCP Client ({parsed.netloc})"
+    except Exception:
+        pass
+
+    new_cli = OAuthClient(
+        client_id=clean_client_id,
+        client_secret=None,
+        client_name=client_name,
+        redirect_uris=json.dumps(valid_uris),
+        is_confidential=False,
+        token_endpoint_auth_method="none",
+        created_at=datetime.utcnow()
+    )
+    db.add(new_cli)
+    db.commit()
+    db.refresh(new_cli)
+    return new_cli
+
 def validate_pkce_challenge(challenge: str, method: str) -> bool:
     """Validates PKCE code_challenge and code_challenge_method."""
     if not challenge or not isinstance(challenge, str):
@@ -300,6 +370,7 @@ def oauth_protected_resource_metadata(request: Request):
 
 
 @router.get("/.well-known/oauth-authorization-server")
+@router.get("/.well-known/oauth-authorization-server/mcp")
 @router.get("/.well-known/openid-configuration")
 def oauth_authorization_server_metadata(request: Request):
     """
@@ -318,7 +389,9 @@ def oauth_authorization_server_metadata(request: Request):
         "grant_types_supported": ["authorization_code", "refresh_token"],
         "token_endpoint_auth_methods_supported": ["none", "client_secret_post", "client_secret_basic"],
         "code_challenge_methods_supported": ["S256"],
-        "scopes_supported": ["mcp:all", "speech:generate", "voices:read", "status:read"]
+        "scopes_supported": ["mcp:all", "speech:generate", "voices:read", "status:read"],
+        "authorization_response_iss_parameter_supported": True,
+        "client_id_metadata_document_supported": True
     }
 
 
@@ -430,7 +503,11 @@ def oauth_authorize_page(
         raise HTTPException(status_code=400, detail="invalid_request: Missing required client_id parameter")
 
     clean_client_id = client_id.strip()
+    clean_redirect_uri = redirect_uri.strip() if redirect_uri else ""
     client_obj = db.query(OAuthClient).filter(OAuthClient.client_id == clean_client_id).first()
+    if not client_obj and clean_client_id.startswith("https://"):
+        client_obj = resolve_or_create_cimd_client(db, clean_client_id, clean_redirect_uri)
+
     if not client_obj:
         raise HTTPException(status_code=400, detail="invalid_client: Unregistered or unknown client_id")
 
@@ -519,6 +596,8 @@ def oauth_authorize_consent(
 
     # Re-validate client and redirect_uri
     client_obj = db.query(OAuthClient).filter(OAuthClient.client_id == clean_client_id).first()
+    if not client_obj and clean_client_id.startswith("https://"):
+        client_obj = resolve_or_create_cimd_client(db, clean_client_id, clean_redirect_uri)
     if not client_obj:
         raise HTTPException(status_code=400, detail="invalid_client")
 
@@ -558,10 +637,15 @@ def oauth_authorize_consent(
         user_id=user.id
     )
 
+    from app.mcp_server import get_base_url
+    base = get_base_url()
+
     sep = "&" if "?" in clean_redirect_uri else "?"
     redirect_target = f"{clean_redirect_uri}{sep}code={urllib.parse.quote(auth_code)}"
     if state and state.strip():
         redirect_target += f"&state={urllib.parse.quote(state.strip())}"
+    # RFC 9207 Issuer Identification in authorization response
+    redirect_target += f"&iss={urllib.parse.quote(base)}"
 
     return RedirectResponse(url=redirect_target, status_code=303)
 
@@ -625,6 +709,10 @@ async def oauth_token(
         clean_redirect_uri = str(redirect_uri).strip()
         clean_client_id = str(client_id).strip() if client_id else None
 
+        # Resolve CIMD client if unknown
+        if clean_client_id and clean_client_id.startswith("https://"):
+            resolve_or_create_cimd_client(db, clean_client_id, clean_redirect_uri)
+
         sess = db.query(McpPairingSession).filter(
             McpPairingSession.code == clean_code,
             McpPairingSession.status == "authorized"
@@ -667,6 +755,22 @@ async def oauth_token(
                 content={"error": "invalid_grant", "error_description": "PKCE code_verifier verification failed"}
             )
 
+        # RFC 8707 Resource Indicators
+        from app.mcp_server import get_base_url
+        base = get_base_url()
+        canonical_resource = f"{base}/mcp"
+
+        requested_resource = params.get("resource")
+        target_audience = canonical_resource
+        if requested_resource:
+            req_resource_clean = str(requested_resource).strip().rstrip("/")
+            if req_resource_clean not in (canonical_resource.rstrip("/"), base.rstrip("/")):
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "invalid_target", "error_description": f"Resource '{requested_resource}' is not recognized"}
+                )
+            target_audience = str(requested_resource).strip()
+
         # Atomic one-time-use consumption (Anti-replay & Double Exchange Protection)
         affected = db.query(McpPairingSession).filter(
             McpPairingSession.id == sess.id,
@@ -701,7 +805,7 @@ async def oauth_token(
             user_id=user.id,
             client_id=sess.client_id or "mcp_client",
             scope=sess.scope or "mcp:all speech:generate",
-            audience="https://tts.oloka.net/mcp",
+            audience=target_audience,
             family_id=family_id,
             created_at=now,
             expires_at=now + timedelta(hours=1)  # 1 hour access token
@@ -714,7 +818,7 @@ async def oauth_token(
             user_id=user.id,
             client_id=sess.client_id or "mcp_client",
             scope=sess.scope or "mcp:all speech:generate",
-            audience="https://tts.oloka.net/mcp",
+            audience=target_audience,
             family_id=family_id,
             created_at=now,
             expires_at=now + timedelta(days=90)  # 90 days refresh token

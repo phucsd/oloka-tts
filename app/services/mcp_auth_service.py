@@ -217,7 +217,8 @@ class McpAuthService:
     @staticmethod
     def validate_bearer_token(
         db: Session,
-        raw_token: str
+        raw_token: str,
+        expected_audience: Optional[str] = None
     ) -> Tuple[Optional[User], Optional[OAuthToken], Optional[str]]:
         """
         Validates an OAuth 2.1 access token or API key for MCP.
@@ -242,6 +243,11 @@ class McpAuthService:
                 return None, None, "token_revoked"
             if otok.expires_at < datetime.utcnow():
                 return None, None, "token_expired"
+            if expected_audience and otok.audience:
+                exp_aud = expected_audience.strip().rstrip("/")
+                tok_aud = otok.audience.strip().rstrip("/")
+                if tok_aud != exp_aud and not exp_aud.startswith(tok_aud) and not tok_aud.startswith(exp_aud):
+                    return None, None, "audience_mismatch"
             user = db.query(User).filter(User.id == otok.user_id, User.is_active == True).first()
             if not user:
                 return None, None, "user_inactive"

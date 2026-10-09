@@ -220,6 +220,18 @@ async def lifespan(app: FastAPI):
     mcp_ctx = None
     try:
         from app.mcp_server import mcp
+        from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+        if getattr(mcp, "_session_manager", None) is not None:
+            sm = mcp._session_manager
+            if getattr(sm, "_has_started", False) and getattr(sm, "_task_group", None) is None:
+                mcp._session_manager = StreamableHTTPSessionManager(
+                    app=mcp._mcp_server,
+                    event_store=mcp._event_store,
+                    retry_interval=mcp._retry_interval,
+                    json_response=mcp.settings.json_response,
+                    stateless=mcp.settings.stateless_http,
+                    security_settings=mcp.settings.transport_security,
+                )
         if getattr(mcp.session_manager, "_task_group", None) is None:
             mcp_ctx = mcp.session_manager.run()
             await mcp_ctx.__aenter__()
@@ -386,7 +398,8 @@ try:
             rpc_method = rpc_data.get("method")
             rpc_id = rpc_data.get("id")
 
-            # Check if calling protected tool without authentication
+            # Check if calling protected tool
+            is_unauth_generate = False
             if rpc_method == "tools/call":
                 tool_params = rpc_data.get("params", {})
                 tool_name = tool_params.get("name")
@@ -399,28 +412,58 @@ try:
                     has_api_key = bool(tool_args.get("api_key") and str(tool_args["api_key"]).strip())
 
                     if not (has_pair_code or has_sess_tok or has_api_key):
-                        # Challenge with HTTP 401 & WWW-Authenticate header according to RFC 9728
-                        response = Response(
-                            status_code=401,
-                            headers={
-                                "WWW-Authenticate": f'Bearer resource_metadata="{protected_meta_url}", scope="speech:generate"',
-                                "Content-Type": "application/json"
-                            },
-                            content=json.dumps({
-                                "jsonrpc": "2.0",
-                                "id": rpc_id,
-                                "error": {
-                                    "code": -32001,
-                                    "message": "Authentication required. Please authenticate via OAuth 2.1 to access this protected tool."
-                                }
-                            }).encode("utf-8")
+                        # Check if client explicitly requested HTTP-level challenge (e.g. via header or query param)
+                        req_headers = dict(scope.get("headers", []))
+                        force_http_challenge = (
+                            req_headers.get(b"x-mcp-challenge-level", b"").decode("latin-1").lower() == "http" or
+                            b"challenge=http" in scope.get("query_string", b"")
                         )
-                        await response(scope, receive, send)
-                        return
+
+                        if force_http_challenge:
+                            # Challenge with HTTP 401 & WWW-Authenticate header according to RFC 9728
+                            response = Response(
+                                status_code=401,
+                                headers={
+                                    "WWW-Authenticate": f'Bearer resource_metadata="{protected_meta_url}", scope="speech:generate"',
+                                    "Content-Type": "application/json"
+                                },
+                                content=json.dumps({
+                                    "jsonrpc": "2.0",
+                                    "id": rpc_id,
+                                    "error": {
+                                        "code": -32001,
+                                        "message": "Authentication required. Please authenticate via OAuth 2.1 to access this protected tool."
+                                    }
+                                }).encode("utf-8")
+                            )
+                            await response(scope, receive, send)
+                            return
+
+                        is_unauth_generate = True
+
+            # If this is unauthenticated generate_speech, wrap send to attach WWW-Authenticate header to HTTP response
+            if is_unauth_generate:
+                async def wrapped_send(msg):
+                    if msg.get("type") == "http.response.start":
+                        resp_headers = list(msg.get("headers", []))
+                        auth_val = f'Bearer resource_metadata="{protected_meta_url}", scope="speech:generate"'
+                        resp_headers.append((b"www-authenticate", auth_val.encode("latin-1")))
+                        msg = dict(msg)
+                        msg["headers"] = resp_headers
+                    await send(msg)
+
+                try:
+                    await mcp.session_manager.handle_request(scope, new_receive, wrapped_send)
+                except Exception:
+                    await self.raw_endpoint(scope, new_receive, wrapped_send)
+                return
 
             # All other methods (initialize, tools/list, list_voices, get_system_status, link_account)
             # or authenticated requests pass through to FastMCP streamable HTTP
-            await self.raw_endpoint(scope, new_receive, send)
+            try:
+                await mcp.session_manager.handle_request(scope, new_receive, send)
+            except Exception:
+                await self.raw_endpoint(scope, new_receive, send)
 
     secured_endpoint = McpOAuthSecurityEndpoint(st_endpoint)
 

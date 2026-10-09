@@ -12,8 +12,10 @@ import asyncio
 import unicodedata
 import requests
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from mcp.server.fastmcp import FastMCP, Context
+import mcp.types as types
+from mcp.types import CallToolResult, TextContent, Tool as MCPTool
 from app.database import SessionLocal
 from app.config import settings
 from app.services.mcp_auth_service import McpAuthService
@@ -417,7 +419,7 @@ async def generate_speech(
     save_to_file: bool = True,
     output_path: Optional[str] = None,
     ctx: Optional[Context] = None
-) -> str:
+) -> Any:
     """
     Synthesize high-fidelity 48kHz Vietnamese speech from text using OlokaTTS Neural Workers.
     
@@ -469,7 +471,37 @@ async def generate_speech(
                 scope_str = otok.scope or ""
                 allowed_scopes = scope_str.split()
                 if "speech:generate" not in allowed_scopes and "mcp:all" not in allowed_scopes:
-                    return f"❌ **TỪ CHỐI TRUY CẬP:** Token OAuth của bạn không có quyền 'speech:generate' (Scope hiện tại: '{scope_str}'). Vui lòng cấp lại quyền với scope hợp lệ."
+                    protected_meta_url = f"{base_url}/.well-known/oauth-protected-resource"
+                    return CallToolResult(
+                        content=[
+                            TextContent(
+                                type="text",
+                                text=f"❌ **TỪ CHỐI TRUY CẬP:** Token OAuth của bạn không có quyền 'speech:generate' (Scope hiện tại: '{scope_str}'). Vui lòng cấp lại quyền với scope hợp lệ."
+                            )
+                        ],
+                        structuredContent={
+                            "result": f"Forbidden: Insufficient scope. 'speech:generate' required."
+                        },
+                        isError=True,
+                        _meta={
+                            "mcp/www_authenticate": [
+                                f'Bearer resource_metadata="{protected_meta_url}", error="insufficient_scope", error_description="The token lacks the speech:generate scope", scope="speech:generate"'
+                            ]
+                        }
+                    )
+
+            # Strict Multi-Tenant Kaggle BYOK verification (zero admin GPU fallback)
+            from app.services.kaggle_account_service import KaggleAccountService
+            acc = KaggleAccountService.get_execution_account_for_user(db, authenticated_user)
+            if authenticated_user.role != "admin" and (not acc or not acc.kaggle_username or not acc.kaggle_key):
+                settings_url = f"{base_url}/settings"
+                return (
+                    f"⚠️ **Chưa cấu hình Kaggle GPU cá nhân (BYOK):**\n\n"
+                    f"Tài khoản `{authenticated_user.username}` của bạn chưa được liên kết với Kaggle API Key để chạy GPU Tesla T4.\n\n"
+                    f"👉 **Vui lòng cấu hình tài khoản Kaggle của bạn tại:**\n"
+                    f"[{settings_url}]({settings_url})\n\n"
+                    f"Sau khi lưu thông tin Kaggle API, bạn có thể gọi lại `generate_speech` ngay lập tức."
+                )
 
             auth_token = AuthService.create_token(
                 auth_user_id,
@@ -479,7 +511,7 @@ async def generate_speech(
             )
 
         if require_auth and not authenticated_user:
-            # Check if caller passed a pair code
+            # Check if caller passed explicit legacy credentials
             if pair_code and pair_code.strip():
                 sess = McpAuthService.get_pairing_session(db, pair_code.strip())
                 if sess and sess.status == "pending":
@@ -516,22 +548,25 @@ async def generate_speech(
                         f"Vui lòng tạo phiên ghép đôi mới qua `link_account()`."
                     )
 
-            # Generate or get pending session strictly for this caller/transport
-            sess_to_use = None
-            if transport_sid:
-                sess_to_use = McpAuthService.get_pending_session_for_transport(db, transport_sid)
-            if not sess_to_use:
-                sess_to_use = McpAuthService.create_pairing_session(db, client_name="MCP Client", transport_session_id=transport_sid)
-
-            auth_url = f"{base_url}/mcp/pair?code={sess_to_use.code}"
-            return (
-                f"🔒 **YÊU CẦU XÁC THỰC TÀI KHOẢN OLOKATTS:**\n\n"
-                f"Để sử dụng công cụ tạo giọng nói Neural 48kHz và bảo vệ tài nguyên GPU cá nhân, "
-                f"bạn cần liên kết tài khoản OlokaTTS với phiên kết nối này:\n\n"
-                f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
-                f"[{auth_url}]({auth_url})\n\n"
-                f"- **Mã ghép đôi:** `{sess_to_use.code}`\n\n"
-                f"💡 **Ghi chú cho AI Assistant:** Sau khi người dùng duyệt trên trình duyệt, hãy gọi lại `generate_speech(prompt=..., pair_code='{sess_to_use.code}')` kèm tham số `pair_code='{sess_to_use.code}'` để hệ thống nhận diện đúng tài khoản."
+            # Return standard MCP tool authentication challenge with _meta["mcp/www_authenticate"]
+            # Triggers OAuth browser linking in ChatGPT and compatible AI clients without manual pairing
+            protected_meta_url = f"{base_url}/.well-known/oauth-protected-resource"
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Please connect your OlokaTTS account to continue."
+                    )
+                ],
+                structuredContent={
+                    "result": "Authentication required. Please connect your OlokaTTS account to continue."
+                },
+                isError=True,
+                _meta={
+                    "mcp/www_authenticate": [
+                        f'Bearer resource_metadata="{protected_meta_url}", error="invalid_token", error_description="Login required to generate speech"'
+                    ]
+                }
             )
 
 
@@ -739,7 +774,7 @@ async def generate_speech(
 
 
 @mcp.tool()
-def get_system_status() -> str:
+def get_system_status(ctx: Optional[Context] = None) -> str:
     """
     Check the operational status of OlokaTTS Gateway, Kaggle Tesla T4 GPU Workers, and queue health.
     """
@@ -768,12 +803,30 @@ def get_system_status() -> str:
             local_avail = LocalEngine.is_available()
             status_indicator = "🟢 SẴN SÀNG" if (live_workers > 0 or local_avail) else "🟡 ĐANG CHỜ WORKER"
 
+            # Check if caller is authenticated (via OAuth token, API key, or transport session)
+            transport_sid = extract_transport_session_id(ctx)
+            bearer_tok = extract_bearer_token(ctx)
+            authenticated_user = McpAuthService.resolve_caller(
+                db,
+                api_key=bearer_tok,
+                transport_session_id=transport_sid
+            )
+            tenant_info = ""
+            if authenticated_user:
+                gpu_desc = McpAuthService.get_user_gpu_status_description(db, authenticated_user)
+                tenant_info = (
+                    f"\n---\n"
+                    f"👤 **Tài Khoản Của Bạn:** `{authenticated_user.username}` ({authenticated_user.role.upper()})\n"
+                    f"🎮 **Hạ Tầng GPU Cá Nhân:** {gpu_desc}\n"
+                )
+
             return (
                 f"### ⚡ Trạng Thái Hệ Thống OlokaTTS ({status_indicator})\n\n"
                 f"- **Máy chủ Gateway:** `{base_url}`\n"
                 f"- **GPU Worker online:** {live_workers} GPU (Tesla T4 16GB)\n"
                 f"- **Động cơ Local CPU ONNX:** {'Khả dụng' if local_avail else 'Chưa kích hoạt'}\n"
                 f"- **Job đang chờ trong hàng đợi:** {pending_jobs} jobs\n"
+                f"{tenant_info}"
             )
         finally:
             db.close()
@@ -833,6 +886,33 @@ def estimate_speech_duration(text: str, speed: float = 1.0) -> str:
         f"- Tốc độ: **{speed:.2f}x**\n"
         f"- Thời lượng dự kiến: **~{time_str}** (~{seconds}s)"
     )
+
+# ==============================================================================
+# TOOL-LEVEL SECURITY SCHEMES (RFC 9728 & OpenAI MCP Specification)
+# ==============================================================================
+
+_orig_list_tools = mcp.list_tools
+
+async def list_tools_with_security_schemes() -> list[MCPTool]:
+    """
+    Returns MCP tools list enriched with RFC/OpenAI tool-level securitySchemes.
+    - generate_speech: oauth2 with speech:generate scope
+    - public tools (list_voices, link_account, get_system_status, estimate_speech_duration): noauth
+    """
+    raw_tools = await _orig_list_tools()
+    enriched = []
+    for tool in raw_tools:
+        tool_dict = tool.model_dump(by_alias=True, exclude_none=True)
+        if tool.name == "generate_speech":
+            tool_dict["securitySchemes"] = [{"type": "oauth2", "scopes": ["speech:generate"]}]
+        else:
+            tool_dict["securitySchemes"] = [{"type": "noauth"}]
+        enriched.append(MCPTool(**tool_dict))
+    return enriched
+
+mcp.list_tools = list_tools_with_security_schemes
+mcp._mcp_server.list_tools()(list_tools_with_security_schemes)
+streamable_http_app = mcp.streamable_http_app()
 
 # ==============================================================================
 # MCP RESOURCES & PROMPTS
