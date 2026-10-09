@@ -23,15 +23,24 @@ from app.services.auth_service import AuthService
 
 def extract_transport_session_id(ctx: Optional[Context] = None) -> Optional[str]:
     """Safely extracts transport-level session identifier from FastMCP Context if available."""
-    if not ctx or not hasattr(ctx, "request_context") or not ctx.request_context:
+    if not ctx:
         return None
     try:
+        rc = getattr(ctx, "_request_context", None)
+        if not rc:
+            try:
+                rc = ctx.request_context
+            except Exception:
+                return None
+        if not rc:
+            return None
+
         # 1. Direct client_id property on Context (if provided by MCP client)
         c_id = getattr(ctx, "client_id", None)
         if c_id and str(c_id).strip():
             return f"cid_{str(c_id).strip()}"
 
-        req = getattr(ctx.request_context, "request", None)
+        req = getattr(rc, "request", None)
         if req:
             if hasattr(req, "headers"):
                 # Standard FastMCP Session Header
@@ -62,16 +71,29 @@ def extract_transport_session_id(ctx: Optional[Context] = None) -> Optional[str]
                     raw_t = req.query_params.get("token")
                     t_hash = hashlib.sha256(raw_t.strip().encode("utf-8")).hexdigest()[:24]
                     return f"tok_{t_hash}"
+                if req.query_params.get("pair_code"):
+                    raw_p = req.query_params.get("pair_code")
+                    if raw_p and raw_p.strip():
+                        return f"code_{raw_p.strip().upper()}"
     except Exception:
         pass
     return None
 
 def extract_bearer_token(ctx: Optional[Context] = None) -> Optional[str]:
     """Safely extracts Bearer API key or OAuth JWT token from HTTP request if present."""
-    if not ctx or not hasattr(ctx, "request_context") or not ctx.request_context:
+    if not ctx:
         return None
     try:
-        req = getattr(ctx.request_context, "request", None)
+        rc = getattr(ctx, "_request_context", None)
+        if not rc:
+            try:
+                rc = ctx.request_context
+            except Exception:
+                return None
+        if not rc:
+            return None
+
+        req = getattr(rc, "request", None)
         if req:
             if hasattr(req, "headers"):
                 auth_h = req.headers.get("authorization")
@@ -84,6 +106,52 @@ def extract_bearer_token(ctx: Optional[Context] = None) -> Optional[str]:
     except Exception:
         pass
     return None
+
+def log_mcp_diagnostic(tool_name: str, ctx: Optional[Context] = None, pair_code: Optional[str] = None, user_id: Optional[str] = None):
+    """
+    Diagnostic logger that safely records request/transport metadata without leaking secrets.
+    Complies strictly with P0 security auditing guidelines (no raw tokens, keys, codes, or cookies).
+    """
+    import mcp
+    has_ctx = ctx is not None
+    has_rc = False
+    req_type = "None"
+    hdr_keys = []
+    has_auth = False
+    auth_scheme = None
+
+    if has_ctx:
+        try:
+            rc = getattr(ctx, "_request_context", None)
+            if not rc:
+                try:
+                    rc = ctx.request_context
+                except Exception:
+                    pass
+            if rc:
+                has_rc = True
+                req = getattr(rc, "request", None)
+                if req:
+                    req_type = type(req).__name__
+                    if hasattr(req, "headers"):
+                        hdr_keys = [str(k).lower() for k in req.headers.keys()]
+                        auth_val = req.headers.get("authorization")
+                        if auth_val:
+                            has_auth = True
+                            auth_scheme = auth_val.split()[0] if " " in auth_val else "unknown"
+        except Exception as e:
+            req_type = f"Error:{e}"
+
+    transport_sid = extract_transport_session_id(ctx)
+    masked_sid = f"{transport_sid[:10]}..." if transport_sid else "None"
+    masked_pair = f"{pair_code[:4]}***" if pair_code else "None"
+    u_desc = f"User({user_id})" if user_id else "Anonymous"
+
+    print(
+        f"[MCP DIAGNOSTIC] tool={tool_name} | SDK={getattr(mcp, '__version__', 'unknown')} | "
+        f"ctx={has_ctx} | rc={has_rc} | req_type={req_type} | headers={hdr_keys} | "
+        f"auth={has_auth} ({auth_scheme}) | transport_sid={masked_sid} | pair_param={masked_pair} | caller={u_desc}"
+    )
 
 # Initialize FastMCP Server
 mcp = FastMCP(
@@ -249,6 +317,8 @@ def link_account(
             api_key=bearer_tok,
             transport_session_id=transport_sid
         )
+        log_mcp_diagnostic("link_account", ctx=ctx, pair_code=pair_code, user_id=user.id if user else None)
+
         if user:
             gpu_status_desc = McpAuthService.get_user_gpu_status_description(db, user)
             return (
@@ -270,7 +340,7 @@ def link_account(
                         f"👉 Vui lòng nhấp vào liên kết sau để đăng nhập và bấm 'Xác Nhận & Cấp Quyền':\n"
                         f"[{auth_url}]({auth_url})\n\n"
                         f"- **Mã ghép đôi:** `{sess.code}`\n\n"
-                        f"Sau khi xác nhận trên trình duyệt, hãy bảo tôi kiểm tra lại nhé!"
+                        f"💡 **Ghi chú cho AI Assistant:** Hãy giữ mã `{sess.code}` trong ngữ cảnh và gọi `generate_speech(prompt=..., pair_code='{sess.code}')` sau khi người dùng duyệt."
                     )
                 elif sess.status in ("expired", "revoked"):
                     return (
@@ -288,7 +358,7 @@ def link_account(
                         f"👉 Vui lòng nhấp vào liên kết sau để đăng nhập và bấm 'Xác Nhận & Cấp Quyền':\n"
                         f"[{auth_url}]({auth_url})\n\n"
                         f"- **Mã ghép đôi:** `{sess.code}`\n\n"
-                        f"Sau khi xác nhận trên trình duyệt, hãy bảo tôi kiểm tra lại nhé!"
+                        f"💡 **Ghi chú cho AI Assistant:** Hãy gọi lại `link_account(pair_code='{sess.code}')` sau khi người dùng xác nhận."
                     )
                 elif sess.status in ("expired", "revoked"):
                     return (
@@ -306,7 +376,7 @@ def link_account(
                     f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập và cấp quyền:**\n"
                     f"[{auth_url}]({auth_url})\n\n"
                     f"- **Mã phiên của bạn:** `{pending_sess.code}`\n\n"
-                    f"*(Sau khi bạn đăng nhập trên trình duyệt và bấm 'Xác Nhận & Cấp Quyền', bạn có thể yêu cầu tôi tạo giọng nói ngay lập tức!)*"
+                    f"💡 **Ghi chú cho AI Assistant:** Nếu môi trường này không có OAuth tự động, vui lòng giữ mã `{pending_sess.code}` trong ngữ cảnh và gọi `generate_speech(prompt=..., pair_code='{pending_sess.code}')` sau khi người dùng duyệt."
                 )
 
         # 4. Generate new session strictly for this caller/transport
@@ -321,7 +391,7 @@ def link_account(
             f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập và cấp quyền:**\n"
             f"[{auth_url}]({auth_url})\n\n"
             f"- **Mã phiên của bạn:** `{new_sess.code}`\n\n"
-            f"*(Sau khi đăng nhập trên trình duyệt và bấm 'Xác Nhận & Cấp Quyền', hãy bảo tôi tiếp tục nhé!)*"
+            f"💡 **Ghi chú cho AI Assistant:** Nếu môi trường này không có OAuth tự động, vui lòng giữ mã `{new_sess.code}` trong ngữ cảnh và gọi `generate_speech(prompt=..., pair_code='{new_sess.code}')` sau khi người dùng duyệt."
         )
     finally:
         db.close()
@@ -353,7 +423,7 @@ async def generate_speech(
       voice: Name of voice preset (e.g., 'Hải Đăng', 'Mai Anh', 'Anh Khôi', 'Trúc Ly', 'Quang Sơn', 'Ngọc Trân', 'Adam bựa').
       speed: Speaking speed multiplier (0.5 to 2.0, default 1.0).
       temperature: Neural voice expressiveness / prosody variation (0.1 to 1.5, default 0.7).
-      pair_code: Optional pairing code (e.g. 'OLK-xxxxxx') if explicit binding is used.
+      pair_code: Optional pairing code (e.g. 'OLK-xxxxxx') from link_account. In non-OAuth environments, provide this code to identify the user.
       session_token: Optional persistent session token from approved pairing session.
       api_key: Optional API key (oloka_live_...) for account attribution.
       save_to_file: If True, downloads and saves the generated .wav audio locally.
@@ -377,6 +447,7 @@ async def generate_speech(
             transport_session_id=transport_sid,
             api_key=(api_key.strip() if api_key else None) or bearer_tok
         )
+        log_mcp_diagnostic("generate_speech", ctx=ctx, pair_code=pair_code, user_id=authenticated_user.id if authenticated_user else None)
         require_auth = SettingsService.get_bool(db, "mcp_require_auth", default=True)
 
         if authenticated_user:
@@ -402,7 +473,7 @@ async def generate_speech(
                         f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
                         f"[{auth_url}]({auth_url})\n\n"
                         f"- **Mã phiên:** `{sess.code}`\n\n"
-                        f"*(Sau khi xác nhận trên trình duyệt, hãy bảo tôi tiếp tục tạo giọng nói nhé!)*"
+                        f"💡 **Ghi chú cho AI Assistant:** Sau khi người dùng duyệt, hãy gọi lại `generate_speech(prompt=..., pair_code='{sess.code}')` để thực hiện yêu cầu."
                     )
                 elif sess and sess.status in ("expired", "revoked"):
                     return (
@@ -420,7 +491,7 @@ async def generate_speech(
                         f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
                         f"[{auth_url}]({auth_url})\n\n"
                         f"- **Mã phiên:** `{sess.code}`\n\n"
-                        f"*(Sau khi xác nhận trên trình duyệt, hãy bảo tôi tiếp tục tạo giọng nói nhé!)*"
+                        f"💡 **Ghi chú cho AI Assistant:** Sau khi người dùng duyệt, hãy gọi lại `generate_speech(prompt=..., pair_code='{sess.code}')`."
                     )
                 elif sess and sess.status in ("expired", "revoked"):
                     return (
@@ -443,7 +514,7 @@ async def generate_speech(
                 f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
                 f"[{auth_url}]({auth_url})\n\n"
                 f"- **Mã ghép đôi:** `{sess_to_use.code}`\n\n"
-                f"*(Sau khi xác nhận trên trình duyệt, hãy bảo tôi tạo lại giọng nói nhé!)*"
+                f"💡 **Ghi chú cho AI Assistant:** Sau khi người dùng duyệt trên trình duyệt, hãy gọi lại `generate_speech(prompt=..., pair_code='{sess_to_use.code}')` kèm tham số `pair_code='{sess_to_use.code}'` để hệ thống nhận diện đúng tài khoản."
             )
 
 

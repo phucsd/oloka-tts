@@ -97,6 +97,10 @@ def init_database():
             if "transport_session_id" not in cols_mcp and len(cols_mcp) > 0:
                 conn.exec_driver_sql("ALTER TABLE mcp_pairing_sessions ADD COLUMN transport_session_id VARCHAR(128)")
                 print("[Startup] Auto-migrated schema: Added transport_session_id to mcp_pairing_sessions.")
+            for oauth_col in ["code_challenge", "code_challenge_method", "redirect_uri", "client_id", "scope"]:
+                if oauth_col not in cols_mcp and len(cols_mcp) > 0:
+                    conn.exec_driver_sql(f"ALTER TABLE mcp_pairing_sessions ADD COLUMN {oauth_col} VARCHAR(512)")
+                    print(f"[Startup] Auto-migrated schema: Added {oauth_col} to mcp_pairing_sessions.")
 
             # Auto-hash any legacy plaintext session tokens
             try:

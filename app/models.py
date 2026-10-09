@@ -176,8 +176,23 @@ class McpPairingSession(Base):
     user_id = Column(String(64), ForeignKey("users.id"), nullable=True, index=True)
     status = Column(String(32), default="pending")  # "pending", "authorized", "revoked", "expired"
     client_name = Column(String(128), default="ChatGPT")
+    code_challenge = Column(String(256), nullable=True)
+    code_challenge_method = Column(String(32), nullable=True)  # "S256" or "plain"
+    redirect_uri = Column(String(512), nullable=True)
+    client_id = Column(String(128), nullable=True)
+    scope = Column(String(256), nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)
     authorized_at = Column(DateTime, nullable=True)
     last_used_at = Column(DateTime, nullable=True)
+
+class OAuthClient(Base):
+    __tablename__ = "oauth_clients"
+
+    client_id = Column(String(128), primary_key=True)
+    client_secret = Column(String(256), nullable=True)
+    client_name = Column(String(256), nullable=True)
+    redirect_uris = Column(Text, nullable=True)  # JSON-encoded list of allowed redirect URIs
+    created_at = Column(DateTime, default=datetime.utcnow)
 

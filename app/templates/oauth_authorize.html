@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-[75vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-lg w-full card-editorial bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-[#e7e5e4] space-y-6">
+    
+    <!-- Top Header -->
+    <div class="text-center space-y-3">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#292524] text-white shadow-sm mb-1">
+        <span class="material-symbols-rounded text-3xl">lock_person</span>
+      </div>
+      <h1 class="font-serif text-3xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Cấp Quyền Ứng Dụng AI
+      </h1>
+      <p class="text-xs sm:text-sm text-[#777169]">
+        Xác thực và ủy quyền truy cập OlokaTTS qua giao thức OAuth 2.1 cho <strong>{{ client_name }}</strong>
+      </p>
+    </div>
+
+    <!-- Error state -->
+    {% if error %}
+    <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start space-x-3">
+      <span class="material-symbols-rounded text-lg shrink-0 mt-0.5">error</span>
+      <div>
+        <div class="font-semibold">Lỗi Xác Thực OAuth</div>
+        <div class="text-[11px] mt-0.5">{{ error }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Authorization Details -->
+    <div class="p-5 rounded-2xl bg-[#fafafa] border border-[#e7e5e4] space-y-4 text-xs">
+      
+      <!-- Client Name -->
+      <div class="flex items-center justify-between pb-3 border-b border-[#f0efed]">
+        <span class="text-[#777169] font-medium">Ứng dụng yêu cầu kết nối:</span>
+        <span class="font-medium text-[#0c0a09] flex items-center gap-1.5">
+          <span class="material-symbols-rounded text-base text-[#16a34a]">verified</span>
+          <span class="font-semibold">{{ client_name }}</span>
+        </span>
+      </div>
+
+      <!-- Scopes -->
+      <div class="flex items-center justify-between pb-3 border-b border-[#f0efed]">
+        <span class="text-[#777169] font-medium">Phạm vi quyền hạn (Scopes):</span>
+        <span class="font-mono text-[11px] text-stone-700 bg-white px-2.5 py-1 rounded-lg border border-[#e7e5e4]">
+          {{ scope or "mcp:all speech:generate" }}
+        </span>
+      </div>
+
+      <!-- Bound Account Info -->
+      <div class="flex items-center justify-between pb-3 border-b border-[#f0efed]">
+        <span class="text-[#777169] font-medium">Tài khoản cấp quyền:</span>
+        <div class="text-right">
+          <div class="font-semibold text-[#0c0a09]">{{ user.username }}</div>
+          <div class="text-[11px] text-[#777169]">{{ user.email }}</div>
+        </div>
+      </div>
+
+      <!-- Role & Quota Badge -->
+      <div class="p-3 rounded-xl bg-white border border-[#e7e5e4] text-[11px] text-[#777169] flex items-center justify-between">
+        <span>Hạ tầng GPU xử lý:</span>
+        {% if user.role == 'admin' %}
+        <span class="font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+          Quản Trị Viên (Kaggle Dual T4 Master)
+        </span>
+        {% elif user.kaggle_username %}
+        <span class="font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+          Kaggle Cá Nhân BYOK (@{{ user.kaggle_username }})
+        </span>
+        {% else %}
+        <span class="font-medium text-stone-700 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200">
+          Người Dùng Tiêu Chuẩn (CPU Standby)
+        </span>
+        {% endif %}
+      </div>
+
+      <!-- Redirect notice -->
+      <div class="text-[11px] text-[#a8a29e] flex items-center gap-1">
+        <span class="material-symbols-rounded text-sm">info</span>
+        <span>Chuyển hướng an toàn về: <span class="font-mono truncate max-w-[200px] inline-block align-bottom">{{ redirect_uri }}</span></span>
+      </div>
+
+    </div>
+
+    <!-- Action Form -->
+    <form action="/oauth/authorize/consent" method="POST" class="space-y-3 pt-2" data-spa="false">
+      <input type="hidden" name="client_id" value="{{ client_id }}">
+      <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+      <input type="hidden" name="state" value="{{ state or '' }}">
+      <input type="hidden" name="code_challenge" value="{{ code_challenge or '' }}">
+      <input type="hidden" name="code_challenge_method" value="{{ code_challenge_method or 'S256' }}">
+      <input type="hidden" name="scope" value="{{ scope or 'mcp:all speech:generate' }}">
+
+      <button type="submit"
+        class="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-[#0c0a09] hover:bg-[#292524] text-white text-xs font-medium transition-all shadow-sm cursor-pointer">
+        <span class="material-symbols-rounded text-base">check_circle</span>
+        <span>Xác Nhận &amp; Cấp Quyền Cho {{ client_name }}</span>
+      </button>
+
+      {% if redirect_uri %}
+      <a href="{{ redirect_uri }}{% if '?' in redirect_uri %}&{% else %}?{% endif %}error=access_denied{% if state %}&state={{ state }}{% endif %}"
+        class="w-full block text-center py-2.5 px-4 text-xs text-[#777169] hover:text-[#0c0a09] transition-colors">
+        Hủy bỏ &amp; Từ chối truy cập
+      </a>
+      {% endif %}
+    </form>
+
+  </div>
+</div>
+{% endblock %}

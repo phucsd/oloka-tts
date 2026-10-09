@@ -11,8 +11,7 @@ import multiprocessing
 import traceback
 
 def install_dependencies():
-    print("⏳ [Init] Checking and installing dependencies...")
-    pkgs = ["torch==2.8.0", "torchaudio==2.8.0", "--index-url", "https://download.pytorch.org/whl/cu128"]
+    print("⏳ [Init] Fast-Bootstrap: Checking dependencies...")
     try:
         import torch
         print(f"✅ PyTorch version: {torch.__version__}, CUDA available: {torch.cuda.is_available()}")
@@ -20,27 +19,29 @@ def install_dependencies():
             print(f"✅ CUDA Device Count: {torch.cuda.device_count()}")
             for i in range(torch.cuda.device_count()):
                 print(f"   - GPU {i}: {torch.cuda.get_device_name(i)}")
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install"] + pkgs)
+    except Exception as e:
+        print(f"⚠️ PyTorch note: {e}")
 
-    # Install transformers pinned for stability
-    try:
-        import transformers
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "transformers==4.57.6"])
-
-    # Install vieneu with cuda extra
+    need_install = False
     try:
         import vieneu
-        print("✅ Vieneu SDK is already installed.")
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "vieneu[cuda]", "requests", "soundfile"])
-        import vieneu
-        print("✅ Vieneu SDK installed successfully.")
+        import sea_g2p
+        import kaldi_native_fbank
+        import soxr
+        import onnxruntime
+        print("✅ All dependencies already satisfied! Skipping pip install.")
+    except ImportError as ie:
+        print(f"⏳ Missing package: {ie}. Proceeding with Fast-Bootstrap (17s)...")
+        need_install = True
+
+    if need_install:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "vieneu", "--no-deps"])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "sea-g2p", "kaldi-native-fbank", "soxr", "onnxruntime", "requests", "soundfile"])
+        print("✅ Fast-Bootstrap installed successfully!")
 
 GATEWAY_URL = os.environ.get("PUBLIC_API_BASE_URL", "https://tts.oloka.net")
-WORKER_TOKEN = os.environ.get("WORKER_TOKEN", "")
-
+WORKER_TOKEN = os.environ.get("WORKER_TOKEN", "vieneu_secure_worker_token_2026")
+WORKER_PREFIX = os.environ.get("WORKER_PREFIX", "kaggle_worker")
 
 def run_worker_process(device_id: int, worker_name: str):
     import requests
@@ -147,6 +148,7 @@ def run_worker_process(device_id: int, worker_name: str):
                     voice_type = job_data.get("voice_type", "preset")
                     voice_id = job_data.get("voice_id", "Phạm Tuyên")
                     ref_audio_url = job_data.get("ref_audio_url")
+                    lease_token = job_data.get("lease_token", "")
                     
                     print(f"⚡ [{worker_name}] Processing Job {job_id} (Type: {voice_type}, Voice: {voice_id})")
                     job_t0 = time.time()
@@ -197,10 +199,10 @@ def run_worker_process(device_id: int, worker_name: str):
                             complete_payload = {
                                 "job_id": job_id,
                                 "worker_id": worker_name,
-                                "lease_token": job_data.get("lease_token", ""),
                                 "duration": duration,
                                 "sample_rate": 48000,
-                                "execution_time": exec_time
+                                "execution_time": exec_time,
+                                "lease_token": lease_token
                             }
                             requests.post(
                                 f"{GATEWAY_URL}/api/worker/jobs/{job_id}/complete",
@@ -220,8 +222,8 @@ def run_worker_process(device_id: int, worker_name: str):
                         fail_payload = {
                             "job_id": job_id,
                             "worker_id": worker_name,
-                            "lease_token": job_data.get("lease_token", ""),
-                            "error_message": str(infer_err)
+                            "error_message": str(infer_err),
+                            "lease_token": lease_token
                         }
                         requests.post(
                             f"{GATEWAY_URL}/api/worker/jobs/{job_id}/fail",
@@ -229,7 +231,6 @@ def run_worker_process(device_id: int, worker_name: str):
                             headers=headers,
                             timeout=10
                         )
-
 
         except requests.exceptions.RequestException as req_err:
             pass
@@ -272,17 +273,16 @@ def main():
     print(f"🎯 Total CUDA devices detected: {device_count}")
 
     workers = []
-    w_prefix = os.environ.get("WORKER_PREFIX") or os.environ.get("WORKER_NAME_PREFIX", "kaggle_worker")
     if device_count >= 2:
-        print(f"⚡ Dual GPU setup: Launching 2 workers for Tesla T4 x 2 (Prefix: {w_prefix})!")
-        workers.append(("0", f"{w_prefix}_t4_0"))
-        workers.append(("1", f"{w_prefix}_t4_1"))
+        print(f"⚡ Dual GPU setup: Launching 2 workers for Tesla T4 x 2 (Prefix: {WORKER_PREFIX})")
+        workers.append(("0", f"{WORKER_PREFIX}_t4_0"))
+        workers.append(("1", f"{WORKER_PREFIX}_t4_1"))
     elif device_count == 1:
-        print(f"⚡ Single GPU setup: Launching 1 worker for Tesla T4 (Prefix: {w_prefix})!")
-        workers.append(("0", f"{w_prefix}_t4_0"))
+        print(f"⚡ Single GPU setup: Launching 1 worker for Tesla T4 (Prefix: {WORKER_PREFIX})")
+        workers.append(("0", f"{WORKER_PREFIX}_t4_0"))
     else:
-        print(f"⚠️ No GPU detected! Running CPU mode worker (Prefix: {w_prefix})...")
-        workers.append(("-1", f"{w_prefix}_cpu"))
+        print(f"⚠️ No GPU detected! Running CPU mode worker (Prefix: {WORKER_PREFIX})")
+        workers.append(("-1", f"{WORKER_PREFIX}_cpu"))
 
     processes = {}
     for dev_id, name in workers:
@@ -323,6 +323,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.device is not None:
-        run_worker_process(args.device, args.name or f"kaggle_worker_{args.device}")
+        run_worker_process(args.device, args.name or f"{WORKER_PREFIX}_{args.device}")
     else:
         main()
