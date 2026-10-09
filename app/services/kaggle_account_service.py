@@ -166,6 +166,11 @@ class KaggleAccountService:
             return False, f"Lỗi kết nối tới Kaggle: {str(e)}"
 
     @staticmethod
+    def hash_token(raw_token: str) -> str:
+        """Computes SHA-256 hash of a raw worker token string."""
+        return hashlib.sha256(raw_token.strip().encode("utf-8")).hexdigest()
+
+    @staticmethod
     def issue_worker_token(
         db: Session,
         owner_user_id: str,
@@ -177,7 +182,7 @@ class KaggleAccountService:
         Stores SHA-256 hash in database; returns the raw token string for worker bootstrap.
         """
         raw_token = f"oloka_wkr_{secrets.token_hex(24)}"
-        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+        token_hash = KaggleAccountService.hash_token(raw_token)
         token_prefix = raw_token[:16] + "..."
         expires_at = datetime.utcnow() + timedelta(days=expires_days)
 

@@ -160,7 +160,8 @@ mcp = FastMCP(
         "OlokaTTS is a high-fidelity 48kHz Vietnamese Neural Text-to-Speech engine powered by Kaggle Tesla T4 GPUs. "
         "Use this server to generate natural Vietnamese speech, explore 25 curated voice presets across Northern, "
         "Central, and Southern dialects, and control expressiveness using natural emotion tags."
-    )
+    ),
+    json_response=True
 )
 
 # Standard MCP Streamable HTTP session support (stateless_http=False for proper mcp-session-id headers)
@@ -454,6 +455,15 @@ async def generate_speech(
             auth_user_id = authenticated_user.id
             auth_username = authenticated_user.username
             auth_role = (authenticated_user.role or "user").upper()
+
+            # P1: Check OAuth Scopes if caller authenticated via OAuth token
+            if hasattr(authenticated_user, "_oauth_token") and authenticated_user._oauth_token:
+                otok = authenticated_user._oauth_token
+                scope_str = otok.scope or ""
+                allowed_scopes = scope_str.split()
+                if "speech:generate" not in allowed_scopes and "mcp:all" not in allowed_scopes:
+                    return f"❌ **TỪ CHỐI TRUY CẬP:** Token OAuth của bạn không có quyền 'speech:generate' (Scope hiện tại: '{scope_str}'). Vui lòng cấp lại quyền với scope hợp lệ."
+
             auth_token = AuthService.create_token(
                 auth_user_id,
                 auth_username,

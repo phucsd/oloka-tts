@@ -4,7 +4,7 @@ import string
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
-from app.models import McpPairingSession, User
+from app.models import McpPairingSession, User, OAuthToken
 from app.services.api_key_service import ApiKeyService
 
 class McpAuthService:
@@ -174,6 +174,94 @@ class McpAuthService:
         return True
 
     @staticmethod
+    def revoke_oauth_token(db: Session, raw_token_or_hash: str) -> bool:
+        """
+        Revokes an OAuth 2.1 access token or refresh token and all tokens in its family.
+        RFC 7009 compliant.
+        """
+        if not raw_token_or_hash or not raw_token_or_hash.strip():
+            return False
+        clean = raw_token_or_hash.strip()
+        t_hash = McpAuthService.hash_token(clean)
+        
+        target = db.query(OAuthToken).filter(
+            (OAuthToken.token_hash == t_hash) |
+            (OAuthToken.id == clean) |
+            (OAuthToken.token_id == clean)
+        ).first()
+
+        now = datetime.utcnow()
+        if target:
+            target.revoked_at = now
+            if target.family_id:
+                db.query(OAuthToken).filter(
+                    OAuthToken.family_id == target.family_id,
+                    OAuthToken.revoked_at.is_(None)
+                ).update({"revoked_at": now})
+            db.commit()
+            return True
+
+        sessions = db.query(McpPairingSession).filter(
+            (McpPairingSession.session_token_hash == t_hash) |
+            (McpPairingSession.session_token == clean) |
+            (McpPairingSession.code == clean.upper())
+        ).all()
+        if sessions:
+            for s in sessions:
+                s.status = "revoked"
+            db.commit()
+            return True
+
+        return False
+
+    @staticmethod
+    def validate_bearer_token(
+        db: Session,
+        raw_token: str
+    ) -> Tuple[Optional[User], Optional[OAuthToken], Optional[str]]:
+        """
+        Validates an OAuth 2.1 access token or API key for MCP.
+        Returns (user, oauth_token_obj, error_reason).
+        Strictly rejects generic web JWTs and expired/revoked tokens.
+        """
+        if not raw_token or not raw_token.strip():
+            return None, None, "missing_token"
+
+        token_clean = raw_token.strip()
+
+        # 1. Dedicated OAuth 2.1 Access Token (olk_atk_...)
+        if token_clean.startswith("olk_atk_"):
+            t_hash = McpAuthService.hash_token(token_clean)
+            otok = db.query(OAuthToken).filter(
+                OAuthToken.token_hash == t_hash,
+                OAuthToken.token_type == "access_token"
+            ).first()
+            if not otok:
+                return None, None, "invalid_token"
+            if otok.revoked_at is not None:
+                return None, None, "token_revoked"
+            if otok.expires_at < datetime.utcnow():
+                return None, None, "token_expired"
+            user = db.query(User).filter(User.id == otok.user_id, User.is_active == True).first()
+            if not user:
+                return None, None, "user_inactive"
+            otok.last_used_at = datetime.utcnow()
+            db.commit()
+            return user, otok, None
+
+        # 2. Oloka API Key (oloka_live_...)
+        if token_clean.startswith("oloka_live_"):
+            ak = ApiKeyService.validate_api_key(db, token_clean)
+            if ak:
+                user = db.query(User).filter(User.id == ak.user_id, User.is_active == True).first()
+                if user:
+                    return user, None, None
+            return None, None, "invalid_api_key"
+
+        # Web-login JWTs or unknown formats are strictly rejected for MCP
+        return None, None, "unsupported_token_type"
+
+    @staticmethod
     def resolve_caller(
         db: Session,
         pair_code: Optional[str] = None,
@@ -184,29 +272,18 @@ class McpAuthService:
         """
         Resolves caller identity to an active User.
         Fail-closed priority:
-        1. Validated API Key (via ApiKeyService) OR JWT Bearer Token (via AuthService)
+        1. Validated OAuth 2.1 Access Token (olk_atk_...) OR API Key (oloka_live_...)
         2. Authorized Transport Session ID (bound at MCP connection/transport layer)
         3. Authorized Session Token (long-term session credential hash)
         4. Authorized Pair Code (explicit code verification)
         """
         # 1. API Key or Bearer Token resolution
         if api_key and api_key.strip():
-            key_clean = api_key.strip()
-            ak = ApiKeyService.validate_api_key(db, key_clean)
-            if ak:
-                user = db.query(User).filter(User.id == ak.user_id, User.is_active == True).first()
-                if user:
-                    return user
-            # Also support standard JWT Auth Token
-            try:
-                from app.services.auth_service import AuthService
-                payload = AuthService.decode_token(key_clean)
-                if payload and payload.get("sub"):
-                    user = db.query(User).filter(User.id == payload["sub"], User.is_active == True).first()
-                    if user:
-                        return user
-            except Exception:
-                pass
+            user, otok, _ = McpAuthService.validate_bearer_token(db, api_key.strip())
+            if user:
+                if otok:
+                    user._oauth_token = otok
+                return user
             return None
 
         # 2. Long-term Session Token resolution (explicit credential via hash or legacy plaintext)

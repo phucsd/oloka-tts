@@ -194,5 +194,26 @@ class OAuthClient(Base):
     client_secret = Column(String(256), nullable=True)
     client_name = Column(String(256), nullable=True)
     redirect_uris = Column(Text, nullable=True)  # JSON-encoded list of allowed redirect URIs
+    is_confidential = Column(Boolean, default=False)
+    token_endpoint_auth_method = Column(String(64), default="none")  # "none", "client_secret_post", "client_secret_basic"
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class OAuthToken(Base):
+    __tablename__ = "oauth_tokens"
+
+    id = Column(String(64), primary_key=True, default=lambda: generate_id("tok"))
+    token_id = Column(String(64), unique=True, index=True)  # jti
+    token_type = Column(String(32), default="access_token", index=True)  # "access_token" or "refresh_token"
+    token_hash = Column(String(256), unique=True, index=True, nullable=False)  # SHA-256 of raw secret token
+    token_masked = Column(String(64), nullable=True)
+    user_id = Column(String(64), ForeignKey("users.id"), nullable=False, index=True)
+    client_id = Column(String(128), nullable=False, index=True)
+    scope = Column(String(256), default="mcp:all speech:generate")
+    audience = Column(String(256), default="https://tts.oloka.net/mcp")
+    family_id = Column(String(64), nullable=True, index=True)  # Token family ID for rotation / reuse detection
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    revoked_at = Column(DateTime, nullable=True, index=True)
+    last_used_at = Column(DateTime, nullable=True)
+
 

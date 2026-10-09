@@ -91,6 +91,7 @@
       <input type="hidden" name="code_challenge" value="{{ code_challenge or '' }}">
       <input type="hidden" name="code_challenge_method" value="{{ code_challenge_method or 'S256' }}">
       <input type="hidden" name="scope" value="{{ scope or 'mcp:all speech:generate' }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
 
       <button type="submit"
         class="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-[#0c0a09] hover:bg-[#292524] text-white text-xs font-medium transition-all shadow-sm cursor-pointer">
