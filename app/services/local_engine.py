@@ -48,12 +48,33 @@ class LocalEngine:
         if not engine:
             raise RuntimeError("Local CPU engine is not available or failed to load")
 
+        from app.services.tts_script_parser import TtsScriptParser
+        from app.services.audio_composer import AudioComposer
+
+        parsed = TtsScriptParser.parse(prompt)
+
         t0 = time.time()
-        if voice_type == "clone" and ref_audio_path and os.path.exists(ref_audio_path):
-            audio = engine.infer(prompt, ref_audio=ref_audio_path)
+        if not parsed.has_pauses:
+            if voice_type == "clone" and ref_audio_path and os.path.exists(ref_audio_path):
+                audio = engine.infer(prompt, ref_audio=ref_audio_path)
+            else:
+                audio = engine.infer(prompt, voice=voice_id)
         else:
-            audio = engine.infer(prompt, voice=voice_id)
+            speech_audios = []
+            for seg in parsed.get_speech_segments():
+                if voice_type == "clone" and ref_audio_path and os.path.exists(ref_audio_path):
+                    part_audio = engine.infer(seg.text, ref_audio=ref_audio_path)
+                else:
+                    part_audio = engine.infer(seg.text, voice=voice_id)
+                speech_audios.append(part_audio)
+
+            audio = AudioComposer.compose_from_parsed_script(
+                segments=parsed.segments,
+                speech_audios=speech_audios,
+                sample_rate=getattr(engine, "sample_rate", 48000)
+            )
 
         exec_time = time.time() - t0
-        duration = len(audio) / 48000.0
+        duration = len(audio) / float(getattr(engine, "sample_rate", 48000))
         return audio, duration, exec_time
+

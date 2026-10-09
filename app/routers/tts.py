@@ -56,19 +56,25 @@ def create_tts_job(
         from app.services.api_key_service import ApiKeyService
         ApiKeyService.record_usage(db, api_key_obj.id, chars=len(req.prompt or ""))
 
-    job = JobService.create_job(
-        db=db,
-        prompt=req.prompt,
-        voice_type=req.voice_type,
-        voice_id=req.resolved_voice_id,
-        ref_sample_id=req.ref_sample_id,
-        speed=req.speed,
-        temperature=req.temperature,
-        silence_p=req.silence_p,
-        force_local=force_local,
-        user_id=user.id,
-        execution_account_id=execution_account_id
-    )
+    try:
+        job = JobService.create_job(
+            db=db,
+            prompt=req.prompt,
+            voice_type=req.voice_type,
+            voice_id=req.resolved_voice_id,
+            ref_sample_id=req.ref_sample_id,
+            speed=req.speed,
+            temperature=req.temperature,
+            silence_p=req.silence_p,
+            force_local=force_local,
+            user_id=user.id,
+            execution_account_id=execution_account_id
+        )
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=400,
+            detail=str(val_err)
+        )
     return job
 
 @router.get("/jobs/{job_id}", response_model=TTSJobResponse)

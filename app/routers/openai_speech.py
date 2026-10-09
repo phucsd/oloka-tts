@@ -52,15 +52,21 @@ async def openai_speech(
             detail="Tài khoản của bạn chưa cấu hình Kaggle API Key cá nhân. Vui lòng vào Cài Đặt (https://tts.oloka.net/settings) để kết nối Kaggle GPU."
         )
 
-    job = JobService.create_job(
-        db=db,
-        prompt=req.input,
-        voice_type="preset",
-        voice_id=req.voice,
-        speed=req.speed,
-        user_id=user.id,
-        execution_account_id=acc.id
-    )
+    try:
+        job = JobService.create_job(
+            db=db,
+            prompt=req.input,
+            voice_type="preset",
+            voice_id=req.voice,
+            speed=req.speed,
+            user_id=user.id,
+            execution_account_id=acc.id
+        )
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=400,
+            detail=str(val_err)
+        )
 
     if job.status == "failed":
         raise HTTPException(status_code=400, detail=f"Không thể khởi chạy GPU: {job.error_message}")

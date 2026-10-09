@@ -176,7 +176,11 @@ def run_worker_process(device_id: int, worker_name: str):
         try:
             pull_resp = requests.post(
                 f"{{GATEWAY_URL}}/api/worker/jobs/pull",
-                json={{"worker_id": worker_name}},
+                json={{
+                    "worker_id": worker_name,
+                    "protocol_version": 2,
+                    "capabilities": ["pause_tags_v1"]
+                }},
                 headers=headers,
                 timeout=10
             )
@@ -201,13 +205,15 @@ def run_worker_process(device_id: int, worker_name: str):
                     if "id" in job_data:
                         last_activity = time.time()  # Reset idle timer upon receiving job
                         job_id = job_data["id"]
-                    prompt = job_data["prompt"]
-                    voice_type = job_data.get("voice_type", "preset")
-                    voice_id = job_data.get("voice_id", "Phạm Tuyên")
-                    ref_audio_url = job_data.get("ref_audio_url")
-                    lease_token = job_data.get("lease_token", "")
+                        prompt = job_data["prompt"]
+                        voice_type = job_data.get("voice_type", "preset")
+                        voice_id = job_data.get("voice_id", "Phạm Tuyên")
+                        ref_audio_url = job_data.get("ref_audio_url")
+                        lease_token = job_data.get("lease_token", "")
+                        has_pauses = job_data.get("has_pauses", False)
+                        segments = job_data.get("segments", [])
                     
-                    print(f"⚡ [{{worker_name}}] Processing Job {{job_id}} (Type: {{voice_type}}, Voice: {{voice_id}})")
+                    print(f"⚡ [{{worker_name}}] Processing Job {{job_id}} (Type: {{voice_type}}, Voice: {{voice_id}}, Pauses: {{has_pauses}})")
                     job_t0 = time.time()
                     
                     try:
@@ -231,22 +237,78 @@ def run_worker_process(device_id: int, worker_name: str):
                             except Exception:
                                 pass
 
-                        # Inference
-                        try:
-                            if ref_local_path:
-                                audio = tts.infer(prompt, ref_audio=ref_local_path, **infer_kwargs)
+                        sr = getattr(tts, "sample_rate", 48000)
+
+                        # Inference: Single-pass for standard prompts, composite for pause tags
+                        if not has_pauses:
+                            try:
+                                if ref_local_path:
+                                    audio = tts.infer(prompt, ref_audio=ref_local_path, **infer_kwargs)
+                                else:
+                                    audio = tts.infer(prompt, voice=voice_id, **infer_kwargs)
+                            except TypeError:
+                                if ref_local_path:
+                                    audio = tts.infer(prompt, ref_audio=ref_local_path)
+                                else:
+                                    audio = tts.infer(prompt, voice=voice_id)
+                        else:
+                            speech_segments = [s for s in segments if s.get("type") == "speech"]
+                            speech_texts = [s.get("text", "").strip() for s in speech_segments if s.get("text", "").strip()]
+
+                            speech_audios = []
+                            used_batch = False
+                            if len(speech_texts) > 1 and hasattr(tts, "infer_batch"):
+                                try:
+                                    if ref_local_path:
+                                        speech_audios = tts.infer_batch(speech_texts, ref_audio=ref_local_path, **infer_kwargs)
+                                    else:
+                                        speech_audios = tts.infer_batch(speech_texts, voice=voice_id, **infer_kwargs)
+                                    used_batch = True
+                                except Exception as b_err:
+                                    print(f"⚠️ [{{worker_name}}] infer_batch failed ({{b_err}}), falling back to sequential infer")
+                                    speech_audios = []
+
+                            if not used_batch:
+                                for txt in speech_texts:
+                                    try:
+                                        if ref_local_path:
+                                            a = tts.infer(txt, ref_audio=ref_local_path, **infer_kwargs)
+                                        else:
+                                            a = tts.infer(txt, voice=voice_id, **infer_kwargs)
+                                    except TypeError:
+                                        if ref_local_path:
+                                            a = tts.infer(txt, ref_audio=ref_local_path)
+                                        else:
+                                            a = tts.infer(txt, voice=voice_id)
+                                    speech_audios.append(a)
+
+                            # Compose final audio with waveform-domain silence
+                            import numpy as np
+                            ordered_parts = []
+                            speech_idx = 0
+                            for seg in segments:
+                                if seg.get("type") == "speech":
+                                    if speech_idx < len(speech_audios):
+                                        w = speech_audios[speech_idx]
+                                        if w is not None and len(w) > 0:
+                                            ordered_parts.append(np.asarray(w, dtype=np.float32))
+                                        speech_idx += 1
+                                elif seg.get("type") == "pause":
+                                    dur_ms = seg.get("duration_ms", 0)
+                                    dur_s = (dur_ms or 0) / 1000.0
+                                    if dur_s > 0:
+                                        num_samples = int(round(dur_s * sr))
+                                        ordered_parts.append(np.zeros(num_samples, dtype=np.float32))
+
+                            if ordered_parts:
+                                audio = np.concatenate(ordered_parts) if len(ordered_parts) > 1 else ordered_parts[0]
                             else:
-                                audio = tts.infer(prompt, voice=voice_id, **infer_kwargs)
-                        except TypeError:
-                            if ref_local_path:
-                                audio = tts.infer(prompt, ref_audio=ref_local_path)
-                            else:
-                                audio = tts.infer(prompt, voice=voice_id)
+                                audio = np.array([], dtype=np.float32)
 
                         out_path = f"/tmp/out_{{job_id}}.wav"
                         tts.save(audio, out_path)
                         exec_time = time.time() - job_t0
-                        duration = len(audio) / 48000.0
+                        duration = len(audio) / float(sr)
 
                         print(f"✅ [{{worker_name}}] Job {{job_id}} finished in {{exec_time:.2f}}s (audio duration: {{duration:.2f}}s)")
 
@@ -257,7 +319,7 @@ def run_worker_process(device_id: int, worker_name: str):
                                 "job_id": job_id,
                                 "worker_id": worker_name,
                                 "duration": duration,
-                                "sample_rate": 48000,
+                                "sample_rate": sr,
                                 "execution_time": exec_time,
                                 "lease_token": lease_token
                             }}

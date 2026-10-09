@@ -424,12 +424,14 @@ async def generate_speech(
     Synthesize high-fidelity 48kHz Vietnamese speech from text using OlokaTTS Neural Workers.
     
     Parameters:
-      prompt: Vietnamese text to read. You can embed natural emotion tags to control voice acting:
+      prompt: Vietnamese text to read. You can embed natural emotion tags and custom pause tags:
               - [cười] (chuckle / laugh)
               - [thở dài] (sigh)
+              - [hắng giọng] (clear throat)
+              - [0.2s], [0.5s], [1.0s], [2.0s] (explicit silence pauses, e.g. [pause:0.5s] or [0.5])
+              Experimental tags:
               - [thì thầm] (whisper)
               - [ngập ngừng] (hesitation)
-              - [0.5s] or [1.0s] (pause)
       voice: Name of voice preset (e.g., 'Hải Đăng', 'Mai Anh', 'Anh Khôi', 'Trúc Ly', 'Quang Sơn', 'Ngọc Trân', 'Adam bựa').
       speed: Speaking speed multiplier (0.5 to 2.0, default 1.0).
       temperature: Neural voice expressiveness / prosody variation (0.1 to 1.5, default 0.7).
@@ -577,15 +579,18 @@ async def generate_speech(
             from app.services.job_service import JobService
             from app.models import TTSJob
 
-            job = JobService.create_job(
-                db=db,
-                prompt=prompt.strip(),
-                voice_type="preset",
-                voice_id=voice.strip(),
-                speed=float(speed),
-                temperature=float(temperature),
-                user_id=auth_user_id
-            )
+            try:
+                job = JobService.create_job(
+                    db=db,
+                    prompt=prompt.strip(),
+                    voice_type="preset",
+                    voice_id=voice.strip(),
+                    speed=float(speed),
+                    temperature=float(temperature),
+                    user_id=auth_user_id
+                )
+            except ValueError as ve:
+                return f"❌ **Lỗi nội dung văn bản:** {ve}"
 
             if job.status == "failed":
                 return f"❌ Lỗi khởi tạo yêu cầu giọng nói: {job.error_message}"
@@ -862,29 +867,45 @@ def get_system_status(ctx: Optional[Context] = None) -> str:
 @mcp.tool()
 def estimate_speech_duration(text: str, speed: float = 1.0) -> str:
     """
-    Estimates the speech duration, word count, and character count of a Vietnamese text snippet.
+    Estimates the speech duration, word count, and character count of a Vietnamese text snippet,
+    accounting for speaking rate and explicit pause tags ([0.2s], [0.5s], [1.0s], [pause:...]).
     
     Parameters:
       text: The text to evaluate.
       speed: The playback speed multiplier (default 1.0).
     """
-    clean_text = text.strip()
+    from app.services.tts_script_parser import TtsScriptParser
+    try:
+        parsed = TtsScriptParser.parse(text)
+        speech_text = parsed.get_total_speech_text()
+        total_pause_s = parsed.total_pause_ms / 1000.0
+        pause_count = len([s for s in parsed.segments if s.type == "pause"])
+    except Exception:
+        speech_text = text.strip()
+        total_pause_s = 0.0
+        pause_count = 0
+
+    clean_text = speech_text.strip()
     chars = len(clean_text)
     words = len(clean_text.split())
     # Vietnamese average reading rate is ~3.2 words per second at 1.0x speed
     eff_speed = max(0.2, float(speed))
-    seconds = max(1, round(words / (3.2 * eff_speed)))
+    speech_seconds = round(words / (3.2 * eff_speed)) if words > 0 else 0
+    total_seconds = max(1, round(speech_seconds + total_pause_s))
 
-    mins = seconds // 60
-    rem_secs = seconds % 60
-    time_str = f"{mins} phút {rem_secs} giây" if mins > 0 else f"{seconds} giây"
+    mins = total_seconds // 60
+    rem_secs = total_seconds % 60
+    time_str = f"{mins} phút {rem_secs} giây" if mins > 0 else f"{total_seconds} giây"
+
+    pause_breakdown = f"\n- Khoảng ngắt nghỉ chỉ định ({pause_count} thẻ): **+{total_pause_s:.1f}s**" if total_pause_s > 0 else ""
 
     return (
-        f"📊 **Ước Tính Âm Thanh:**\n"
-        f"- Ký tự: **{chars:,}** ký tự\n"
-        f"- Số từ: **{words:,}** từ\n"
-        f"- Tốc độ: **{speed:.2f}x**\n"
-        f"- Thời lượng dự kiến: **~{time_str}** (~{seconds}s)"
+        f"📊 **Ước Tính Âm Thanh (Dự Kiến):**\n"
+        f"- Ký tự lời thoại: **{chars:,}** ký tự\n"
+        f"- Số từ lời thoại: **{words:,}** từ\n"
+        f"- Tốc độ đọc: **{speed:.2f}x**\n"
+        f"- Thời lượng lời nói: **~{speech_seconds}s**{pause_breakdown}\n"
+        f"- Tổng thời lượng dự kiến: **~{time_str}** (~{total_seconds}s)"
     )
 
 # ==============================================================================

@@ -158,12 +158,17 @@ def pull_job(
                 add_log(worker_id, f"Auto-idle timeout reached ({int(elapsed)}s > {idle_sec}s). Sending SHUTDOWN signal.")
                 return {"action": "shutdown"}
 
+    worker_capabilities = list((payload or {}).get("capabilities", []))
+    if (payload or {}).get("protocol_version", 1) >= 2 and "pause_tags_v1" not in worker_capabilities:
+        worker_capabilities.append("pause_tags_v1")
+
     # Pull job strictly belonging to this tenant's execution account
     job = JobService.pull_pending_job(
         db=db,
         worker_id=worker_id,
         execution_account_id=auth.execution_account_id,
-        owner_user_id=auth.owner_user_id
+        owner_user_id=auth.owner_user_id,
+        worker_capabilities=worker_capabilities
     )
     if not job:
         return {}
@@ -183,7 +188,10 @@ def pull_job(
         "speed": job.get("speed", 1.0),
         "temperature": job.get("temperature", 0.7),
         "silence_p": job.get("silence_p", 0.15),
-        "lease_token": job.get("lease_token")
+        "lease_token": job.get("lease_token"),
+        "script_version": job.get("script_version", 1),
+        "has_pauses": job.get("has_pauses", False),
+        "segments": job.get("segments", [])
     }
 
 @router.get("/jobs/{job_id}/prompt-audio")

@@ -78,6 +78,10 @@ class JobService:
                    silence_p: float = 0.15, force_local: bool = False, user_id: str = None,
                    execution_account_id: str = None) -> TTSJob:
         
+        # Validate prompt with script parser
+        from app.services.tts_script_parser import TtsScriptParser
+        TtsScriptParser.parse(prompt)
+
         ref_audio_path = None
         if voice_type == "clone" and ref_sample_id:
             sample = db.query(VoiceSample).filter(VoiceSample.id == ref_sample_id).first()
@@ -188,10 +192,13 @@ class JobService:
         db: Session,
         worker_id: str,
         execution_account_id: str,
-        owner_user_id: str = None
+        owner_user_id: str = None,
+        worker_capabilities: Optional[List[str]] = None
     ) -> Optional[dict]:
         if not execution_account_id or not execution_account_id.strip():
             return None
+
+        from app.services.tts_script_parser import TtsScriptParser
 
         # 1. Clean up abandoned pending jobs older than 15 minutes
         JobService.cleanup_stale_jobs(db, max_age_minutes=15)
@@ -229,11 +236,28 @@ class JobService:
 
         # 3. Pull oldest active pending job strictly belonging to THIS execution account
         active_cutoff = datetime.utcnow() - timedelta(minutes=15)
-        candidate = db.query(TTSJob).filter(
+        candidates = db.query(TTSJob).filter(
             TTSJob.execution_account_id == execution_account_id,
             TTSJob.status.in_(["queued", "booting_kaggle"]),
             func.coalesce(TTSJob.updated_at, TTSJob.created_at) >= active_cutoff
-        ).order_by(TTSJob.created_at.asc()).first()
+        ).order_by(TTSJob.created_at.asc()).all()
+
+        candidate = None
+        candidate_parsed = None
+        caps = worker_capabilities or []
+        for c in candidates:
+            try:
+                p = TtsScriptParser.parse(c.prompt)
+            except Exception:
+                p = None
+            if p and p.has_pauses and "pause_tags_v1" not in caps:
+                # Old worker without pause_tags_v1 capability.
+                # Skip to prevent pause tags from being read aloud as literal text.
+                print(f"⚠️ [JobService] Worker {worker_id} lacks 'pause_tags_v1'. Skipping job #{c.id} with explicit pauses.")
+                continue
+            candidate = c
+            candidate_parsed = p
+            break
 
         if not candidate:
             return None
@@ -266,6 +290,15 @@ class JobService:
             # Use authenticated worker prompt-audio endpoint
             ref_audio_url = f"{settings.PUBLIC_API_BASE_URL.rstrip('/')}/api/worker/jobs/{job.id}/prompt-audio"
 
+        parsed_job = candidate_parsed
+        if parsed_job is None:
+            try:
+                parsed_job = TtsScriptParser.parse(job.prompt)
+            except Exception:
+                parsed_job = None
+
+        sil_p = 0.15 if getattr(job, "silence_p", None) is None else float(job.silence_p)
+
         return {
             "id": job.id,
             "prompt": job.prompt,
@@ -274,8 +307,11 @@ class JobService:
             "ref_audio_url": ref_audio_url,
             "speed": job.speed,
             "temperature": job.temperature,
-            "silence_p": getattr(job, "silence_p", 0.15) or 0.15,
-            "lease_token": lease_token
+            "silence_p": sil_p,
+            "lease_token": lease_token,
+            "script_version": 1,
+            "has_pauses": parsed_job.has_pauses if parsed_job else False,
+            "segments": parsed_job.to_dict_segments() if parsed_job else [{"type": "speech", "text": job.prompt}]
         }
 
     @staticmethod

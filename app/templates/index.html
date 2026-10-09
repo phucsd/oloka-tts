@@ -136,14 +136,17 @@
 
         <!-- Custom Silence / Pause Tags -->
         <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pt-1">
-          <span class="text-xs font-medium text-[#777169] mr-1 shrink-0">Ngắt nghỉ:</span>
-          <button type="button" onclick="insertEmotion('[0.5]')" class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+          <span class="text-xs font-medium text-[#777169] mr-1 shrink-0" title="Chèn thêm khoảng lặng tại vị trí con trỏ">Ngắt nghỉ:</span>
+          <button type="button" onclick="insertEmotion('[0.2]')" title="Chèn thêm khoảng lặng 0.2 giây" class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+            <span class="material-symbols-rounded text-xs mr-0.5">timer</span>0.2s
+          </button>
+          <button type="button" onclick="insertEmotion('[0.5]')" title="Chèn thêm khoảng lặng 0.5 giây" class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
             <span class="material-symbols-rounded text-xs mr-0.5">timer</span>0.5s
           </button>
-          <button type="button" onclick="insertEmotion('[1.0]')" class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+          <button type="button" onclick="insertEmotion('[1.0]')" title="Chèn thêm khoảng lặng 1.0 giây" class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
             <span class="material-symbols-rounded text-xs mr-0.5">timer</span>1.0s
           </button>
-          <button type="button" onclick="insertEmotion('[2.0]')" class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
+          <button type="button" onclick="insertEmotion('[2.0]')" title="Chèn thêm khoảng lặng 2.0 giây" class="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
             <span class="material-symbols-rounded text-xs mr-0.5">timer</span>2.0s
           </button>
         </div>
