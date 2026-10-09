@@ -20,9 +20,13 @@ class DbSyncService:
     restarts, and sleep cycles.
     """
     _lock = threading.Lock()
+    _timer_lock = threading.Lock()
     _last_backup_time = 0
-    _debounce_seconds = 5
+    _min_interval_seconds = 120  # Minimum 2 minutes between cloud backups to eliminate HF CPU spikes
     _pending_timer = None
+    _is_uploading = False
+    _has_pending = False
+    _repo_verified = False
 
     @classmethod
     def get_token(cls) -> Optional[str]:
@@ -156,9 +160,10 @@ class DbSyncService:
         print(f"[DbSync] Background periodic sync started (interval: {interval_seconds}s).")
 
     @classmethod
-    def backup_database(cls, immediate: bool = True):
+    def backup_database(cls, immediate: bool = False):
         """
-        Backs up the SQLite database to the private HF dataset.
+        Non-blocking cloud backup request.
+        Debounces commits to prevent CPU/network saturation and request latency spikes on Hugging Face Spaces.
         """
         if os.environ.get("TESTING") == "1":
             return
@@ -170,83 +175,112 @@ class DbSyncService:
         if not token:
             return
 
-        if immediate:
-            threading.Thread(target=cls._do_upload, daemon=True).start()
-        else:
-            with cls._lock:
-                if cls._pending_timer:
-                    cls._pending_timer.cancel()
-                cls._pending_timer = threading.Timer(cls._debounce_seconds, cls._do_upload)
-                cls._pending_timer.start()
+        now = time.time()
+        time_since_last = now - cls._last_backup_time
+
+        with cls._timer_lock:
+            cls._has_pending = True
+            if immediate or time_since_last >= cls._min_interval_seconds:
+                delay = 0.5
+            else:
+                delay = max(5.0, cls._min_interval_seconds - time_since_last)
+
+            if cls._pending_timer:
+                cls._pending_timer.cancel()
+            cls._pending_timer = threading.Timer(delay, cls._trigger_upload_thread)
+            cls._pending_timer.daemon = True
+            cls._pending_timer.start()
+
+    @classmethod
+    def _trigger_upload_thread(cls):
+        threading.Thread(target=cls._do_upload, daemon=True, name="DbSyncUploadThread").start()
 
     @classmethod
     def _do_upload(cls):
         with cls._lock:
+            if cls._is_uploading:
+                cls._has_pending = True
+                return
+            cls._is_uploading = True
+
+        try:
+            with cls._timer_lock:
+                cls._has_pending = False
+
+            db_path = Path(settings.DATABASE_URL.replace("sqlite:///", ""))
+            if not db_path.exists() or db_path.stat().st_size == 0:
+                return
+
+            token = cls.get_token()
+            if not token:
+                return
+
+            repo_id = cls.get_backup_repo_id()
+
+            # Safe copy using sqlite3.backup to flush WAL journal cleanly
+            temp_copy = db_path.with_suffix(".tmp_backup")
             try:
-                db_path = Path(settings.DATABASE_URL.replace("sqlite:///", ""))
-                if not db_path.exists() or db_path.stat().st_size == 0:
-                    return
+                import sqlite3
+                src_conn = sqlite3.connect(str(db_path))
+                dst_conn = sqlite3.connect(str(temp_copy))
+                src_conn.backup(dst_conn)
+                dst_conn.close()
+                src_conn.close()
+            except Exception as e_bk:
+                print(f"⚠️ [DbSync] Native sqlite backup notice: {e_bk}, falling back to copyfile...")
+                shutil.copyfile(str(db_path), str(temp_copy))
 
-                token = cls.get_token()
-                if not token:
-                    return
+            # Integrity verification before pushing to cloud
+            try:
+                import sqlite3
+                conn = sqlite3.connect(str(temp_copy))
+                cur = conn.cursor()
+                cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                tables = {r[0] for r in cur.fetchall()}
+                user_count = 0
+                if "users" in tables:
+                    cur.execute("SELECT count(*) FROM users")
+                    user_count = cur.fetchone()[0]
+                conn.close()
 
-                repo_id = cls.get_backup_repo_id()
-
-                # Safe copy using sqlite3.backup to flush WAL journal cleanly
-                temp_copy = db_path.with_suffix(".tmp_backup")
-                try:
-                    import sqlite3
-                    src_conn = sqlite3.connect(str(db_path))
-                    dst_conn = sqlite3.connect(str(temp_copy))
-                    src_conn.backup(dst_conn)
-                    dst_conn.close()
-                    src_conn.close()
-                except Exception as e_bk:
-                    print(f"⚠️ [DbSync] Native sqlite backup notice: {e_bk}, falling back to copyfile...")
-                    shutil.copyfile(str(db_path), str(temp_copy))
-
-                # Integrity verification before pushing to cloud
-                try:
-                    import sqlite3
-                    conn = sqlite3.connect(str(temp_copy))
-                    cur = conn.cursor()
-                    cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-                    tables = {r[0] for r in cur.fetchall()}
-                    user_count = 0
-                    if "users" in tables:
-                        cur.execute("SELECT count(*) FROM users")
-                        user_count = cur.fetchone()[0]
-                    conn.close()
-
-                    if "users" not in tables or user_count == 0:
-                        print(f"⚠️ [DbSync] Skipping cloud upload: local database has no users table or 0 users. Cloud backup preserved!")
-                        if temp_copy.exists():
-                            temp_copy.unlink()
-                        return
-                except Exception as e_chk:
-                    print(f"⚠️ [DbSync] Pre-upload verification error: {e_chk}")
+                if "users" not in tables or user_count == 0:
+                    print(f"⚠️ [DbSync] Skipping cloud upload: local database has no users table or 0 users. Cloud backup preserved!")
                     if temp_copy.exists():
                         temp_copy.unlink()
                     return
-
-                api = HfApi(token=token) if HfApi else None
-                if not api:
-                    from huggingface_hub import HfApi as HubApi
-                    api = HubApi(token=token)
-
-                api.create_repo(repo_id=repo_id, repo_type="dataset", private=True, exist_ok=True)
-
-                api.upload_file(
-                    path_or_fileobj=str(temp_copy),
-                    path_in_repo="vieneu_gateway.db",
-                    repo_id=repo_id,
-                    repo_type="dataset",
-                    commit_message=f"Auto-sync database ({time.strftime('%Y-%m-%d %H:%M:%S')})"
-                )
+            except Exception as e_chk:
+                print(f"⚠️ [DbSync] Pre-upload verification error: {e_chk}")
                 if temp_copy.exists():
                     temp_copy.unlink()
-                cls._last_backup_time = time.time()
-                print(f"[DbSync] Successfully synced database backup ({user_count} users) to {repo_id}!")
-            except Exception as e:
-                print(f"⚠️ [DbSync] Failed to backup database to {repo_id}: {e}")
+                return
+
+            api = HfApi(token=token) if HfApi else None
+            if not api:
+                from huggingface_hub import HfApi as HubApi
+                api = HubApi(token=token)
+
+            if not cls._repo_verified:
+                try:
+                    api.create_repo(repo_id=repo_id, repo_type="dataset", private=True, exist_ok=True)
+                    cls._repo_verified = True
+                except Exception:
+                    cls._repo_verified = True
+
+            api.upload_file(
+                path_or_fileobj=str(temp_copy),
+                path_in_repo="vieneu_gateway.db",
+                repo_id=repo_id,
+                repo_type="dataset",
+                commit_message=f"Auto-sync database ({time.strftime('%Y-%m-%d %H:%M:%S')})"
+            )
+            if temp_copy.exists():
+                temp_copy.unlink()
+            cls._last_backup_time = time.time()
+            print(f"[DbSync] Successfully synced database backup ({user_count} users) to {repo_id}!")
+        except Exception as e:
+            print(f"⚠️ [DbSync] Failed to backup database to {repo_id}: {e}")
+        finally:
+            with cls._lock:
+                cls._is_uploading = False
+            if cls._has_pending:
+                cls.backup_database(immediate=False)

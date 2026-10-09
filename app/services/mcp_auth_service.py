@@ -80,6 +80,13 @@ class McpAuthService:
         return session
 
     @staticmethod
+    def get_session_by_token(db: Session, session_token: str) -> Optional[McpPairingSession]:
+        """Fetches pairing session by session_token."""
+        if not session_token or not session_token.strip():
+            return None
+        return db.query(McpPairingSession).filter(McpPairingSession.session_token == session_token.strip()).first()
+
+    @staticmethod
     def approve_pairing_session(db: Session, code: str, user_id: str) -> Tuple[bool, str, Optional[str]]:
         """Approves and binds the pairing session to a logged-in user. Returns (success, message, session_token)."""
         session = McpAuthService.get_pairing_session(db, code)
@@ -167,7 +174,16 @@ class McpAuthService:
                 McpPairingSession.status == "authorized"
             ).first()
             if s_sess:
-                if s_sess.transport_session_id and transport_session_id and s_sess.transport_session_id != transport_session_id:
+                # Disregard legacy bogus 'sess_' IDs (from memory address hashing)
+                stored_tid = s_sess.transport_session_id
+                if stored_tid and stored_tid.startswith("sess_"):
+                    stored_tid = None
+                curr_tid = transport_session_id.strip() if transport_session_id else None
+                if curr_tid and curr_tid.startswith("sess_"):
+                    curr_tid = None
+
+                # Only verify cross-transport matching if BOTH are real transport identifiers
+                if stored_tid and curr_tid and stored_tid != curr_tid:
                     return None
                 if s_sess.expires_at and s_sess.expires_at < datetime.utcnow():
                     s_sess.status = "expired"
@@ -185,7 +201,16 @@ class McpAuthService:
             clean_code = pair_code.strip().upper()
             session = db.query(McpPairingSession).filter(McpPairingSession.code == clean_code).first()
             if session and session.status == "authorized" and session.user_id:
-                if session.transport_session_id and transport_session_id and session.transport_session_id != transport_session_id:
+                # Disregard legacy bogus 'sess_' IDs
+                stored_tid = session.transport_session_id
+                if stored_tid and stored_tid.startswith("sess_"):
+                    stored_tid = None
+                curr_tid = transport_session_id.strip() if transport_session_id else None
+                if curr_tid and curr_tid.startswith("sess_"):
+                    curr_tid = None
+
+                # Only verify cross-transport matching if BOTH are real transport identifiers
+                if stored_tid and curr_tid and stored_tid != curr_tid:
                     return None
                 if session.expires_at and session.expires_at < datetime.utcnow():
                     session.status = "expired"
@@ -200,20 +225,23 @@ class McpAuthService:
 
         # 4. Ambient Transport Session resolution (when no explicit credential supplied)
         if transport_session_id and transport_session_id.strip():
-            t_session = db.query(McpPairingSession).filter(
-                McpPairingSession.transport_session_id == transport_session_id.strip(),
-                McpPairingSession.status == "authorized"
-            ).first()
-            if t_session:
-                if t_session.expires_at and t_session.expires_at < datetime.utcnow():
-                    t_session.status = "expired"
-                    db.commit()
-                else:
-                    user = db.query(User).filter(User.id == t_session.user_id, User.is_active == True).first()
-                    if user:
-                        t_session.last_used_at = datetime.utcnow()
+            curr_tid = transport_session_id.strip()
+            # Only resolve real persistent transport IDs (not transient memory sess_ addresses)
+            if not curr_tid.startswith("sess_"):
+                t_session = db.query(McpPairingSession).filter(
+                    McpPairingSession.transport_session_id == curr_tid,
+                    McpPairingSession.status == "authorized"
+                ).first()
+                if t_session:
+                    if t_session.expires_at and t_session.expires_at < datetime.utcnow():
+                        t_session.status = "expired"
                         db.commit()
-                        return user
+                    else:
+                        user = db.query(User).filter(User.id == t_session.user_id, User.is_active == True).first()
+                        if user:
+                            t_session.last_used_at = datetime.utcnow()
+                            db.commit()
+                            return user
 
         # 5. Fail-closed: Never auto-fallback to another user's session!
         return None

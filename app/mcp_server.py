@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from mcp.server.fastmcp import FastMCP, Context
 from app.database import SessionLocal
+from app.config import settings
 from app.services.mcp_auth_service import McpAuthService
 from app.services.settings_service import SettingsService
 from app.services.auth_service import AuthService
@@ -24,16 +25,22 @@ def extract_transport_session_id(ctx: Optional[Context] = None) -> Optional[str]
     if not ctx or not hasattr(ctx, "request_context") or not ctx.request_context:
         return None
     try:
+        # 1. Direct client_id property on Context (if provided by MCP client)
+        c_id = getattr(ctx, "client_id", None)
+        if c_id and str(c_id).strip():
+            return f"cid_{str(c_id).strip()}"
+
         req = getattr(ctx.request_context, "request", None)
-        if req and hasattr(req, "headers"):
-            h_sess = req.headers.get("mcp-session-id")
-            if h_sess and h_sess.strip():
-                return f"hdr_{h_sess.strip()}"
+        if req:
+            if hasattr(req, "headers"):
+                h_sess = req.headers.get("mcp-session-id")
+                if h_sess and h_sess.strip():
+                    return f"hdr_{h_sess.strip()}"
+                auth_h = req.headers.get("authorization")
+                if auth_h and auth_h.strip():
+                    return f"auth_{auth_h.strip()[:32]}"
             if hasattr(req, "query_params") and req.query_params.get("session_id"):
                 return f"sse_{req.query_params.get('session_id').strip()}"
-        sess_obj = getattr(ctx.request_context, "session", None)
-        if sess_obj is not None:
-            return f"sess_{id(sess_obj)}"
     except Exception:
         pass
     return None
@@ -90,20 +97,15 @@ VOICE_CATALOG = [
 ]
 
 def get_base_url() -> str:
-    """Detects active Gateway URL (custom env > local host check > remote space fallback)."""
+    """Detects active Gateway URL (custom env > production domain)."""
     env_url = os.environ.get("OLOKATTS_GATEWAY_URL") or os.environ.get("GATEWAY_URL")
     if env_url:
         return env_url.rstrip("/")
-    
-    # Check if local server is active
-    try:
-        r = requests.get("http://localhost:8000/docs", timeout=0.6)
-        if r.status_code == 200:
-            return "http://localhost:8000"
-    except Exception:
-        pass
 
-    # Default to production custom domain
+    pub_url = getattr(settings, "PUBLIC_API_BASE_URL", None)
+    if pub_url and "localhost" not in pub_url:
+        return pub_url.rstrip("/")
+
     return "https://tts.oloka.net"
 
 def get_auth_headers() -> dict:
@@ -616,9 +618,48 @@ def get_system_status() -> str:
     Check the operational status of OlokaTTS Gateway, Kaggle Tesla T4 GPU Workers, and queue health.
     """
     base_url = get_base_url()
-    headers = get_auth_headers()
+
+    # 1. Direct in-process database lookup (0ms latency, zero HTTP loopback deadlocks on Uvicorn)
     try:
-        # First try public /api/status
+        db = SessionLocal()
+        try:
+            from datetime import datetime, timedelta
+            from app.models import WorkerSession, TTSJob
+            from app.services.local_engine import LocalEngine
+            from app.services.job_service import JobService
+
+            # Clean up stale jobs while checking status
+            JobService.cleanup_stale_jobs(db, max_age_minutes=5)
+
+            cutoff = datetime.utcnow() - timedelta(seconds=90)
+            live_workers = db.query(WorkerSession).filter(
+                WorkerSession.status.in_(["starting", "ready", "busy"]),
+                WorkerSession.last_heartbeat_at >= cutoff
+            ).count()
+            pending_jobs = db.query(TTSJob).filter(
+                TTSJob.status.in_(["queued", "booting_kaggle", "processing"])
+            ).count()
+            local_avail = LocalEngine.is_available()
+            status_indicator = "🟢 SẴN SÀNG" if (live_workers > 0 or local_avail) else "🟡 ĐANG CHỜ WORKER"
+
+            return (
+                f"### ⚡ Trạng Thái Hệ Thống OlokaTTS ({status_indicator})\n\n"
+                f"- **Máy chủ Gateway:** `{base_url}`\n"
+                f"- **GPU Worker online:** {live_workers} GPU (Tesla T4 16GB)\n"
+                f"- **Động cơ Local CPU ONNX:** {'Khả dụng' if local_avail else 'Chưa kích hoạt'}\n"
+                f"- **Job đang chờ trong hàng đợi:** {pending_jobs} jobs\n"
+            )
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+    # 2. Fallback to HTTP call if running outside the Gateway process (e.g. standalone CLI)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json"
+    }
+    try:
         resp = requests.get(f"{base_url}/api/status", headers=headers, timeout=5)
         if resp.status_code == 200:
             data = resp.json()
@@ -634,32 +675,6 @@ def get_system_status() -> str:
                 f"- **Động cơ Local CPU ONNX:** {'Khả dụng' if local_avail else 'Chưa kích hoạt'}\n"
                 f"- **Job đang chờ trong hàng đợi:** {pending_jobs} jobs\n"
             )
-
-        # Fallback to /api/admin/status if token provided or legacy route
-        resp_admin = requests.get(f"{base_url}/api/admin/status", headers=headers, timeout=5)
-        if resp_admin.status_code == 200:
-            data = resp_admin.json()
-            live_workers = data.get("live_worker_count", 0)
-            pending_jobs = data.get("queue", {}).get("pending_jobs", 0)
-            kaggle_status = data.get("kaggle", {}).get("kernel_status", "UNKNOWN")
-            local_avail = data.get("local_engine", {}).get("available", False)
-
-            status_indicator = "🟢 SẴN SÀNG" if (live_workers > 0 or local_avail) else "🟡 ĐANG CHỜ WORKER"
-
-            return (
-                f"### ⚡ Trạng Thái Hệ Thống OlokaTTS ({status_indicator})\n\n"
-                f"- **Máy chủ Gateway:** `{base_url}`\n"
-                f"- **GPU Worker online:** {live_workers} GPU (Tesla T4 16GB)\n"
-                f"- **Trạng thái Kaggle Kernel:** `{kaggle_status}`\n"
-                f"- **Động cơ Local CPU ONNX:** {'Khả dụng' if local_avail else 'Chưa cấu hình'}\n"
-                f"- **Job đang chờ trong hàng đợi:** {pending_jobs} jobs\n"
-            )
-
-        # Basic fallback to /health
-        resp_health = requests.get(f"{base_url}/health", timeout=5)
-        if resp_health.status_code == 200:
-            return f"🟢 **OlokaTTS Gateway Trực Tuyến**: `{base_url}` (Mã HTTP 200 OK)."
-
         return f"⚠️ Gateway phản hồi mã HTTP {resp.status_code}. Máy chủ: `{base_url}`"
     except Exception as e:
         return f"❌ Không thể kết nối tới Gateway tại `{base_url}`: {str(e)}"

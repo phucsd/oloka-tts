@@ -133,6 +133,14 @@ async def lifespan(app: FastAPI):
         if admin_user:
             KaggleAccountService.get_execution_account_for_user(db, admin_user)
 
+        # Clean up any legacy bogus 'sess_%' transport_session_ids
+        try:
+            from sqlalchemy import text
+            db.execute(text("UPDATE mcp_pairing_sessions SET transport_session_id = NULL WHERE transport_session_id LIKE 'sess_%'"))
+            db.commit()
+        except Exception:
+            pass
+
         # Ensure database is synced to private backup dataset
         DbSyncService.backup_database(immediate=False)
     finally:
@@ -259,6 +267,10 @@ def public_system_status(db: Session = Depends(get_db)):
     from datetime import datetime, timedelta
     from app.models import WorkerSession, TTSJob
     from app.services.local_engine import LocalEngine
+    from app.services.job_service import JobService
+
+    # Clean up any stale pending/booting jobs (> 5 minutes)
+    JobService.cleanup_stale_jobs(db, max_age_minutes=5)
 
     cutoff = datetime.utcnow() - timedelta(seconds=90)
     live_workers = db.query(WorkerSession).filter(

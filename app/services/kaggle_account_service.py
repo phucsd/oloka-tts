@@ -53,7 +53,7 @@ class KaggleAccountService:
                 kaggle_key=k_key,
                 kernel_slug=slug,
                 kernel_ref=f"{k_user}/{slug}",
-                kernel_title=f"VieNeu TTS Dual T4 Worker ({user.username})",
+                kernel_title=f"VieNeu Worker {user.username.lower()[:16]}",
                 is_enabled=True,
                 last_status="configured"
             )
