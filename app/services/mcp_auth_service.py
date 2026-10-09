@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 import string
 from datetime import datetime, timedelta
@@ -15,22 +16,41 @@ class McpAuthService:
         return f"OLK-{rand_str}"
 
     @staticmethod
+    def hash_token(raw_token: str) -> str:
+        """Computes SHA-256 hash of a session token."""
+        return hashlib.sha256(raw_token.strip().encode("utf-8")).hexdigest()
+
+    @staticmethod
     def create_pairing_session(
         db: Session,
         client_name: str = "ChatGPT",
         transport_session_id: Optional[str] = None
     ) -> McpPairingSession:
-        """Creates a new unique pairing session with a one-time code and a long-term session token."""
+        """
+        Creates or retrieves an active pending pairing session strictly bound to this transport session.
+        Guarantees idempotency: multiple calls from the same transport reuse the same active code.
+        Stores secret session token securely via SHA-256 hash.
+        """
+        # Idempotency check: if this transport already has an active pending session, reuse it
+        if transport_session_id and transport_session_id.strip():
+            existing = McpAuthService.get_pending_session_for_transport(db, transport_session_id.strip())
+            if existing:
+                return existing
+
         for _ in range(10):
             code = McpAuthService.generate_pair_code()
             if not db.query(McpPairingSession).filter(McpPairingSession.code == code).first():
                 break
 
-        session_token = f"mcp_tok_{secrets.token_urlsafe(32)}"
+        raw_session_token = f"mcp_tok_{secrets.token_urlsafe(32)}"
+        token_hash = McpAuthService.hash_token(raw_session_token)
+        # Store masked prefix in session_token for auditing, never full plaintext
+        masked_token = f"{raw_session_token[:12]}...{raw_session_token[-4:]}"
 
         session = McpPairingSession(
             code=code,
-            session_token=session_token,
+            session_token=masked_token,
+            session_token_hash=token_hash,
             transport_session_id=transport_session_id.strip() if transport_session_id else None,
             status="pending",
             client_name=client_name,
@@ -40,6 +60,8 @@ class McpAuthService:
         db.add(session)
         db.commit()
         db.refresh(session)
+        # Attach in-memory raw token for one-time return if needed by API callers
+        session._raw_token = raw_session_token
         return session
 
     @staticmethod
@@ -61,14 +83,18 @@ class McpAuthService:
 
     @staticmethod
     def get_pairing_session(db: Session, code: str) -> Optional[McpPairingSession]:
-        """Fetches and checks validity of a pairing session."""
+        """Fetches and checks validity of a pairing session by code or token."""
         if not code:
             return None
         clean_code = code.strip().upper()
         session = db.query(McpPairingSession).filter(McpPairingSession.code == clean_code).first()
         if not session:
-            # Check by session_token as fallback identifier
-            session = db.query(McpPairingSession).filter(McpPairingSession.session_token == code.strip()).first()
+            # Check by token hash
+            t_hash = McpAuthService.hash_token(code)
+            session = db.query(McpPairingSession).filter(
+                (McpPairingSession.session_token_hash == t_hash) |
+                (McpPairingSession.session_token == code.strip())
+            ).first()
         if not session:
             return None
         
@@ -81,10 +107,15 @@ class McpAuthService:
 
     @staticmethod
     def get_session_by_token(db: Session, session_token: str) -> Optional[McpPairingSession]:
-        """Fetches pairing session by session_token."""
+        """Fetches pairing session by session_token (via SHA-256 hash or legacy plaintext match)."""
         if not session_token or not session_token.strip():
             return None
-        return db.query(McpPairingSession).filter(McpPairingSession.session_token == session_token.strip()).first()
+        raw_tok = session_token.strip()
+        t_hash = McpAuthService.hash_token(raw_tok)
+        return db.query(McpPairingSession).filter(
+            (McpPairingSession.session_token_hash == t_hash) |
+            (McpPairingSession.session_token == raw_tok)
+        ).first()
 
     @staticmethod
     def approve_pairing_session(db: Session, code: str, user_id: str) -> Tuple[bool, str, Optional[str]]:
@@ -119,8 +150,10 @@ class McpAuthService:
     def revoke_pairing_session(db: Session, identifier: str, user_id: str = None, is_admin: bool = False) -> bool:
         """Revokes an active pairing session by code, session_token, or ID."""
         clean_id = identifier.strip()
+        t_hash = McpAuthService.hash_token(clean_id)
         query = db.query(McpPairingSession).filter(
             (McpPairingSession.code == clean_id.upper()) |
+            (McpPairingSession.session_token_hash == t_hash) |
             (McpPairingSession.session_token == clean_id) |
             (McpPairingSession.id == clean_id)
         )
@@ -151,12 +184,12 @@ class McpAuthService:
         """
         Resolves caller identity to an active User.
         Fail-closed priority:
-        1. Validated API Key (via ApiKeyService, zero legacy fallback)
+        1. Validated API Key (via ApiKeyService) OR JWT Bearer Token (via AuthService)
         2. Authorized Transport Session ID (bound at MCP connection/transport layer)
-        3. Authorized Session Token (long-term session credential)
+        3. Authorized Session Token (long-term session credential hash)
         4. Authorized Pair Code (explicit code verification)
         """
-        # 1. API Key resolution (strict via ApiKeyService)
+        # 1. API Key or Bearer Token resolution
         if api_key and api_key.strip():
             key_clean = api_key.strip()
             ak = ApiKeyService.validate_api_key(db, key_clean)
@@ -164,13 +197,25 @@ class McpAuthService:
                 user = db.query(User).filter(User.id == ak.user_id, User.is_active == True).first()
                 if user:
                     return user
+            # Also support standard JWT Auth Token
+            try:
+                from app.services.auth_service import AuthService
+                payload = AuthService.decode_token(key_clean)
+                if payload and payload.get("sub"):
+                    user = db.query(User).filter(User.id == payload["sub"], User.is_active == True).first()
+                    if user:
+                        return user
+            except Exception:
+                pass
             return None
 
-        # 2. Long-term Session Token resolution (explicit credential)
+        # 2. Long-term Session Token resolution (explicit credential via hash or legacy plaintext)
         if session_token and session_token.strip():
             s_tok = session_token.strip()
+            t_hash = McpAuthService.hash_token(s_tok)
             s_sess = db.query(McpPairingSession).filter(
-                McpPairingSession.session_token == s_tok,
+                (McpPairingSession.session_token_hash == t_hash) |
+                (McpPairingSession.session_token == s_tok),
                 McpPairingSession.status == "authorized"
             ).first()
             if s_sess:
@@ -191,6 +236,9 @@ class McpAuthService:
                     return None
                 user = db.query(User).filter(User.id == s_sess.user_id, User.is_active == True).first()
                 if user:
+                    # Auto-bind transport session if not yet bound
+                    if curr_tid and not s_sess.transport_session_id:
+                        s_sess.transport_session_id = curr_tid
                     s_sess.last_used_at = datetime.utcnow()
                     db.commit()
                     return user
@@ -218,6 +266,9 @@ class McpAuthService:
                     return None
                 user = db.query(User).filter(User.id == session.user_id, User.is_active == True).first()
                 if user:
+                    # Auto-bind transport session to authorized session
+                    if curr_tid and not session.transport_session_id:
+                        session.transport_session_id = curr_tid
                     session.last_used_at = datetime.utcnow()
                     db.commit()
                     return user

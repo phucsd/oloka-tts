@@ -170,7 +170,8 @@ class McpPairingSession(Base):
 
     id = Column(String(64), primary_key=True, default=lambda: generate_id("mcp_sess"))
     code = Column(String(32), unique=True, index=True, nullable=False)
-    session_token = Column(String(128), unique=True, index=True, nullable=True)
+    session_token = Column(String(128), index=True, nullable=True)  # Legacy or masked reference
+    session_token_hash = Column(String(256), unique=True, index=True, nullable=True)  # SHA-256 hash of secret token
     transport_session_id = Column(String(128), index=True, nullable=True)
     user_id = Column(String(64), ForeignKey("users.id"), nullable=True, index=True)
     status = Column(String(32), default="pending")  # "pending", "authorized", "revoked", "expired"

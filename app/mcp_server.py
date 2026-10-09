@@ -17,6 +17,7 @@ from mcp.server.fastmcp import FastMCP, Context
 from app.database import SessionLocal
 from app.config import settings
 from app.services.mcp_auth_service import McpAuthService
+import hashlib
 from app.services.settings_service import SettingsService
 from app.services.auth_service import AuthService
 
@@ -33,14 +34,53 @@ def extract_transport_session_id(ctx: Optional[Context] = None) -> Optional[str]
         req = getattr(ctx.request_context, "request", None)
         if req:
             if hasattr(req, "headers"):
+                # Standard FastMCP Session Header
                 h_sess = req.headers.get("mcp-session-id")
                 if h_sess and h_sess.strip():
                     return f"hdr_{h_sess.strip()}"
+                
+                # Extended AI client conversation / session headers
+                for h_name in ("x-session-id", "x-conversation-id", "openai-conversation-id", "openai-ephemeral-user-id"):
+                    val = req.headers.get(h_name)
+                    if val and val.strip():
+                        return f"hdr_{val.strip()}"
+
+                # Authorization header fingerprint
                 auth_h = req.headers.get("authorization")
                 if auth_h and auth_h.strip():
-                    return f"auth_{auth_h.strip()[:32]}"
-            if hasattr(req, "query_params") and req.query_params.get("session_id"):
-                return f"sse_{req.query_params.get('session_id').strip()}"
+                    h_hash = hashlib.sha256(auth_h.strip().encode("utf-8")).hexdigest()[:24]
+                    return f"auth_{h_hash}"
+
+            if hasattr(req, "query_params"):
+                if req.query_params.get("session_id"):
+                    return f"sse_{req.query_params.get('session_id').strip()}"
+                if req.query_params.get("key") or req.query_params.get("api_key"):
+                    raw_k = req.query_params.get("key") or req.query_params.get("api_key")
+                    k_hash = hashlib.sha256(raw_k.strip().encode("utf-8")).hexdigest()[:24]
+                    return f"key_{k_hash}"
+                if req.query_params.get("token"):
+                    raw_t = req.query_params.get("token")
+                    t_hash = hashlib.sha256(raw_t.strip().encode("utf-8")).hexdigest()[:24]
+                    return f"tok_{t_hash}"
+    except Exception:
+        pass
+    return None
+
+def extract_bearer_token(ctx: Optional[Context] = None) -> Optional[str]:
+    """Safely extracts Bearer API key or OAuth JWT token from HTTP request if present."""
+    if not ctx or not hasattr(ctx, "request_context") or not ctx.request_context:
+        return None
+    try:
+        req = getattr(ctx.request_context, "request", None)
+        if req:
+            if hasattr(req, "headers"):
+                auth_h = req.headers.get("authorization")
+                if auth_h and auth_h.strip().lower().startswith("bearer "):
+                    return auth_h.strip()[7:].strip()
+            if hasattr(req, "query_params"):
+                q_k = req.query_params.get("key") or req.query_params.get("api_key") or req.query_params.get("token")
+                if q_k and q_k.strip():
+                    return q_k.strip()
     except Exception:
         pass
     return None
@@ -55,8 +95,8 @@ mcp = FastMCP(
     )
 )
 
-# Allow remote AI agents (ChatGPT 2026, Claude, Hugging Face proxy) to connect without DNS rebinding 421 errors
-mcp.settings.stateless_http = True
+# Standard MCP Streamable HTTP session support (stateless_http=False for proper mcp-session-id headers)
+mcp.settings.stateless_http = False
 if hasattr(mcp.settings, "transport_security") and mcp.settings.transport_security:
     mcp.settings.transport_security.enable_dns_rebinding_protection = False
     mcp.settings.transport_security.allowed_hosts = ["*"]
@@ -199,22 +239,22 @@ def link_account(
     try:
         base_url = get_base_url()
         transport_sid = extract_transport_session_id(ctx)
+        bearer_tok = extract_bearer_token(ctx)
 
-        # 1. Check if already authenticated via session_token, transport_session_id, or pair_code
+        # 1. Check if already authenticated via bearer_tok, session_token, transport_session_id, or pair_code
         user = McpAuthService.resolve_caller(
             db,
             pair_code=pair_code.strip() if pair_code else None,
             session_token=session_token.strip() if session_token else None,
+            api_key=bearer_tok,
             transport_session_id=transport_sid
         )
         if user:
             gpu_status_desc = McpAuthService.get_user_gpu_status_description(db, user)
-            token_hint = f"- **Mã xác thực phiên (Session Token):** `{session_token.strip()}`\n" if session_token else ""
             return (
                 f"✅ **TÀI KHOẢN ĐÃ ĐƯỢC XÁC THỰC THÀNH CÔNG!**\n\n"
                 f"- **Tài khoản liên kết:** `{user.username}` ({user.email})\n"
                 f"- **Vai trò:** `{user.role.upper()}`\n"
-                f"{token_hint}"
                 f"- **Hạ tầng GPU:** {gpu_status_desc}\n\n"
                 f"Bạn có thể sử dụng tất cả các công cụ OlokaTTS bình thường!"
             )
@@ -229,7 +269,7 @@ def link_account(
                         f"⏳ **Mã phiên `{sess.code}` đang chờ cấp quyền trên trình duyệt.**\n\n"
                         f"👉 Vui lòng nhấp vào liên kết sau để đăng nhập và bấm 'Xác Nhận & Cấp Quyền':\n"
                         f"[{auth_url}]({auth_url})\n\n"
-                        f"- **Mã xác thực phiên (Session Token):** `{sess.session_token}`\n\n"
+                        f"- **Mã ghép đôi:** `{sess.code}`\n\n"
                         f"Sau khi xác nhận trên trình duyệt, hãy bảo tôi kiểm tra lại nhé!"
                     )
                 elif sess.status in ("expired", "revoked"):
@@ -265,9 +305,8 @@ def link_account(
                     f"🔗 **LIÊN KẾT TÀI KHOẢN OLOKATTS VỚI MCP CLIENT:**\n\n"
                     f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập và cấp quyền:**\n"
                     f"[{auth_url}]({auth_url})\n\n"
-                    f"- **Mã phiên của bạn:** `{pending_sess.code}`\n"
-                    f"- **Mã xác thực phiên (Session Token):** `{pending_sess.session_token}`\n\n"
-                    f"*(Sau khi bạn đăng nhập trên trình duyệt và bấm 'Xác Nhận & Cấp Quyền', hãy nhắn lại cho tôi biết nhé!)*"
+                    f"- **Mã phiên của bạn:** `{pending_sess.code}`\n\n"
+                    f"*(Sau khi bạn đăng nhập trên trình duyệt và bấm 'Xác Nhận & Cấp Quyền', bạn có thể yêu cầu tôi tạo giọng nói ngay lập tức!)*"
                 )
 
         # 4. Generate new session strictly for this caller/transport
@@ -281,9 +320,8 @@ def link_account(
             f"🔗 **LIÊN KẾT TÀI KHOẢN OLOKATTS VỚI PHIÊN MCP:**\n\n"
             f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập và cấp quyền:**\n"
             f"[{auth_url}]({auth_url})\n\n"
-            f"- **Mã phiên của bạn:** `{new_sess.code}`\n"
-            f"- **Mã xác thực phiên (Session Token):** `{new_sess.session_token}`\n\n"
-            f"*(Sau khi đăng nhập trên trình duyệt và bấm 'Xác Nhận', hãy nhắn lại cho tôi biết nhé!)*"
+            f"- **Mã phiên của bạn:** `{new_sess.code}`\n\n"
+            f"*(Sau khi đăng nhập trên trình duyệt và bấm 'Xác Nhận & Cấp Quyền', hãy bảo tôi tiếp tục nhé!)*"
         )
     finally:
         db.close()
@@ -331,12 +369,13 @@ async def generate_speech(
 
     try:
         transport_sid = extract_transport_session_id(ctx)
+        bearer_tok = extract_bearer_token(ctx)
         authenticated_user = McpAuthService.resolve_caller(
             db,
             pair_code=pair_code.strip() if pair_code else None,
             session_token=session_token.strip() if session_token else None,
             transport_session_id=transport_sid,
-            api_key=api_key.strip() if api_key else None
+            api_key=(api_key.strip() if api_key else None) or bearer_tok
         )
         require_auth = SettingsService.get_bool(db, "mcp_require_auth", default=True)
 
@@ -362,8 +401,8 @@ async def generate_speech(
                         f"Phiên kết nối `{sess.code}` của bạn đang chờ bạn xác nhận trên trình duyệt web.\n\n"
                         f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
                         f"[{auth_url}]({auth_url})\n\n"
-                        f"- **Mã xác thực phiên (Session Token):** `{sess.session_token}`\n\n"
-                        f"*(Lưu ý cho AI Assistant: Sau khi người dùng xác nhận trên trình duyệt, bạn BẮT BUỘC phải gọi lại hàm `generate_speech` với tham số `pair_code=\"{sess.code}\"` hoặc `session_token=\"{sess.session_token}\"`).* "
+                        f"- **Mã phiên:** `{sess.code}`\n\n"
+                        f"*(Sau khi xác nhận trên trình duyệt, hãy bảo tôi tiếp tục tạo giọng nói nhé!)*"
                     )
                 elif sess and sess.status in ("expired", "revoked"):
                     return (
@@ -381,7 +420,7 @@ async def generate_speech(
                         f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
                         f"[{auth_url}]({auth_url})\n\n"
                         f"- **Mã phiên:** `{sess.code}`\n\n"
-                        f"*(Sau khi người dùng xác nhận trên trình duyệt, hãy gọi lại hàm `generate_speech` với `session_token=\"{sess.session_token}\"`).* "
+                        f"*(Sau khi xác nhận trên trình duyệt, hãy bảo tôi tiếp tục tạo giọng nói nhé!)*"
                     )
                 elif sess and sess.status in ("expired", "revoked"):
                     return (
@@ -399,13 +438,12 @@ async def generate_speech(
             auth_url = f"{base_url}/mcp/pair?code={sess_to_use.code}"
             return (
                 f"🔒 **YÊU CẦU XÁC THỰC TÀI KHOẢN OLOKATTS:**\n\n"
-                f"Để sử dụng công cụ tạo giọng nói Neural 48kHz và bảo vệ tài nguyên GPU, "
-                f"bạn cần liên kết tài khoản OlokaTTS với phiên trò chuyện này:\n\n"
+                f"Để sử dụng công cụ tạo giọng nói Neural 48kHz và bảo vệ tài nguyên GPU cá nhân, "
+                f"bạn cần liên kết tài khoản OlokaTTS với phiên kết nối này:\n\n"
                 f"👉 **Vui lòng nhấp vào liên kết sau để đăng nhập & cấp quyền:**\n"
                 f"[{auth_url}]({auth_url})\n\n"
-                f"- **Mã ghép đôi:** `{sess_to_use.code}`\n"
-                f"- **Mã xác thực phiên (Session Token):** `{sess_to_use.session_token}`\n\n"
-                f"*(Lưu ý cho AI Assistant: Sau khi người dùng xác nhận trên trình duyệt, bạn BẮT BUỘC phải gọi lại hàm `generate_speech` với tham số `pair_code=\"{sess_to_use.code}\"` hoặc `session_token=\"{sess_to_use.session_token}\"`).* "
+                f"- **Mã ghép đôi:** `{sess_to_use.code}`\n\n"
+                f"*(Sau khi xác nhận trên trình duyệt, hãy bảo tôi tạo lại giọng nói nhé!)*"
             )
 
 

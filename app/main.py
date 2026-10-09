@@ -91,9 +91,29 @@ def init_database():
             if "session_token" not in cols_mcp and len(cols_mcp) > 0:
                 conn.exec_driver_sql("ALTER TABLE mcp_pairing_sessions ADD COLUMN session_token VARCHAR(128)")
                 print("[Startup] Auto-migrated schema: Added session_token to mcp_pairing_sessions.")
+            if "session_token_hash" not in cols_mcp and len(cols_mcp) > 0:
+                conn.exec_driver_sql("ALTER TABLE mcp_pairing_sessions ADD COLUMN session_token_hash VARCHAR(256)")
+                print("[Startup] Auto-migrated schema: Added session_token_hash to mcp_pairing_sessions.")
             if "transport_session_id" not in cols_mcp and len(cols_mcp) > 0:
                 conn.exec_driver_sql("ALTER TABLE mcp_pairing_sessions ADD COLUMN transport_session_id VARCHAR(128)")
                 print("[Startup] Auto-migrated schema: Added transport_session_id to mcp_pairing_sessions.")
+
+            # Auto-hash any legacy plaintext session tokens
+            try:
+                import hashlib
+                res_unhashed = conn.exec_driver_sql(
+                    "SELECT id, session_token FROM mcp_pairing_sessions WHERE session_token_hash IS NULL AND session_token IS NOT NULL"
+                ).fetchall()
+                for row_u in res_unhashed:
+                    s_id, r_tok = row_u[0], row_u[1]
+                    if r_tok and not r_tok.endswith("..."):
+                        t_hash = hashlib.sha256(r_tok.strip().encode("utf-8")).hexdigest()
+                        conn.exec_driver_sql(
+                            "UPDATE mcp_pairing_sessions SET session_token_hash = :thash WHERE id = :sid",
+                            {"thash": t_hash, "sid": s_id}
+                        )
+            except Exception as _eh:
+                pass
 
             conn.commit()
     except Exception as em:

@@ -21,11 +21,15 @@ print(f"Bắt đầu đồng bộ hóa toàn bộ dự án lên Hugging Face Spa
 
 api = HfApi(token=token)
 
+custom_msg = "feat(mcp): stateful transport sessions, token hashing, idempotency, and OAuth 2.0"
+if len(sys.argv) > 1 and not sys.argv[1].startswith("hf_"):
+    custom_msg = sys.argv[1]
+
 commit_info = api.upload_folder(
     folder_path=".",
     repo_id=repo_id,
     repo_type="space",
-    commit_message="config: Enforce official custom domain tts.oloka.net for MCP and Gateway",
+    commit_message=custom_msg,
     ignore_patterns=[
         "benchmark_audio_*.wav",
         "tts_job_*.wav",
