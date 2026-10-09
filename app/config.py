@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -61,6 +62,13 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore"
     )
+
+    @field_validator("PUBLIC_API_BASE_URL", mode="after")
+    @classmethod
+    def normalize_public_api_base_url(cls, v: str) -> str:
+        if not v or "hf.space" in str(v):
+            return "https://tts.oloka.net"
+        return str(v).rstrip("/")
 
 settings = Settings()
 
