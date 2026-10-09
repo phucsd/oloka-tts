@@ -241,6 +241,23 @@ def run_worker_process(device_id: int, worker_name: str):
 def main():
     install_dependencies()
 
+    current_script = (
+        os.path.abspath(__file__)
+        if "__file__" in globals() and os.path.exists(__file__)
+        else (
+            os.path.abspath(sys.argv[0])
+            if sys.argv and os.path.exists(sys.argv[0])
+            else os.path.abspath("worker.py")
+        )
+    )
+    try:
+        worker_target = os.path.abspath("worker.py")
+        if os.path.exists(current_script) and worker_target != current_script:
+            import shutil
+            shutil.copyfile(current_script, worker_target)
+    except Exception as e_cp:
+        print(f"⚠️ [Init] Note creating worker.py alias: {e_cp}")
+
     device_count = 0
     try:
         smi_out = subprocess.check_output(["nvidia-smi", "-L"]).decode()
@@ -269,7 +286,7 @@ def main():
 
     processes = {}
     for dev_id, name in workers:
-        cmd = [sys.executable, "-u", "worker.py", "--device", dev_id, "--name", name]
+        cmd = [sys.executable, "-u", current_script, "--device", dev_id, "--name", name]
         p = subprocess.Popen(cmd)
         processes[name] = (dev_id, p)
         print(f"Started worker {name} (PID: {p.pid})")
@@ -286,7 +303,7 @@ def main():
             else:
                 # Unexpected crash: restart worker
                 print(f"⚠️ Worker {name} crashed with code {ret}. Restarting...")
-                cmd = [sys.executable, "-u", "worker.py", "--device", dev_id, "--name", name]
+                cmd = [sys.executable, "-u", current_script, "--device", dev_id, "--name", name]
                 new_p = subprocess.Popen(cmd)
                 processes[name] = (dev_id, new_p)
                 all_stopped_cleanly = False
