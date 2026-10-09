@@ -154,6 +154,47 @@ def test_ambient_transport_resolution_after_browser_approval(setup_mcp_users):
         db.close()
 
 
+def test_pair_code_resolution_across_dynamic_transport_ids(setup_mcp_users):
+    """Test C1b: Dynamic MCP Transports (e.g. ChatGPT cloud workers) - pair_code resolves across transport changes."""
+    db = SessionLocal()
+    try:
+        user_id = setup_mcp_users["user_a_id"]
+        t_id_turn1 = "hdr_chatgpt_worker_turn1_abc111"
+        t_id_turn2 = "hdr_chatgpt_worker_turn2_def222"
+
+        db.query(McpPairingSession).filter(McpPairingSession.transport_session_id.in_([t_id_turn1, t_id_turn2])).delete()
+        db.commit()
+
+        # Step 1: Turn 1 creates pairing session under transport 1
+        sess = McpAuthService.create_pairing_session(db, client_name="ChatGPT", transport_session_id=t_id_turn1)
+        code = sess.code
+
+        # Step 2: User approves pairing code in browser
+        ok, _, _ = McpAuthService.approve_pairing_session(db, code, user_id)
+        assert ok is True
+
+        # Step 3: Turn 2 arrives from dynamic transport 2 with explicit pair_code
+        # MUST resolve successfully even though t_id_turn2 != t_id_turn1
+        caller_turn2 = McpAuthService.resolve_caller(
+            db,
+            pair_code=code,
+            transport_session_id=t_id_turn2
+        )
+        assert caller_turn2 is not None
+        assert caller_turn2.id == user_id
+
+        # Step 4: Verify transport session was updated to transport 2
+        refreshed_sess = db.query(McpPairingSession).filter(McpPairingSession.code == code).first()
+        assert refreshed_sess.transport_session_id == t_id_turn2
+
+        # Step 5: Turn 3 from transport 2 arrives with NO parameters, resolves ambiently
+        caller_turn3 = McpAuthService.resolve_caller(db, transport_session_id=t_id_turn2)
+        assert caller_turn3 is not None
+        assert caller_turn3.id == user_id
+    finally:
+        db.close()
+
+
 def test_approved_session_multi_tenant_job_isolation(setup_mcp_users):
     """Test C2: User B approved -> JobService associates strictly with User B and Account B, zero admin fallback."""
     db = SessionLocal()

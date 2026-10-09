@@ -43,16 +43,23 @@ def extract_transport_session_id(ctx: Optional[Context] = None) -> Optional[str]
         req = getattr(rc, "request", None)
         if req:
             if hasattr(req, "headers"):
+                # Extended AI client conversation / session headers (prioritize conversation over transient transport)
+                for h_name in (
+                    "x-openai-session",
+                    "x-openai-subject",
+                    "x-session-id",
+                    "x-conversation-id",
+                    "openai-conversation-id",
+                    "openai-ephemeral-user-id"
+                ):
+                    val = req.headers.get(h_name)
+                    if val and val.strip():
+                        return f"hdr_{val.strip()}"
+
                 # Standard FastMCP Session Header
                 h_sess = req.headers.get("mcp-session-id")
                 if h_sess and h_sess.strip():
                     return f"hdr_{h_sess.strip()}"
-                
-                # Extended AI client conversation / session headers
-                for h_name in ("x-session-id", "x-conversation-id", "openai-conversation-id", "openai-ephemeral-user-id"):
-                    val = req.headers.get(h_name)
-                    if val and val.strip():
-                        return f"hdr_{val.strip()}"
 
                 # Authorization header fingerprint
                 auth_h = req.headers.get("authorization")

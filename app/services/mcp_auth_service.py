@@ -321,30 +321,23 @@ class McpAuthService:
                     return user
             return None
 
-        # 3. Pair Code resolution (explicit one-time code)
+        # 3. Pair Code resolution (explicit one-time / session code)
         if pair_code and pair_code.strip():
             clean_code = pair_code.strip().upper()
             session = db.query(McpPairingSession).filter(McpPairingSession.code == clean_code).first()
             if session and session.status == "authorized" and session.user_id:
-                # Disregard legacy bogus 'sess_' IDs
-                stored_tid = session.transport_session_id
-                if stored_tid and stored_tid.startswith("sess_"):
-                    stored_tid = None
                 curr_tid = transport_session_id.strip() if transport_session_id else None
                 if curr_tid and curr_tid.startswith("sess_"):
                     curr_tid = None
 
-                # Only verify cross-transport matching if BOTH are real transport identifiers
-                if stored_tid and curr_tid and stored_tid != curr_tid:
-                    return None
                 if session.expires_at and session.expires_at < datetime.utcnow():
                     session.status = "expired"
                     db.commit()
                     return None
                 user = db.query(User).filter(User.id == session.user_id, User.is_active == True).first()
                 if user:
-                    # Auto-bind transport session to authorized session
-                    if curr_tid and not session.transport_session_id:
+                    # Dynamically bind / update transport session so future ambient calls from this client succeed
+                    if curr_tid and not curr_tid.startswith("sess_"):
                         session.transport_session_id = curr_tid
                     session.last_used_at = datetime.utcnow()
                     db.commit()
