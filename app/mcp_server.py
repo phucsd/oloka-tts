@@ -97,13 +97,13 @@ VOICE_CATALOG = [
 ]
 
 def get_base_url() -> str:
-    """Detects active Gateway URL (custom env > production domain)."""
+    """Detects active Gateway URL (custom env > production domain https://tts.oloka.net)."""
     env_url = os.environ.get("OLOKATTS_GATEWAY_URL") or os.environ.get("GATEWAY_URL")
-    if env_url:
+    if env_url and "hf.space" not in env_url:
         return env_url.rstrip("/")
 
     pub_url = getattr(settings, "PUBLIC_API_BASE_URL", None)
-    if pub_url and "localhost" not in pub_url:
+    if pub_url and "localhost" not in pub_url and "hf.space" not in pub_url:
         return pub_url.rstrip("/")
 
     return "https://tts.oloka.net"

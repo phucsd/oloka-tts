@@ -130,3 +130,27 @@ def test_db_sync_non_blocking_cooldown():
     elapsed = time.time() - t0
 
     assert elapsed < 0.05, f"backup_database was blocking! Took {elapsed:.3f}s"
+
+
+def test_custom_domain_enforcement_and_base_url(monkeypatch):
+    """Verify that get_base_url() and config enforce https://tts.oloka.net and reject hf.space URLs."""
+    from app.mcp_server import get_base_url, get_system_status
+
+    # 1. Base URL returns https://tts.oloka.net by default
+    base = get_base_url()
+    assert base == "https://tts.oloka.net", f"Expected https://tts.oloka.net, got {base}"
+
+    # 2. Even if environment accidentally contains hf.space URL, it is overridden to https://tts.oloka.net
+    monkeypatch.setenv("OLOKATTS_GATEWAY_URL", "https://phucsd-vieneu-gateway.hf.space")
+    assert get_base_url() == "https://tts.oloka.net"
+
+    monkeypatch.setenv("GATEWAY_URL", "https://phucsd-vieneu-gateway.hf.space")
+    assert get_base_url() == "https://tts.oloka.net"
+
+    # 3. get_system_status output contains https://tts.oloka.net
+    monkeypatch.delenv("OLOKATTS_GATEWAY_URL", raising=False)
+    monkeypatch.delenv("GATEWAY_URL", raising=False)
+    status_text = get_system_status()
+    assert "https://tts.oloka.net" in status_text
+    assert "hf.space" not in status_text
+

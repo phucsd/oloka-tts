@@ -10,9 +10,10 @@ class Settings(BaseSettings):
     PORT: int = int(os.environ.get("PORT", 8000))
     APP_ENV: str = "development"
     DEBUG: bool = True
-    PUBLIC_API_BASE_URL: str = os.environ.get(
-        "PUBLIC_API_BASE_URL",
-        f"https://{os.environ.get('SPACE_ID', '').replace('/', '-')}.hf.space" if os.environ.get("SPACE_ID") else "http://localhost:8000"
+    PUBLIC_API_BASE_URL: str = (
+        "https://tts.oloka.net"
+        if ("hf.space" in os.environ.get("PUBLIC_API_BASE_URL", ""))
+        else (os.environ.get("PUBLIC_API_BASE_URL") or ("https://tts.oloka.net" if os.environ.get("SPACE_ID") else "http://localhost:8000"))
     )
     WORKER_TOKEN: str = os.environ.get("WORKER_TOKEN", "")
     SECRET_KEY: str = os.environ.get("SECRET_KEY", "")

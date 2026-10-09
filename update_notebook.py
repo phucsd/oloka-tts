@@ -2,7 +2,7 @@ import json
 
 worker_code = '''"""
 VieNeu-TTS Kaggle Dual Tesla T4 Worker Daemon
-Autonomous worker connecting to VieNeu Gateway at https://phucsd-vieneu-gateway.hf.space
+Autonomous worker connecting to VieNeu Gateway at https://tts.oloka.net
 """
 import os
 import sys

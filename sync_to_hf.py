@@ -25,7 +25,7 @@ commit_info = api.upload_folder(
     folder_path=".",
     repo_id=repo_id,
     repo_type="space",
-    commit_message="Security & Hardening: MCP pairing cross-client isolation, API key lifecycle & scopes, scoped worker shutdown, and fail-closed legacy resources",
+    commit_message="config: Enforce official custom domain tts.oloka.net for MCP and Gateway",
     ignore_patterns=[
         "benchmark_audio_*.wav",
         "tts_job_*.wav",
