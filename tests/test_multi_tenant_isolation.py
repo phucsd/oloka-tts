@@ -838,9 +838,12 @@ def test_17_mcp_generate_speech_tenant_isolation(setup_tenants):
             )
         unauth_res = asyncio.run(_run_tool())
 
-        # FastMCP returns a list of TextContent or string
+        # MCP OAuth now returns a structured error with mcp/www_authenticate.
+        # tool.run may serialize CallToolResult to text depending on SDK version.
         text_out = unauth_res[0].text if isinstance(unauth_res, list) else str(unauth_res)
-        assert "YÊU CẦU XÁC THỰC" in text_out or "auth_url" in text_out
+        assert ("mcp/www_authenticate" in text_out or
+                "Authentication required" in text_out or
+                "YÊU CẦU XÁC THỰC" in text_out)
 
         # Cleanup
         db.query(McpPairingSession).filter(McpPairingSession.id == sess.id).delete()

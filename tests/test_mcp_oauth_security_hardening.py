@@ -580,26 +580,30 @@ def test_mcp_discovery_public_access():
 
 
 def test_mcp_protected_tool_401_challenge_with_www_authenticate():
-    # Calling generate_speech with NO Bearer token and NO in-tool pair_code
-    # MUST return HTTP 401 with WWW-Authenticate: Bearer resource_metadata=...
-    res = client.post("/mcp", json={
-        "jsonrpc": "2.0",
-        "id": 10,
-        "method": "tools/call",
-        "params": {
-            "name": "generate_speech",
-            "arguments": {
-                "prompt": "Xin chào thế giới"
-            }
-        }
-    })
-    assert res.status_code == 401
-    assert "www-authenticate" in res.headers
-    auth_hdr = res.headers["www-authenticate"]
-    assert "Bearer" in auth_hdr
-    assert "resource_metadata=" in auth_hdr
-    assert ".well-known/oauth-protected-resource" in auth_hdr
-    assert "speech:generate" in auth_hdr
+    """Public initialize + protected tool returns MCP OAuth challenge without launching GPU."""
+    # A context-managed TestClient starts FastMCP's session manager correctly.
+    with TestClient(app) as tc:
+        headers = {"Accept": "application/json, text/event-stream"}
+        init = tc.post("/mcp", headers=headers, json={
+            "jsonrpc": "2.0", "id": 9, "method": "initialize",
+            "params": {"protocolVersion": "2025-06-18", "capabilities": {},
+                       "clientInfo": {"name": "OAuthTest", "version": "1.0"}}
+        })
+        assert init.status_code == 200
+        headers["mcp-session-id"] = init.headers["mcp-session-id"]
+        res = tc.post("/mcp", headers=headers, json={
+            "jsonrpc": "2.0", "id": 10, "method": "tools/call",
+            "params": {"name": "generate_speech", "arguments": {"prompt": "Xin chào thế giới"}}
+        })
+        # Current transport sends a valid MCP CallToolResult (HTTP 200 + tool error).
+        assert res.status_code == 200
+        auth_hdr = res.headers.get("www-authenticate", "")
+        assert "Bearer" in auth_hdr
+        assert "resource_metadata=" in auth_hdr
+        assert "speech:generate" in auth_hdr
+        result = res.json()["result"]
+        assert result["isError"] is True
+        assert "mcp/www_authenticate" in result.get("_meta", {})
 
 
 def test_mcp_invalid_token_401_challenge():
@@ -648,8 +652,11 @@ def test_mcp_scope_restriction_enforcement(clean_and_setup_security_test_db):
 
         # Calling generate_speech with restricted token must reject due to scope
         res = asyncio.run(generate_speech(prompt="Xin chào", api_key=tok_raw))
-        assert "TỪ CHỐI TRUY CẬP" in res
-        assert "speech:generate" in res
+        # MCP OAuth errors are CallToolResult objects, not plain strings.
+        assert res.isError is True
+        assert "speech:generate" in str(res.structuredContent)
+        assert "mcp/www_authenticate" in res.meta
+        assert "insufficient_scope" in str(res.meta["mcp/www_authenticate"])
     finally:
         db.close()
 
