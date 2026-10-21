@@ -38,6 +38,10 @@
         <span class="material-symbols-rounded text-sm text-[#777169]">group</span>
         <span>Người Dùng</span>
       </a>
+      <a href="/admin/align-test" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">timer</span>
+        <span>Căn Chỉnh (Align)</span>
+      </a>
       <a href="/admin/logs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
         <span class="material-symbols-rounded text-sm text-[#777169]">warning</span>
         <span>Logs</span>
@@ -187,6 +191,10 @@
                 
                 <!-- Play Audio if completed -->
                 {% if j.status == 'completed' and j.audio_url %}
+                <a href="/admin/align-test?job_id={{ j.id }}" title="Kiểm thử căn chỉnh mốc thời gian (Align)"
+                  class="p-1.5 rounded-lg text-xs bg-white hover:bg-purple-50 text-purple-700 border border-purple-200 transition">
+                  <span class="material-symbols-rounded text-sm">timer</span>
+                </a>
                 <a href="{{ j.audio_url }}" target="_blank" download title="Tải file âm thanh"
                   class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#292524] border border-[#e7e5e4] transition">
                   <span class="material-symbols-rounded text-sm">download</span>

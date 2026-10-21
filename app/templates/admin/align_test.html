@@ -1,0 +1,666 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8 max-w-7xl mx-auto">
+
+  <!-- Admin Subnav & Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#e7e5e4]">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
+        <span class="material-symbols-rounded text-sm text-[#292524]">timer</span>
+        <span>Neural Forced Alignment &amp; Word-Level Synchronization</span>
+      </div>
+      <h1 class="font-serif text-3xl sm:text-4xl font-light text-[#0c0a09] tracking-[-0.03em]">
+        Kiểm Thử Căn Chỉnh Mốc Thời Gian (Forced Alignment)
+      </h1>
+      <p class="text-xs sm:text-sm text-[#777169] mt-1.5">
+        Kiểm tra độ chính xác từng từ đến từng mili-giây giữa văn bản tiếng Việt và tệp âm thanh (Hỗ trợ nhấp từ nghe thử &amp; Karaoke Highlight)
+      </p>
+    </div>
+
+    <!-- Admin Nav Tabs -->
+    <div class="flex items-center flex-wrap gap-2">
+      <a href="/admin/analytics" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">monitoring</span>
+        <span>Báo Cáo</span>
+      </a>
+      <a href="/admin/settings" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">settings</span>
+        <span>Cấu Hình</span>
+      </a>
+      <a href="/admin/jobs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">queue_music</span>
+        <span>Hàng Đợi</span>
+      </a>
+      <a href="/admin/voices" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">record_voice_over</span>
+        <span>Giọng Đọc</span>
+      </a>
+      <a href="/admin/users" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">group</span>
+        <span>Người Dùng</span>
+      </a>
+      <a href="/admin/api-keys" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">vpn_key</span>
+        <span>API Keys</span>
+      </a>
+      <a href="/admin/align-test" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white shadow-sm flex items-center space-x-1.5">
+        <span class="material-symbols-rounded text-sm">timer</span>
+        <span>Căn Chỉnh (Align)</span>
+      </a>
+      <a href="/admin/logs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+        <span class="material-symbols-rounded text-sm text-[#777169]">warning</span>
+        <span>Logs</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Main Workspace Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+    <!-- Left Column: Input Form (5 cols) -->
+    <div class="lg:col-span-5 space-y-6">
+      <div class="bg-white border border-[#e7e5e4] rounded-2xl p-6 shadow-sm space-y-5">
+        <div class="flex items-center justify-between pb-3 border-b border-[#f0efed]">
+          <h2 class="text-sm font-semibold text-[#0c0a09] flex items-center gap-2">
+            <span class="material-symbols-rounded text-base text-[#292524]">tune</span>
+            <span>Nguồn Dữ Liệu Kiểm Thử</span>
+          </h2>
+          <span class="text-[11px] font-mono text-[#777169] bg-[#f0efed] px-2 py-0.5 rounded">Stable-Whisper</span>
+        </div>
+
+        <!-- Mode Selector Tabs -->
+        <div class="grid grid-cols-2 gap-1 p-1 bg-[#f0efed] rounded-xl text-xs font-medium">
+          <button type="button" id="tabModeJob" onclick="switchMode('job')" class="py-1.5 px-3 rounded-lg bg-white text-[#0c0a09] shadow-sm transition">
+            1. Từ Job Đã Sinh
+          </button>
+          <button type="button" id="tabModeCustom" onclick="switchMode('custom')" class="py-1.5 px-3 rounded-lg text-[#777169] hover:text-[#0c0a09] transition">
+            2. Tùy Chọn / Tải File
+          </button>
+        </div>
+
+        <form id="alignForm" onsubmit="runAlignment(event)" class="space-y-4">
+          <!-- Hidden Mode Flag -->
+          <input type="hidden" id="selectedMode" value="job">
+
+          <!-- Section A: Select from Recent Jobs -->
+          <div id="sectionJobMode" class="space-y-3">
+            <label class="block text-xs font-medium text-[#4e4e4e]">Chọn Job TTS Hoàn Thành Gần Nhất:</label>
+            <select id="jobSelect" onchange="onJobSelected()" class="w-full px-3 py-2 text-xs bg-[#fafafa] border border-[#e7e5e4] rounded-xl focus:outline-none focus:border-[#292524] transition">
+              <option value="">-- Chọn một tác vụ để kiểm thử --</option>
+              {% for j in recent_jobs %}
+              <option value="{{ j.id }}" data-prompt="{{ j.prompt|escape }}" data-url="{{ j.audio_url }}" {% if selected_job and selected_job.id == j.id %}selected{% endif %}>
+                #{{ j.id[:10] }}... - [{{ j.voice_id }}] - "{{ j.prompt[:35] }}..." ({{ j.duration|round(1) }}s)
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Section B: Custom Audio Upload or Preset -->
+          <div id="sectionCustomMode" class="space-y-3 hidden">
+            <div>
+              <label class="block text-xs font-medium text-[#4e4e4e] mb-1.5">Hoặc chọn mẫu giọng đọc có sẵn:</label>
+              <select id="presetSelect" onchange="onPresetSelected()" class="w-full px-3 py-2 text-xs bg-[#fafafa] border border-[#e7e5e4] rounded-xl focus:outline-none focus:border-[#292524] transition">
+                <option value="">-- Chọn giọng đọc mẫu có sẵn --</option>
+                {% for p in presets %}
+                <option value="{{ p.voice_id }}" data-preview="{{ p.preview_audio_url }}">
+                  {{ p.name }} ({{ p.region }} - {{ p.gender }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-[#4e4e4e] mb-1.5">Hoặc tải lên tệp âm thanh (.wav, .mp3):</label>
+              <input type="file" id="audioFileInput" accept="audio/wav, audio/mp3, audio/mpeg" class="w-full text-xs text-[#777169] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#292524] file:text-white hover:file:bg-black cursor-pointer bg-[#fafafa] border border-[#e7e5e4] rounded-xl p-1">
+            </div>
+          </div>
+
+          <!-- Text Input -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label for="promptInput" class="text-xs font-medium text-[#4e4e4e]">Văn Bản Gốc Cần Căn Chỉnh:</label>
+              <span id="charCount" class="text-[11px] text-[#777169]">0 ký tự</span>
+            </div>
+            <textarea id="promptInput" rows="4" required placeholder="Nhập câu tiếng Việt tương ứng với file âm thanh..." class="w-full p-3 text-xs bg-[#fafafa] border border-[#e7e5e4] rounded-xl focus:outline-none focus:border-[#292524] leading-relaxed transition resize-none"></textarea>
+            
+            <!-- Quick Emotion / Pause Tags Chips -->
+            <div class="flex items-center flex-wrap gap-1.5 pt-1">
+              <span class="text-[11px] text-[#777169] mr-1">Chèn nhanh:</span>
+              <button type="button" onclick="insertTag('[cười] ')" class="px-2 py-0.5 rounded text-[11px] bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] transition">[cười]</button>
+              <button type="button" onclick="insertTag('[thở dài] ')" class="px-2 py-0.5 rounded text-[11px] bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] transition">[thở dài]</button>
+              <button type="button" onclick="insertTag('[pause: 0.5s] ')" class="px-2 py-0.5 rounded text-[11px] bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] transition">[pause: 0.5s]</button>
+              <button type="button" onclick="insertTag('[hắng giọng] ')" class="px-2 py-0.5 rounded text-[11px] bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] transition">[hắng giọng]</button>
+            </div>
+            <p class="text-[11px] text-[#777169]">
+              💡 <em>Các thẻ cảm xúc như <code>[cười]</code> và thẻ ngắt nghỉ <code>[pause]</code> sẽ được tự động làm sạch và bù trừ offset chính xác.</em>
+            </p>
+          </div>
+
+          <!-- Model Size Selection -->
+          <div class="flex items-center justify-between pt-2 text-xs">
+            <label class="font-medium text-[#4e4e4e]">Mô hình Whisper:</label>
+            <select id="modelSizeSelect" class="px-2.5 py-1 text-xs bg-[#fafafa] border border-[#e7e5e4] rounded-lg focus:outline-none">
+              <option value="base" selected>base (74M - Khuyến nghị độ chính xác cao)</option>
+              <option value="tiny">tiny (39M - Siêu nhanh)</option>
+            </select>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="pt-2">
+            <button type="submit" id="btnSubmit" class="w-full py-2.5 px-4 rounded-xl bg-[#292524] hover:bg-black text-white text-xs font-semibold shadow-sm flex items-center justify-center space-x-2 transition disabled:opacity-50">
+              <span id="btnIcon" class="material-symbols-rounded text-base">play_circle</span>
+              <span id="btnText">Chạy Căn Chỉnh Thời Gian (Run Alignment)</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Error Alert -->
+        <div id="errorAlert" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start space-x-2">
+          <span class="material-symbols-rounded text-base shrink-0 text-red-600">error</span>
+          <span id="errorMessage">Có lỗi xảy ra trong quá trình căn chỉnh.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive Results & Visualizer (7 cols) -->
+    <div class="lg:col-span-7 space-y-6">
+
+      <!-- Placeholder when no result yet -->
+      <div id="emptyState" class="bg-white border border-[#e7e5e4] rounded-2xl p-12 text-center shadow-sm space-y-3">
+        <div class="w-12 h-12 rounded-full bg-[#f0efed] text-[#777169] flex items-center justify-center mx-auto">
+          <span class="material-symbols-rounded text-2xl">graphic_eq</span>
+        </div>
+        <h3 class="text-sm font-medium text-[#0c0a09]">Chưa Có Kết Quả Căn Chỉnh</h3>
+        <p class="text-xs text-[#777169] max-w-sm mx-auto">
+          Hãy chọn một Job hoàn thành ở cột bên trái hoặc tải file âm thanh lên rồi bấm nút "Chạy Căn Chỉnh" để xem phân tích từng từ.
+        </p>
+      </div>
+
+      <!-- Result Container -->
+      <div id="resultContainer" class="hidden space-y-6">
+
+        <!-- Stats Bar -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="bg-white border border-[#e7e5e4] p-3.5 rounded-xl shadow-sm">
+            <span class="text-[11px] text-[#777169] font-medium block">Tổng số từ</span>
+            <span id="statWordsCount" class="text-lg font-semibold text-[#0c0a09]">0</span>
+          </div>
+          <div class="bg-white border border-[#e7e5e4] p-3.5 rounded-xl shadow-sm">
+            <span class="text-[11px] text-[#777169] font-medium block">Thời lượng audio</span>
+            <span id="statDuration" class="text-lg font-semibold text-[#0c0a09]">0.0s</span>
+          </div>
+          <div class="bg-white border border-[#e7e5e4] p-3.5 rounded-xl shadow-sm">
+            <span class="text-[11px] text-[#777169] font-medium block">Tốc độ (WPM)</span>
+            <span id="statWpm" class="text-lg font-semibold text-[#0c0a09]">0</span>
+          </div>
+          <div class="bg-white border border-[#e7e5e4] p-3.5 rounded-xl shadow-sm">
+            <span class="text-[11px] text-[#777169] font-medium block">Thời gian Align</span>
+            <span id="statLatency" class="text-lg font-semibold text-emerald-600">0ms</span>
+          </div>
+        </div>
+
+        <!-- Waveform & Audio Player Card -->
+        <div class="bg-white border border-[#e7e5e4] rounded-2xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="material-symbols-rounded text-base text-[#292524]">waveform</span>
+              <span class="text-xs font-semibold text-[#0c0a09]">Dạng Sóng Âm Thanh (Waveform)</span>
+            </div>
+            <div class="text-xs font-mono font-medium text-[#292524]">
+              <span id="currentTimeDisplay">0.000s</span> / <span id="totalDurationDisplay">0.000s</span>
+            </div>
+          </div>
+
+          <!-- Waveform Canvas -->
+          <div id="waveform" class="w-full h-20 rounded-xl bg-[#fafafa] border border-[#f0efed] overflow-hidden"></div>
+
+          <!-- Player Controls -->
+          <div class="flex items-center justify-between pt-1">
+            <div class="flex items-center space-x-2">
+              <button type="button" id="btnPlayPause" onclick="togglePlay()" class="w-9 h-9 rounded-full bg-[#292524] text-white flex items-center justify-center hover:bg-black transition shadow-sm">
+                <span id="playIcon" class="material-symbols-rounded text-lg">play_arrow</span>
+              </button>
+              <button type="button" onclick="seekAudio(0)" class="w-8 h-8 rounded-full bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] flex items-center justify-center transition" title="Tua về đầu">
+                <span class="material-symbols-rounded text-base">replay</span>
+              </button>
+            </div>
+
+            <!-- Playback Speed -->
+            <div class="flex items-center space-x-1.5 text-xs">
+              <span class="text-[11px] text-[#777169]">Tốc độ:</span>
+              <button type="button" onclick="setSpeed(0.75)" class="speed-btn px-2 py-0.5 rounded text-[11px] bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] transition" data-speed="0.75">0.75x</button>
+              <button type="button" onclick="setSpeed(1.0)" class="speed-btn px-2 py-0.5 rounded text-[11px] bg-[#292524] text-white transition font-medium" data-speed="1.0">1.0x</button>
+              <button type="button" onclick="setSpeed(1.25)" class="speed-btn px-2 py-0.5 rounded text-[11px] bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] transition" data-speed="1.25">1.25x</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Word Chips Card (Click to Seek & Karaoke Highlight) -->
+        <div class="bg-white border border-[#e7e5e4] rounded-2xl p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-[#f0efed]">
+            <div>
+              <h3 class="text-sm font-semibold text-[#0c0a09] flex items-center gap-2">
+                <span class="material-symbols-rounded text-base text-[#292524]">format_quote</span>
+                <span>Thẻ Từ Trực Quan (Click Từ Để Nghe Phát Âm)</span>
+              </h3>
+              <p class="text-[11px] text-[#777169] mt-0.5">Nhấp vào bất kỳ từ nào để tua ngay đến mili-giây phát âm từ đó</p>
+            </div>
+            <span class="text-[11px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live Karaoke
+            </span>
+          </div>
+
+          <!-- Chips Container -->
+          <div id="wordChipsContainer" class="flex flex-wrap gap-2 py-2">
+            <!-- Dynamic word chips injected here -->
+          </div>
+        </div>
+
+        <!-- Export Tabs: SRT / VTT & JSON -->
+        <div class="bg-white border border-[#e7e5e4] rounded-2xl p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-[#f0efed] pb-3">
+            <div class="flex items-center space-x-2 text-xs font-medium">
+              <button type="button" id="tabSubtitles" onclick="switchOutputTab('subtitles')" class="pb-2 border-b-2 border-[#292524] text-[#0c0a09] font-semibold transition">
+                Phụ Đề (SRT / VTT)
+              </button>
+              <button type="button" id="tabJson" onclick="switchOutputTab('json')" class="pb-2 border-b-2 border-transparent text-[#777169] hover:text-[#0c0a09] transition">
+                Dữ Liệu JSON Chi Tiết
+              </button>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="flex items-center space-x-2">
+              <button type="button" onclick="downloadSrt()" class="px-2.5 py-1 rounded-lg text-xs bg-[#f0efed] hover:bg-[#e7e5e4] text-[#0c0a09] flex items-center space-x-1 border border-[#e7e5e4] transition">
+                <span class="material-symbols-rounded text-sm">download</span>
+                <span>Tải .SRT</span>
+              </button>
+              <button type="button" onclick="copyActiveOutput()" class="px-2.5 py-1 rounded-lg text-xs bg-[#292524] hover:bg-black text-white flex items-center space-x-1 shadow-sm transition">
+                <span class="material-symbols-rounded text-sm">content_copy</span>
+                <span>Sao chép</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Subtitles Viewer -->
+          <div id="viewSubtitles" class="space-y-2">
+            <pre id="srtOutput" class="text-xs font-mono bg-[#fafafa] border border-[#e7e5e4] rounded-xl p-4 max-h-60 overflow-y-auto leading-relaxed text-[#292524] whitespace-pre-wrap select-all"></pre>
+          </div>
+
+          <!-- JSON Viewer -->
+          <div id="viewJson" class="space-y-2 hidden">
+            <pre id="jsonOutput" class="text-xs font-mono bg-[#fafafa] border border-[#e7e5e4] rounded-xl p-4 max-h-60 overflow-y-auto leading-relaxed text-[#292524] whitespace-pre-wrap select-all"></pre>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- WaveSurfer Script & Integration -->
+<script>
+  let wavesurfer = null;
+  let currentAlignmentResult = null;
+  let activeWordIndex = -1;
+  let activeOutputTab = 'subtitles';
+
+  // Initialize WaveSurfer on DOM ready
+  document.addEventListener('DOMContentLoaded', () => {
+    initWaveSurfer();
+    
+    // Check if job_id was preselected via URL
+    const jobSel = document.getElementById('jobSelect');
+    if (jobSel && jobSel.value) {
+      onJobSelected();
+    }
+
+    // Char count update
+    const promptInput = document.getElementById('promptInput');
+    promptInput.addEventListener('input', () => {
+      document.getElementById('charCount').textContent = `${promptInput.value.length} ký tự`;
+    });
+  });
+
+  function initWaveSurfer() {
+    wavesurfer = WaveSurfer.create({
+      container: '#waveform',
+      waveColor: '#d6d3d1',
+      progressColor: '#292524',
+      cursorColor: '#7c3aed',
+      cursorWidth: 2,
+      barWidth: 2,
+      barGap: 1.5,
+      barRadius: 2,
+      height: 80,
+      normalize: true
+    });
+
+    wavesurfer.on('timeupdate', (currentTime) => {
+      document.getElementById('currentTimeDisplay').textContent = `${currentTime.toFixed(3)}s`;
+      highlightWordAtTime(currentTime);
+    });
+
+    wavesurfer.on('finish', () => {
+      updatePlayButton(false);
+      clearHighlight();
+    });
+
+    wavesurfer.on('play', () => updatePlayButton(true));
+    wavesurfer.on('pause', () => updatePlayButton(false));
+  }
+
+  function switchMode(mode) {
+    document.getElementById('selectedMode').value = mode;
+    const tabJob = document.getElementById('tabModeJob');
+    const tabCustom = document.getElementById('tabModeCustom');
+    const secJob = document.getElementById('sectionJobMode');
+    const secCustom = document.getElementById('sectionCustomMode');
+
+    if (mode === 'job') {
+      tabJob.className = 'py-1.5 px-3 rounded-lg bg-white text-[#0c0a09] shadow-sm transition';
+      tabCustom.className = 'py-1.5 px-3 rounded-lg text-[#777169] hover:text-[#0c0a09] transition';
+      secJob.classList.remove('hidden');
+      secCustom.classList.add('hidden');
+    } else {
+      tabCustom.className = 'py-1.5 px-3 rounded-lg bg-white text-[#0c0a09] shadow-sm transition';
+      tabJob.className = 'py-1.5 px-3 rounded-lg text-[#777169] hover:text-[#0c0a09] transition';
+      secCustom.classList.remove('hidden');
+      secJob.classList.add('hidden');
+    }
+  }
+
+  function onJobSelected() {
+    const sel = document.getElementById('jobSelect');
+    const opt = sel.options[sel.selectedIndex];
+    if (opt && opt.value) {
+      const prompt = opt.getAttribute('data-prompt');
+      document.getElementById('promptInput').value = prompt || '';
+      document.getElementById('charCount').textContent = `${(prompt || '').length} ký tự`;
+    }
+  }
+
+  function onPresetSelected() {
+    const sel = document.getElementById('presetSelect');
+    const opt = sel.options[sel.selectedIndex];
+    if (opt && opt.value) {
+      document.getElementById('promptInput').value = `Xin chào, tôi là ${opt.value}. Rất vui được trò chuyện cùng bạn.`;
+      document.getElementById('charCount').textContent = `${document.getElementById('promptInput').value.length} ký tự`;
+    }
+  }
+
+  function insertTag(tag) {
+    const textarea = document.getElementById('promptInput');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    textarea.value = text.substring(0, start) + tag + text.substring(end);
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = start + tag.length;
+    document.getElementById('charCount').textContent = `${textarea.value.length} ký tự`;
+  }
+
+  async function runAlignment(e) {
+    e.preventDefault();
+    const mode = document.getElementById('selectedMode').value;
+    const prompt = document.getElementById('promptInput').value.trim();
+    const modelSize = document.getElementById('modelSizeSelect').value;
+
+    const errorAlert = document.getElementById('errorAlert');
+    const errorMsg = document.getElementById('errorMessage');
+    errorAlert.classList.add('hidden');
+
+    const formData = new FormData();
+    formData.append('text', prompt);
+    formData.append('model_size', modelSize);
+
+    if (mode === 'job') {
+      const jobId = document.getElementById('jobSelect').value;
+      if (!jobId) {
+        showError('Vui lòng chọn một tác vụ TTS đã hoàn thành từ danh sách.');
+        return;
+      }
+      formData.append('job_id', jobId);
+    } else {
+      const fileInput = document.getElementById('audioFileInput');
+      const presetVal = document.getElementById('presetSelect').value;
+      if (fileInput.files && fileInput.files[0]) {
+        formData.append('audio_file', fileInput.files[0]);
+      } else if (presetVal) {
+        formData.append('sample_voice_id', presetVal);
+      } else {
+        showError('Vui lòng tải lên file âm thanh (.wav/.mp3) hoặc chọn một giọng mẫu có sẵn.');
+        return;
+      }
+    }
+
+    setLoading(true);
+
+    try {
+      const resp = await fetch('/admin/api/align-test', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await resp.json();
+
+      if (!resp.ok || !data.success) {
+        showError(data.error || 'Quá trình căn chỉnh thất bại.');
+        return;
+      }
+
+      displayResults(data);
+    } catch (err) {
+      showError(`Lỗi kết nối máy chủ: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function displayResults(data) {
+    currentAlignmentResult = data;
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('resultContainer').classList.remove('hidden');
+
+    // Stats
+    document.getElementById('statWordsCount').textContent = data.words_count;
+    document.getElementById('statDuration').textContent = `${data.duration.toFixed(2)}s`;
+    
+    const minutes = data.duration / 60.0;
+    const wpm = minutes > 0 ? Math.round(data.words_count / minutes) : 0;
+    document.getElementById('statWpm').textContent = wpm;
+    document.getElementById('statLatency').textContent = `${data.execution_time_ms}ms`;
+
+    document.getElementById('totalDurationDisplay').textContent = `${data.duration.toFixed(3)}s`;
+
+    // Load Audio into WaveSurfer
+    if (data.audio_url) {
+      wavesurfer.load(data.audio_url);
+    }
+
+    // Render Word Chips
+    renderWordChips(data.words);
+
+    // Render Subtitles & JSON
+    document.getElementById('srtOutput').textContent = data.srt || 'Chưa có dữ liệu phụ đề';
+    document.getElementById('jsonOutput').textContent = JSON.stringify(data.words, null, 2);
+  }
+
+  function renderWordChips(words) {
+    const container = document.getElementById('wordChipsContainer');
+    container.innerHTML = '';
+
+    if (!words || words.length === 0) {
+      container.innerHTML = '<span class="text-xs text-[#777169]">Không có từ nào được tìm thấy.</span>';
+      return;
+    }
+
+    words.forEach((w, idx) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.id = `word-chip-${idx}`;
+      chip.className = 'word-chip text-left p-2.5 rounded-xl border border-[#e7e5e4] bg-[#fafafa] hover:bg-[#f0efed] hover:border-[#292524] transition flex flex-col cursor-pointer select-none';
+      chip.onclick = () => seekAndPlayWord(w.start, w.end, idx);
+
+      const durMs = Math.round(w.duration * 1000);
+
+      chip.innerHTML = `
+        <span class="text-xs font-semibold text-[#0c0a09] word-text">${escapeHtml(w.word)}</span>
+        <div class="flex items-center gap-1.5 mt-1 text-[10px] text-[#777169] font-mono">
+          <span>${w.start.toFixed(2)}s - ${w.end.toFixed(2)}s</span>
+          <span class="text-emerald-700 bg-emerald-50 px-1 rounded">${durMs}ms</span>
+        </div>
+      `;
+      container.appendChild(chip);
+    });
+  }
+
+  function seekAndPlayWord(start, end, idx) {
+    if (!wavesurfer) return;
+    wavesurfer.setTime(start);
+    wavesurfer.play();
+    highlightSingleChip(idx);
+  }
+
+  function highlightWordAtTime(currentTime) {
+    if (!currentAlignmentResult || !currentAlignmentResult.words) return;
+    const words = currentAlignmentResult.words;
+    
+    let matchedIdx = -1;
+    for (let i = 0; i < words.length; i++) {
+      if (currentTime >= words[i].start && currentTime <= words[i].end) {
+        matchedIdx = i;
+        break;
+      }
+    }
+
+    if (matchedIdx !== activeWordIndex) {
+      highlightSingleChip(matchedIdx);
+      activeWordIndex = matchedIdx;
+    }
+  }
+
+  function highlightSingleChip(idx) {
+    document.querySelectorAll('.word-chip').forEach(el => {
+      el.classList.remove('bg-[#292524]', 'text-white', 'border-[#292524]', 'scale-105', 'shadow-md');
+      el.classList.add('bg-[#fafafa]', 'border-[#e7e5e4]');
+      const txt = el.querySelector('.word-text');
+      if (txt) txt.classList.replace('text-white', 'text-[#0c0a09]');
+    });
+
+    if (idx >= 0) {
+      const activeEl = document.getElementById(`word-chip-${idx}`);
+      if (activeEl) {
+        activeEl.classList.remove('bg-[#fafafa]', 'border-[#e7e5e4]');
+        activeEl.classList.add('bg-[#292524]', 'text-white', 'border-[#292524]', 'scale-105', 'shadow-md');
+        const txt = activeEl.querySelector('.word-text');
+        if (txt) txt.classList.replace('text-[#0c0a09]', 'text-white');
+      }
+    }
+  }
+
+  function clearHighlight() {
+    activeWordIndex = -1;
+    highlightSingleChip(-1);
+  }
+
+  function togglePlay() {
+    if (wavesurfer) {
+      wavesurfer.playPause();
+    }
+  }
+
+  function seekAudio(seconds) {
+    if (wavesurfer) {
+      wavesurfer.setTime(seconds);
+    }
+  }
+
+  function setSpeed(speed) {
+    if (wavesurfer) {
+      wavesurfer.setPlaybackRate(speed);
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        if (parseFloat(btn.getAttribute('data-speed')) === speed) {
+          btn.className = 'speed-btn px-2 py-0.5 rounded text-[11px] bg-[#292524] text-white transition font-medium';
+        } else {
+          btn.className = 'speed-btn px-2 py-0.5 rounded text-[11px] bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] transition';
+        }
+      });
+    }
+  }
+
+  function updatePlayButton(isPlaying) {
+    const icon = document.getElementById('playIcon');
+    icon.textContent = isPlaying ? 'pause' : 'play_arrow';
+  }
+
+  function switchOutputTab(tab) {
+    activeOutputTab = tab;
+    const tabSub = document.getElementById('tabSubtitles');
+    const tabJson = document.getElementById('tabJson');
+    const viewSub = document.getElementById('viewSubtitles');
+    const viewJson = document.getElementById('viewJson');
+
+    if (tab === 'subtitles') {
+      tabSub.className = 'pb-2 border-b-2 border-[#292524] text-[#0c0a09] font-semibold transition';
+      tabJson.className = 'pb-2 border-b-2 border-transparent text-[#777169] hover:text-[#0c0a09] transition';
+      viewSub.classList.remove('hidden');
+      viewJson.classList.add('hidden');
+    } else {
+      tabJson.className = 'pb-2 border-b-2 border-[#292524] text-[#0c0a09] font-semibold transition';
+      tabSub.className = 'pb-2 border-b-2 border-transparent text-[#777169] hover:text-[#0c0a09] transition';
+      viewJson.classList.remove('hidden');
+      viewSub.classList.add('hidden');
+    }
+  }
+
+  function downloadSrt() {
+    if (!currentAlignmentResult || !currentAlignmentResult.srt) return;
+    const blob = new Blob([currentAlignmentResult.srt], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `alignment_${Date.now()}.srt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function copyActiveOutput() {
+    const text = activeOutputTab === 'subtitles' 
+      ? document.getElementById('srtOutput').textContent 
+      : document.getElementById('jsonOutput').textContent;
+    
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Đã sao chép nội dung vào Clipboard!');
+    }).catch(err => {
+      alert('Không thể sao chép: ' + err);
+    });
+  }
+
+  function setLoading(loading) {
+    const btn = document.getElementById('btnSubmit');
+    const icon = document.getElementById('btnIcon');
+    const txt = document.getElementById('btnText');
+    btn.disabled = loading;
+    if (loading) {
+      icon.textContent = 'hourglass_empty';
+      icon.classList.add('animate-spin');
+      txt.textContent = 'Đang căn chỉnh âm học từng từ...';
+    } else {
+      icon.textContent = 'play_circle';
+      icon.classList.remove('animate-spin');
+      txt.textContent = 'Chạy Căn Chỉnh Thời Gian (Run Alignment)';
+    }
+  }
+
+  function showError(msg) {
+    const errorAlert = document.getElementById('errorAlert');
+    const errorMsg = document.getElementById('errorMessage');
+    errorMsg.textContent = msg;
+    errorAlert.classList.remove('hidden');
+  }
+</script>
+{% endblock %}

@@ -31,6 +31,7 @@ class TTSJob(Base):
     lease_token = Column(String(64), nullable=True)
     lease_expires_at = Column(DateTime, nullable=True)
     execution_time = Column(Float, nullable=True)
+    alignment_data = Column(Text, nullable=True)  # JSON-encoded word-level timestamps and metrics
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -16,6 +16,14 @@ class TTSJobCreate(BaseModel):
     def resolved_voice_id(self) -> str:
         return self.voice_id or self.voice or "Hải Đăng"
 
+class WordTimestamp(BaseModel):
+    index: int
+    word: str
+    start: float
+    end: float
+    duration: float
+    probability: Optional[float] = None
+
 class TTSJobResponse(BaseModel):
     id: str
     prompt: str
@@ -31,6 +39,8 @@ class TTSJobResponse(BaseModel):
     speed: Optional[float] = 1.0
     temperature: Optional[float] = 0.7
     silence_p: Optional[float] = 0.15
+    alignment: Optional[List[WordTimestamp]] = None
+    subtitles_url: Optional[str] = None
     created_at: datetime
 
     class Config:

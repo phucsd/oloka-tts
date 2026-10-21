@@ -49,6 +49,9 @@ def init_database():
             if "completed_at" not in cols and len(cols) > 0:
                 conn.exec_driver_sql("ALTER TABLE tts_jobs ADD COLUMN completed_at DATETIME")
                 print("[Startup] Auto-migrated schema: Added completed_at to tts_jobs.")
+            if "alignment_data" not in cols and len(cols) > 0:
+                conn.exec_driver_sql("ALTER TABLE tts_jobs ADD COLUMN alignment_data TEXT")
+                print("[Startup] Auto-migrated schema: Added alignment_data to tts_jobs.")
 
             res_w = conn.exec_driver_sql("PRAGMA table_info(worker_sessions)")
             cols_w = [row[1] for row in res_w.fetchall()]

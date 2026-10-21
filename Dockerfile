@@ -31,7 +31,7 @@ ENV PORT=7860
 ENV HOST=0.0.0.0
 
 # Ensure storage directories exist with proper permissions
-RUN mkdir -p $HOME/app/storage/audio $HOME/app/storage/samples
+RUN mkdir -p $HOME/app/storage/audio $HOME/app/storage/samples $HOME/app/storage/temp_align
 
 EXPOSE 7860
 

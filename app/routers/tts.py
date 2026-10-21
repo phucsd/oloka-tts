@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from typing import Optional
 from app.models import TTSJob, User
-from app.schemas import TTSJobCreate, TTSJobResponse
+from app.schemas import TTSJobCreate, TTSJobResponse, WordTimestamp
 from app.services.job_service import JobService
 from app.services.local_engine import LocalEngine
 from app.services.kaggle_orchestrator import KaggleOrchestrator
@@ -84,7 +84,62 @@ def get_tts_job(job_id: str, db: Session = Depends(get_db), user: Optional[User]
         raise HTTPException(status_code=404, detail="Job not found")
     if not job.user_id or not user or (job.user_id != user.id and user.role != "admin"):
         raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập thông tin tác vụ này.")
-    return job
+    
+    resp = TTSJobResponse.model_validate(job)
+    if job.status == "completed":
+        align_data = JobService.get_or_create_job_alignment(db, job)
+        if align_data and align_data.get("words"):
+            resp.alignment = [WordTimestamp(**w) for w in align_data["words"]]
+            resp.subtitles_url = f"/v1/tts/jobs/{job.id}/subtitles"
+    return resp
+
+@router.get("/jobs/{job_id}/alignment")
+def get_job_alignment(job_id: str, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user_optional)):
+    job = db.query(TTSJob).filter(TTSJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not job.user_id or not user or (job.user_id != user.id and user.role != "admin"):
+        raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập thông tin tác vụ này.")
+
+    align_data = JobService.get_or_create_job_alignment(db, job)
+    if not align_data:
+        raise HTTPException(status_code=404, detail="Dữ liệu căn chỉnh chưa sẵn sàng hoặc tác vụ chưa hoàn thành.")
+    return align_data
+
+@router.get("/jobs/{job_id}/subtitles")
+def get_job_subtitles(
+    job_id: str,
+    format: str = Query("srt", description="'srt' hoặc 'vtt'"),
+    download: bool = Query(False),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user_optional)
+):
+    from fastapi.responses import Response
+    job = db.query(TTSJob).filter(TTSJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not job.user_id or not user or (job.user_id != user.id and user.role != "admin"):
+        raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập phụ đề của tác vụ này.")
+
+    align_data = JobService.get_or_create_job_alignment(db, job)
+    if not align_data:
+        raise HTTPException(status_code=404, detail="Dữ liệu phụ đề chưa sẵn sàng.")
+
+    fmt = format.lower().strip()
+    if fmt == "vtt":
+        content = align_data.get("vtt", "")
+        media_type = "text/vtt"
+        filename = f"{job_id}.vtt"
+    else:
+        content = align_data.get("srt", "")
+        media_type = "application/x-subrip; charset=utf-8"
+        filename = f"{job_id}.srt"
+
+    headers = {}
+    if download:
+        headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    return Response(content=content, media_type=media_type, headers=headers)
 
 @router.get("/jobs/{job_id}/audio")
 def get_job_audio(job_id: str, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user_optional)):

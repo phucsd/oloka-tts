@@ -255,6 +255,38 @@ def run_worker_process(device_id: int, worker_name: str):
 
                         print(f"✅ [{worker_name}] Job {job_id} finished in {exec_time:.2f}s (audio duration: {duration:.2f}s)")
 
+                        # Attempt GPU-accelerated forced alignment if available
+                        alignment_json_str = None
+                        try:
+                            import stable_whisper
+                            import json
+                            if not hasattr(tts, "_aligner_model"):
+                                print(f"⏳ [{worker_name}] Initializing faster-whisper aligner...")
+                                tts._aligner_model = stable_whisper.load_faster_whisper("base")
+                            import re
+                            clean_txt = re.sub(r"\[[^\]\r\n]+\]", " ", prompt)
+                            clean_txt = re.sub(r"\s+", " ", clean_txt).strip()
+                            if clean_txt:
+                                al_res = tts._aligner_model.align(out_path, clean_txt, language="vi")
+                                if al_res:
+                                    w_list = []
+                                    for seg in al_res.segments:
+                                        for w in getattr(seg, "words", []):
+                                            w_str = w.word.strip()
+                                            if w_str:
+                                                w_list.append({
+                                                    "index": len(w_list),
+                                                    "word": w_str,
+                                                    "start": round(float(w.start), 3),
+                                                    "end": round(float(w.end), 3),
+                                                    "duration": round(max(0.02, float(w.end) - float(w.start)), 3)
+                                                })
+                                    if w_list:
+                                        alignment_json_str = json.dumps({"words": w_list, "duration": duration}, ensure_ascii=False)
+                                        print(f"✅ [{worker_name}] Generated {len(w_list)} word timestamps")
+                        except Exception as al_err:
+                            print(f"⚠️ [{worker_name}] Aligner note: {al_err}")
+
                         # Upload result
                         with open(out_path, "rb") as f_out:
                             files = {"audio_file": (f"{job_id}.wav", f_out, "audio/wav")}
@@ -266,6 +298,8 @@ def run_worker_process(device_id: int, worker_name: str):
                                 "execution_time": exec_time,
                                 "lease_token": lease_token
                             }
+                            if alignment_json_str:
+                                complete_payload["alignment_data"] = alignment_json_str
                             requests.post(
                                 f"{GATEWAY_URL}/api/worker/jobs/{job_id}/complete",
                                 data=complete_payload,

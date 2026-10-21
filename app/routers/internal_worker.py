@@ -225,6 +225,7 @@ async def complete_job(
     execution_time: float = Form(None),
     processing_time_seconds: float = Form(None),
     lease_token: Optional[str] = Form(None),
+    alignment_data: Optional[str] = Form(None),
     audio_file: UploadFile = File(...),
     db: Session = Depends(get_db),
     auth: WorkerAuthContext = Depends(verify_worker_token)
@@ -248,7 +249,8 @@ async def complete_job(
         execution_time=exec_t,
         audio_bytes=content,
         lease_token=lease_token,
-        execution_account_id=auth.execution_account_id
+        execution_account_id=auth.execution_account_id,
+        alignment_data=alignment_data
     )
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -271,7 +273,8 @@ def fail_job(
         worker_id=worker_id,
         error_message=error_message,
         lease_token=lease_token,
-        execution_account_id=auth.execution_account_id
+        execution_account_id=auth.execution_account_id,
+        alignment_data=alignment_data
     )
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")

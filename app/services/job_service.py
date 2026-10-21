@@ -324,7 +324,8 @@ class JobService:
         execution_time: float,
         audio_bytes: bytes,
         lease_token: Optional[str] = None,
-        execution_account_id: Optional[str] = None
+        execution_account_id: Optional[str] = None,
+        alignment_data: Optional[str] = None
     ) -> TTSJob:
         import secrets
         from fastapi import HTTPException
@@ -365,6 +366,8 @@ class JobService:
         job.duration = duration
         job.sample_rate = sample_rate
         job.execution_time = execution_time
+        if alignment_data:
+            job.alignment_data = alignment_data
         job.completed_at = datetime.utcnow()
         job.updated_at = datetime.utcnow()
         db.commit()
@@ -422,4 +425,32 @@ class JobService:
         except Exception:
             pass
         return job
+
+    @staticmethod
+    def get_or_create_job_alignment(db: Session, job: TTSJob) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves alignment JSON for a completed job.
+        If not yet generated, runs ForcedAlignerService on-demand and caches the result.
+        """
+        import json
+        if job.alignment_data:
+            try:
+                data = json.loads(job.alignment_data)
+                if isinstance(data, dict) and data.get("words"):
+                    return data
+            except Exception:
+                pass
+
+        if job.status == "completed" and job.audio_path and os.path.exists(job.audio_path):
+            try:
+                from app.services.forced_aligner import ForcedAlignerService
+                res = ForcedAlignerService.align(job.audio_path, job.prompt)
+                if res.get("success"):
+                    job.alignment_data = json.dumps(res, ensure_ascii=False)
+                    db.commit()
+                    return res
+            except Exception as e:
+                print(f"⚠️ [JobService] Could not generate on-demand alignment for job {job.id}: {e}")
+        return None
+
 

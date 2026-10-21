@@ -3,8 +3,8 @@ import glob
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from pathlib import Path
-from fastapi import APIRouter, Depends, Request, Form, HTTPException, Query
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, Request, Form, HTTPException, Query, File, UploadFile
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -597,3 +597,126 @@ def admin_delete_key(
     from app.services.api_key_service import ApiKeyService
     ApiKeyService.delete_api_key(db, admin.id, key_id, is_admin=True)
     return RedirectResponse(url="/admin/api-keys?msg=key_deleted", status_code=303)
+
+# ==============================================================================
+# 8. FORCED ALIGNMENT TEST STUDIO
+# ==============================================================================
+@router.get("/align-test", response_class=HTMLResponse)
+def admin_align_test_page(
+    request: Request,
+    job_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    recent_jobs = db.query(TTSJob).filter(
+        TTSJob.status == "completed",
+        TTSJob.audio_path.isnot(None)
+    ).order_by(TTSJob.completed_at.desc()).limit(25).all()
+
+    presets = db.query(VoicePreset).filter(VoicePreset.is_enabled == True).all()
+
+    selected_job = None
+    if job_id:
+        selected_job = db.query(TTSJob).filter(TTSJob.id == job_id).first()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/align_test.html",
+        context={
+            "page_title": "Kiểm Thử Căn Chỉnh Thời Gian (Forced Alignment) - OlokaTTS Admin",
+            "admin": admin,
+            "recent_jobs": recent_jobs,
+            "presets": presets,
+            "selected_job": selected_job
+        }
+    )
+
+@router.post("/api/align-test")
+async def admin_api_align_test(
+    job_id: Optional[str] = Form(None),
+    text: Optional[str] = Form(None),
+    sample_voice_id: Optional[str] = Form(None),
+    model_size: str = Form("base"),
+    audio_file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    from app.services.forced_aligner import ForcedAlignerService
+    import json
+    import time
+
+    audio_source_path = None
+    prompt_text = (text or "").strip()
+    audio_url = None
+
+    # Case 1: Job ID specified
+    if job_id and job_id.strip():
+        job = db.query(TTSJob).filter(TTSJob.id == job_id.strip()).first()
+        if not job:
+            return JSONResponse({"success": False, "error": f"Không tìm thấy tác vụ #{job_id}"}, status_code=404)
+        if not job.audio_path or not os.path.exists(job.audio_path):
+            return JSONResponse({"success": False, "error": f"Tệp âm thanh của tác vụ #{job_id} không tồn tại trên đĩa."}, status_code=404)
+        audio_source_path = job.audio_path
+        if not prompt_text:
+            prompt_text = job.prompt
+        audio_url = job.audio_url
+
+    # Case 2: Uploaded audio file
+    elif audio_file and audio_file.filename:
+        temp_dir = Path("storage/temp_align")
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        safe_fname = f"test_{int(time.time())}_{audio_file.filename}"
+        temp_path = temp_dir / safe_fname
+        with open(temp_path, "wb") as f_tmp:
+            content = await audio_file.read()
+            f_tmp.write(content)
+        audio_source_path = str(temp_path)
+        audio_url = f"/admin/api/align-temp-audio/{temp_path.name}"
+
+    # Case 3: Sample Preset selected
+    elif sample_voice_id and sample_voice_id.strip():
+        preset = db.query(VoicePreset).filter(VoicePreset.voice_id == sample_voice_id.strip()).first()
+        if preset and preset.preview_audio_url:
+            local_rel = preset.preview_audio_url.lstrip("/")
+            if os.path.exists(local_rel):
+                audio_source_path = local_rel
+                audio_url = preset.preview_audio_url
+            elif os.path.exists(os.path.join("app", local_rel)):
+                audio_source_path = os.path.join("app", local_rel)
+                audio_url = preset.preview_audio_url
+        if not prompt_text:
+            prompt_text = f"Xin chào, tôi là {sample_voice_id}."
+
+    if not audio_source_path or not os.path.exists(audio_source_path):
+        return JSONResponse({"success": False, "error": "Chưa cung cấp tệp âm thanh hợp lệ (Chọn Job, tải lên file WAV/MP3, hoặc chọn giọng mẫu)."}, status_code=400)
+
+    if not prompt_text:
+        return JSONResponse({"success": False, "error": "Vui lòng nhập văn bản cần căn chỉnh mốc thời gian."}, status_code=400)
+
+    result = ForcedAlignerService.align(
+        audio=audio_source_path,
+        text=prompt_text,
+        language="vi",
+        model_name=model_size
+    )
+    result["audio_url"] = audio_url
+
+    # If it was a job, optionally update the cached alignment in database
+    if job_id and result.get("success"):
+        job = db.query(TTSJob).filter(TTSJob.id == job_id.strip()).first()
+        if job:
+            job.alignment_data = json.dumps(result, ensure_ascii=False)
+            db.commit()
+
+    return JSONResponse(result)
+
+@router.get("/api/align-temp-audio/{filename}")
+def admin_get_temp_align_audio(
+    filename: str,
+    admin: User = Depends(get_current_admin)
+):
+    path = Path("storage/temp_align") / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="File không tồn tại")
+    return FileResponse(str(path), media_type="audio/wav")
+
