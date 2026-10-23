@@ -608,16 +608,34 @@ def admin_align_test_page(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin)
 ):
-    recent_jobs = db.query(TTSJob).filter(
-        TTSJob.status == "completed",
-        TTSJob.audio_path.isnot(None)
-    ).order_by(TTSJob.completed_at.desc()).limit(25).all()
+    candidate_jobs = db.query(TTSJob).filter(
+        TTSJob.status == "completed"
+    ).order_by(TTSJob.completed_at.desc()).limit(100).all()
+
+    jobs_with_audio = []
+    jobs_with_cache = []
+    for j in candidate_jobs:
+        has_audio = bool(j.audio_path and os.path.exists(j.audio_path))
+        has_cache = bool(j.alignment_data)
+        j.has_local_audio = has_audio
+        j.has_cached_alignment = has_cache
+        if has_audio:
+            jobs_with_audio.append(j)
+        elif has_cache:
+            jobs_with_cache.append(j)
+
+    recent_jobs = (jobs_with_audio + jobs_with_cache)[:25]
 
     presets = db.query(VoicePreset).filter(VoicePreset.is_enabled == True).all()
 
     selected_job = None
     if job_id:
         selected_job = db.query(TTSJob).filter(TTSJob.id == job_id).first()
+        if selected_job:
+            selected_job.has_local_audio = bool(selected_job.audio_path and os.path.exists(selected_job.audio_path))
+            selected_job.has_cached_alignment = bool(selected_job.alignment_data)
+            if all(r.id != selected_job.id for r in recent_jobs):
+                recent_jobs.insert(0, selected_job)
 
     return templates.TemplateResponse(
         request=request,
@@ -626,6 +644,7 @@ def admin_align_test_page(
             "page_title": "Kiểm Thử Căn Chỉnh Thời Gian (Forced Alignment) - OlokaTTS Admin",
             "admin": admin,
             "recent_jobs": recent_jobs,
+            "has_local_audio_jobs": len(jobs_with_audio) > 0,
             "presets": presets,
             "selected_job": selected_job
         }
@@ -642,6 +661,7 @@ async def admin_api_align_test(
     admin: User = Depends(get_current_admin)
 ):
     from app.services.forced_aligner import ForcedAlignerService
+    from app.services.job_service import JobService
     import json
     import time
 
@@ -655,7 +675,16 @@ async def admin_api_align_test(
         if not job:
             return JSONResponse({"success": False, "error": f"Không tìm thấy tác vụ #{job_id}"}, status_code=404)
         if not job.audio_path or not os.path.exists(job.audio_path):
-            return JSONResponse({"success": False, "error": f"Tệp âm thanh của tác vụ #{job_id} không tồn tại trên đĩa."}, status_code=404)
+            if job.alignment_data:
+                cached = JobService.get_or_create_job_alignment(db, job)
+                if cached and cached.get("success"):
+                    cached["audio_url"] = None
+                    cached["cached_from_db"] = True
+                    return JSONResponse(cached)
+            return JSONResponse({
+                "success": False,
+                "error": f"Tệp âm thanh gốc của tác vụ #{job_id} đã được dọn dẹp sau khi khởi động lại container. Vui lòng chọn tab '2. Tùy Chọn / Tải File' để test với Giọng mẫu có sẵn, tải file lên, hoặc tạo một tác vụ TTS mới."
+            }, status_code=404)
         audio_source_path = job.audio_path
         if not prompt_text:
             prompt_text = job.prompt
@@ -685,7 +714,7 @@ async def admin_api_align_test(
                 audio_source_path = os.path.join("app", local_rel)
                 audio_url = preset.preview_audio_url
         if not prompt_text:
-            prompt_text = f"Xin chào, tôi là {sample_voice_id}."
+            prompt_text = f"Xin chào, tôi là giọng đọc {sample_voice_id} trên hệ thống Oloka TTS."
 
     if not audio_source_path or not os.path.exists(audio_source_path):
         return JSONResponse({"success": False, "error": "Chưa cung cấp tệp âm thanh hợp lệ (Chọn Job, tải lên file WAV/MP3, hoặc chọn giọng mẫu)."}, status_code=400)

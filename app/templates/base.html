@@ -622,6 +622,7 @@
 
         // Intercept form submissions (e.g. Admin actions, filter forms)
         document.addEventListener('submit', (e) => {
+          if (e.defaultPrevented) return;
           const form = e.target;
           if (!form || form.getAttribute('data-spa') === 'false') return;
           const action = form.getAttribute('action') || window.location.href;

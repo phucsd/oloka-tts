@@ -79,7 +79,7 @@
           </button>
         </div>
 
-        <form id="alignForm" onsubmit="runAlignment(event)" class="space-y-4">
+        <form id="alignForm" data-spa="false" onsubmit="runAlignment(event)" class="space-y-4">
           <!-- Hidden Mode Flag -->
           <input type="hidden" id="selectedMode" value="job">
 
@@ -89,11 +89,16 @@
             <select id="jobSelect" onchange="onJobSelected()" class="w-full px-3 py-2 text-xs bg-[#fafafa] border border-[#e7e5e4] rounded-xl focus:outline-none focus:border-[#292524] transition">
               <option value="">-- Chọn một tác vụ để kiểm thử --</option>
               {% for j in recent_jobs %}
-              <option value="{{ j.id }}" data-prompt="{{ j.prompt|escape }}" data-url="{{ j.audio_url }}" {% if selected_job and selected_job.id == j.id %}selected{% endif %}>
-                #{{ j.id[:10] }}... - [{{ j.voice_id }}] - "{{ j.prompt[:35] }}..." ({{ j.duration|round(1) }}s)
+              <option value="{{ j.id }}" data-prompt="{{ j.prompt|escape }}" data-url="{{ j.audio_url or '' }}" {% if selected_job and selected_job.id == j.id %}selected{% endif %}>
+                #{{ j.id[:10] }}... - [{{ j.voice_id }}] {% if j.has_local_audio %}[Có Audio]{% elif j.has_cached_alignment %}[Bản lưu DB]{% endif %} - "{{ j.prompt[:32] }}..." ({{ (j.duration or 0)|round(1) }}s)
               </option>
               {% endfor %}
             </select>
+            {% if not recent_jobs %}
+            <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+              Hiện chưa có Job nào lưu file âm thanh trên phiên container này. Hệ thống đã chuyển sẵn sang tab <strong>2. Tùy Chọn / Tải File</strong> với giọng đọc mẫu để bạn test ngay.
+            </p>
+            {% endif %}
           </div>
 
           <!-- Section B: Custom Audio Upload or Preset -->
@@ -302,29 +307,54 @@
 
 <!-- WaveSurfer Script & Integration -->
 <script>
-  let wavesurfer = null;
-  let currentAlignmentResult = null;
-  let activeWordIndex = -1;
-  let activeOutputTab = 'subtitles';
+  var wavesurfer = window.wavesurfer || null;
+  var currentAlignmentResult = null;
+  var activeWordIndex = -1;
+  var activeOutputTab = 'subtitles';
 
-  // Initialize WaveSurfer on DOM ready
-  document.addEventListener('DOMContentLoaded', () => {
+  function initAlignStudio() {
     initWaveSurfer();
-    
-    // Check if job_id was preselected via URL
-    const jobSel = document.getElementById('jobSelect');
-    if (jobSel && jobSel.value) {
-      onJobSelected();
-    }
 
     // Char count update
     const promptInput = document.getElementById('promptInput');
-    promptInput.addEventListener('input', () => {
-      document.getElementById('charCount').textContent = `${promptInput.value.length} ký tự`;
-    });
-  });
+    if (promptInput) {
+      promptInput.addEventListener('input', () => {
+        const cc = document.getElementById('charCount');
+        if (cc) cc.textContent = `${promptInput.value.length} ký tự`;
+      });
+    }
+
+    // Check if job_id was preselected via URL or if recent jobs exist
+    const jobSel = document.getElementById('jobSelect');
+    const presetSel = document.getElementById('presetSelect');
+    if (jobSel && jobSel.value) {
+      switchMode('job');
+      onJobSelected();
+    } else if (jobSel && jobSel.options.length > 1) {
+      jobSel.selectedIndex = 1;
+      switchMode('job');
+      onJobSelected();
+    } else if (presetSel && presetSel.options.length > 1) {
+      switchMode('custom');
+      presetSel.selectedIndex = 1;
+      onPresetSelected();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAlignStudio);
+  } else {
+    initAlignStudio();
+  }
 
   function initWaveSurfer() {
+    if (typeof WaveSurfer === 'undefined') return;
+    const wfEl = document.getElementById('waveform');
+    if (!wfEl) return;
+    if (window.wavesurfer) {
+      try { window.wavesurfer.destroy(); } catch (e) {}
+      window.wavesurfer = null;
+    }
     wavesurfer = WaveSurfer.create({
       container: '#waveform',
       waveColor: '#d6d3d1',
@@ -337,9 +367,11 @@
       height: 80,
       normalize: true
     });
+    window.wavesurfer = wavesurfer;
 
     wavesurfer.on('timeupdate', (currentTime) => {
-      document.getElementById('currentTimeDisplay').textContent = `${currentTime.toFixed(3)}s`;
+      const el = document.getElementById('currentTimeDisplay');
+      if (el) el.textContent = `${currentTime.toFixed(3)}s`;
       highlightWordAtTime(currentTime);
     });
 
@@ -386,7 +418,7 @@
     const sel = document.getElementById('presetSelect');
     const opt = sel.options[sel.selectedIndex];
     if (opt && opt.value) {
-      document.getElementById('promptInput').value = `Xin chào, tôi là ${opt.value}. Rất vui được trò chuyện cùng bạn.`;
+      document.getElementById('promptInput').value = `Xin chào, tôi là giọng đọc ${opt.value} trên hệ thống Oloka TTS.`;
       document.getElementById('charCount').textContent = `${document.getElementById('promptInput').value.length} ký tự`;
     }
   }
@@ -403,7 +435,10 @@
   }
 
   async function runAlignment(e) {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+    }
     const mode = document.getElementById('selectedMode').value;
     const prompt = document.getElementById('promptInput').value.trim();
     const modelSize = document.getElementById('modelSizeSelect').value;
@@ -450,6 +485,9 @@
         return;
       }
 
+      if (!wavesurfer) {
+        initWaveSurfer();
+      }
       displayResults(data);
     } catch (err) {
       showError(`Lỗi kết nối máy chủ: ${err.message}`);
@@ -464,19 +502,25 @@
     document.getElementById('resultContainer').classList.remove('hidden');
 
     // Stats
-    document.getElementById('statWordsCount').textContent = data.words_count;
-    document.getElementById('statDuration').textContent = `${data.duration.toFixed(2)}s`;
+    const wordsCount = data.words_count || (data.words ? data.words.length : 0);
+    const dur = Number(data.duration || 0);
+    document.getElementById('statWordsCount').textContent = wordsCount;
+    document.getElementById('statDuration').textContent = `${dur.toFixed(2)}s`;
     
-    const minutes = data.duration / 60.0;
-    const wpm = minutes > 0 ? Math.round(data.words_count / minutes) : 0;
+    const minutes = dur / 60.0;
+    const wpm = minutes > 0 ? Math.round(wordsCount / minutes) : 0;
     document.getElementById('statWpm').textContent = wpm;
-    document.getElementById('statLatency').textContent = `${data.execution_time_ms}ms`;
+    document.getElementById('statLatency').textContent = `${data.execution_time_ms || 0}ms`;
 
-    document.getElementById('totalDurationDisplay').textContent = `${data.duration.toFixed(3)}s`;
+    document.getElementById('totalDurationDisplay').textContent = `${dur.toFixed(3)}s`;
 
     // Load Audio into WaveSurfer
-    if (data.audio_url) {
-      wavesurfer.load(data.audio_url);
+    if (wavesurfer && data.audio_url) {
+      try {
+        wavesurfer.load(data.audio_url);
+      } catch (e) {
+        console.warn("WaveSurfer load error:", e);
+      }
     }
 
     // Render Word Chips

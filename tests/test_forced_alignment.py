@@ -97,6 +97,40 @@ def test_admin_align_test_page_render(client, admin_token):
     assert "Kiểm Thử Căn Chỉnh Mốc Thời Gian" in response.text
     assert "wordChipsContainer" in response.text
     assert "runAlignment" in response.text
+    assert 'id="alignForm" data-spa="false"' in response.text
+    assert "let wavesurfer" not in response.text
+    assert "initAlignStudio()" in response.text
+
+
+def test_admin_api_align_test_cached_job_fallback(client, admin_token, db_session, admin_user):
+    raw_worker_json = json.dumps({
+        "words": [
+            {"index": 0, "word": "Xin", "start": 0.1, "end": 0.35, "duration": 0.25},
+            {"index": 1, "word": "chào", "start": 0.36, "end": 0.72, "duration": 0.36},
+        ],
+        "duration": 0.8
+    }, ensure_ascii=False)
+    job = TTSJob(
+        id="job_test_cached_align_missing_wav",
+        user_id=admin_user.id,
+        prompt="Xin chào",
+        voice_id="Hải Đăng",
+        status="completed",
+        audio_path="storage/audio/non_existent_ephemeral_file.wav",
+        duration=0.8,
+        alignment_data=raw_worker_json
+    )
+    db_session.merge(job)
+    db_session.commit()
+
+    headers = {"Cookie": f"session_token={admin_token}"}
+    response = client.post("/admin/api/align-test", data={"job_id": job.id, "text": "Xin chào"}, headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["cached_from_db"] is True
+    assert data["words_count"] == 2
+    assert "-->" in data["srt"]
 
 
 def test_admin_api_align_test_with_preset(client, admin_token):
