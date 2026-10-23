@@ -54,7 +54,10 @@ class ForcedAlignerService:
         if cls._model is None or cls._model_name != model_name:
             import stable_whisper
             print(f"[ForcedAligner] Loading faster-whisper '{model_name}' model...")
-            cls._model = stable_whisper.load_faster_whisper(model_name)
+            try:
+                cls._model = stable_whisper.load_faster_whisper(model_name, device="cpu", compute_type="int8")
+            except TypeError:
+                cls._model = stable_whisper.load_faster_whisper(model_name)
             cls._model_name = model_name
             print(f"[ForcedAligner] Model '{model_name}' loaded successfully!")
         return cls._model

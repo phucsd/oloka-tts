@@ -140,17 +140,19 @@ def pull_job(
     ).count()
 
     if active_jobs == 0:
-        last_worker_job = db.query(TTSJob).filter(
+        last_account_job = db.query(TTSJob).filter(
             TTSJob.execution_account_id == auth.execution_account_id,
-            TTSJob.worker_id == worker_id,
-            TTSJob.status.in_(["completed", "failed"])
+            TTSJob.status.in_(["completed", "failed"]),
+            TTSJob.completed_at.isnot(None)
         ).order_by(TTSJob.completed_at.desc()).first()
 
-        last_time = None
-        if last_worker_job and last_worker_job.completed_at:
-            last_time = last_worker_job.completed_at
-        elif sess and sess.started_at:
-            last_time = sess.started_at
+        candidate_times = []
+        if last_account_job and last_account_job.completed_at:
+            candidate_times.append(last_account_job.completed_at)
+        if sess and sess.started_at:
+            candidate_times.append(sess.started_at)
+
+        last_time = max(candidate_times) if candidate_times else None
 
         if last_time:
             elapsed = (datetime.utcnow() - last_time).total_seconds()
@@ -273,8 +275,7 @@ def fail_job(
         worker_id=worker_id,
         error_message=error_message,
         lease_token=lease_token,
-        execution_account_id=auth.execution_account_id,
-        alignment_data=alignment_data
+        execution_account_id=auth.execution_account_id
     )
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")

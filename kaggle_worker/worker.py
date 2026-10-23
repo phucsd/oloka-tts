@@ -37,6 +37,11 @@ def install_dependencies():
     if need_install:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "vieneu", "--no-deps"])
         subprocess.check_call([sys.executable, "-m", "pip", "install", "sea-g2p", "kaldi-native-fbank", "soxr", "onnxruntime", "requests", "soundfile"])
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "faster-whisper"])
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "stable-ts", "--no-deps"])
+        except Exception as align_pkg_err:
+            print(f"⚠️ Optional aligner install note: {align_pkg_err}")
         print("✅ Fast-Bootstrap installed successfully!")
 
 GATEWAY_URL = os.environ.get("PUBLIC_API_BASE_URL", "https://tts.oloka.net")
@@ -255,17 +260,20 @@ def run_worker_process(device_id: int, worker_name: str):
 
                         print(f"✅ [{worker_name}] Job {job_id} finished in {exec_time:.2f}s (audio duration: {duration:.2f}s)")
 
-                        # Attempt GPU-accelerated forced alignment if available
+                        # Attempt forced alignment if available
                         alignment_json_str = None
                         try:
                             import stable_whisper
                             import json
                             if not hasattr(tts, "_aligner_model"):
                                 print(f"⏳ [{worker_name}] Initializing faster-whisper aligner...")
-                                tts._aligner_model = stable_whisper.load_faster_whisper("base")
+                                try:
+                                    tts._aligner_model = stable_whisper.load_faster_whisper("base", device="cpu", compute_type="int8")
+                                except TypeError:
+                                    tts._aligner_model = stable_whisper.load_faster_whisper("base")
                             import re
-                            clean_txt = re.sub(r"\[[^\]\r\n]+\]", " ", prompt)
-                            clean_txt = re.sub(r"\s+", " ", clean_txt).strip()
+                            clean_txt = re.sub(r"\[[^\]]+\]", " ", prompt)
+                            clean_txt = " ".join(clean_txt.split())
                             if clean_txt:
                                 al_res = tts._aligner_model.align(out_path, clean_txt, language="vi")
                                 if al_res:

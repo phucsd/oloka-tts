@@ -161,3 +161,40 @@ def test_job_alignment_and_subtitles_endpoints(client, admin_token, db_session, 
     r_vtt = client.get("/v1/tts/jobs/job_test_alignment_dummy/subtitles?format=vtt", headers=headers)
     assert r_vtt.status_code == 200
     assert "WEBVTT" in r_vtt.text
+
+
+def test_generated_kaggle_worker_script_compiles(tmp_path):
+    from app.services.kaggle_notebook_builder import KaggleNotebookBuilder
+    script = KaggleNotebookBuilder.generate_worker_script(output_dir=str(tmp_path))
+    compiled = compile(script, "worker.py", "exec")
+    assert compiled is not None
+
+
+def test_worker_raw_alignment_enrichment(db_session, admin_user):
+    raw_worker_json = json.dumps({
+        "words": [
+            {"index": 0, "word": "Xin", "start": 0.1, "end": 0.35, "duration": 0.25},
+            {"index": 1, "word": "chào", "start": 0.36, "end": 0.72, "duration": 0.36},
+        ],
+        "duration": 0.8
+    }, ensure_ascii=False)
+
+    job = TTSJob(
+        id="job_test_worker_raw_align",
+        user_id=admin_user.id,
+        prompt="Xin chào",
+        voice_id="Hải Đăng",
+        status="completed",
+        duration=0.8,
+        alignment_data=raw_worker_json
+    )
+    db_session.merge(job)
+    db_session.commit()
+
+    enriched = JobService.get_or_create_job_alignment(db_session, job)
+    assert enriched is not None
+    assert enriched["success"] is True
+    assert enriched["words_count"] == 2
+    assert "-->" in enriched["srt"]
+    assert "WEBVTT" in enriched["vtt"]
+

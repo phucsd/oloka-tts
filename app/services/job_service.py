@@ -437,6 +437,20 @@ class JobService:
             try:
                 data = json.loads(job.alignment_data)
                 if isinstance(data, dict) and data.get("words"):
+                    if not data.get("srt") or not data.get("vtt") or "success" not in data:
+                        from app.services.forced_aligner import ForcedAlignerService
+                        dur = float(data.get("duration") or job.duration or 0.0)
+                        words = ForcedAlignerService.post_process_word_timings(data["words"], dur)
+                        data["words"] = words
+                        data["words_count"] = len(words)
+                        data["duration"] = dur
+                        data["success"] = True
+                        data["text"] = data.get("text") or job.prompt
+                        data["clean_text"] = data.get("clean_text") or ForcedAlignerService.clean_text_for_alignment(job.prompt)
+                        data["srt"] = ForcedAlignerService.generate_srt(words)
+                        data["vtt"] = ForcedAlignerService.generate_vtt(words)
+                        job.alignment_data = json.dumps(data, ensure_ascii=False)
+                        db.commit()
                     return data
             except Exception:
                 pass
