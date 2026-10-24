@@ -99,6 +99,11 @@ async def upload_voice_sample(
     db.add(sample)
     db.commit()
     db.refresh(sample)
+    try:
+        from app.services.db_sync_service import DbSyncService
+        DbSyncService.backup_sample_file(dest_path, filename)
+    except Exception:
+        pass
     return sample
 
 @router.get("/samples/{filename}")
@@ -111,7 +116,19 @@ def get_sample_audio(
     samples_dir = Path(settings.SAMPLES_DIR).resolve()
     target_path = (samples_dir / clean_filename).resolve()
 
-    if not target_path.is_relative_to(samples_dir) or not target_path.exists():
+    if not target_path.is_relative_to(samples_dir):
+        raise HTTPException(status_code=404, detail="Không tìm thấy tệp mẫu giọng nói")
+
+    if not target_path.exists():
+        try:
+            from app.services.db_sync_service import DbSyncService
+            restored = DbSyncService.restore_sample_file(clean_filename, str(target_path))
+            if restored:
+                target_path = Path(restored).resolve()
+        except Exception:
+            pass
+
+    if not target_path.exists():
         raise HTTPException(status_code=404, detail="Không tìm thấy tệp mẫu giọng nói")
 
     sample = db.query(VoiceSample).filter(VoiceSample.file_path.like(f"%{clean_filename}")).first()

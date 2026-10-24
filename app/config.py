@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     KAGGLE_WORKER_DIR: str = str(BASE_DIR / "kaggle_worker")
 
     # Storage settings
+    HF_STORAGE_BUCKET: str = os.environ.get("HF_STORAGE_BUCKET", "phucsd/vieneu-gateway-storage")
     DATABASE_URL: str = os.environ.get("DATABASE_URL") or (
         f"sqlite:///{BASE_DIR / 'storage' / 'test_isolated.db'}" if os.environ.get("TESTING") == "1"
         else (

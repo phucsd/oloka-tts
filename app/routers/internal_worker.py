@@ -210,10 +210,20 @@ def get_prompt_audio(
     if not job.execution_account_id or job.execution_account_id != auth.execution_account_id:
         raise HTTPException(status_code=403, detail="Tác vụ thuộc về tài khoản thực thi khác hoặc thiếu tài khoản sở hữu")
 
-    if not job.ref_audio_path or not os.path.exists(job.ref_audio_path):
+    ref_path = job.ref_audio_path
+    if ref_path and not os.path.exists(ref_path):
+        try:
+            from app.services.db_sync_service import DbSyncService
+            restored = DbSyncService.restore_sample_file(os.path.basename(ref_path), ref_path)
+            if restored:
+                ref_path = restored
+        except Exception:
+            pass
+
+    if not ref_path or not os.path.exists(ref_path):
         raise HTTPException(status_code=404, detail="Prompt audio not found")
 
-    return FileResponse(job.ref_audio_path, media_type="audio/wav")
+    return FileResponse(ref_path, media_type="audio/wav")
 
 MAX_WORKER_AUDIO_BYTES = 50 * 1024 * 1024  # 50 MB cap
 
