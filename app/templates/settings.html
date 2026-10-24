@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-5xl xl:max-w-6xl mx-auto space-y-8 py-2">
+<div class="w-full space-y-8 py-2">
 
   <!-- Welcome / Flash Messages -->
   {% if welcome %}
@@ -108,10 +108,16 @@
             <label for="kaggle_key" class="block text-xs font-medium text-[#292524] mb-1.5">
               Kaggle API Key / Token
             </label>
-            <input id="kaggle_key" name="kaggle_key" type="password" required 
-              value="{{ user.kaggle_key or '' }}"
-              placeholder="Dán mã key từ tệp kaggle.json vào đây"
-              class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] focus:ring-1 focus:ring-[#292524] px-4 py-2.5 text-sm text-[#0c0a09] placeholder-[#a8a29e] transition outline-none font-mono">
+            <div class="relative">
+              <input id="kaggle_key" name="kaggle_key" type="password" required 
+                value="{{ user.kaggle_key or '' }}"
+                placeholder="Dán mã key từ tệp kaggle.json vào đây"
+                class="w-full rounded-xl border border-[#e7e5e4] bg-[#fafafa] focus:bg-white focus:border-[#292524] focus:ring-1 focus:ring-[#292524] px-4 py-2.5 pr-10 text-sm text-[#0c0a09] placeholder-[#a8a29e] transition outline-none font-mono">
+              <button type="button" onclick="const inp=document.getElementById('kaggle_key'); const ico=document.getElementById('kaggle-key-eye'); if(inp.type==='password'){inp.type='text';ico.textContent='visibility_off';}else{inp.type='password';ico.textContent='visibility';}"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-[#777169] hover:text-[#0c0a09] transition flex items-center justify-center" title="Hiện/Ẩn mã khóa">
+                <span id="kaggle-key-eye" class="material-symbols-rounded text-base">visibility</span>
+              </button>
+            </div>
           </div>
 
           <!-- Buttons -->
@@ -181,9 +187,9 @@
                 <div class="font-medium text-[#0c0a09] flex items-center space-x-1.5">
                   <span>{{ k.name }}</span>
                   {% if k.is_active %}
-                  <span class="px-2 py-0.2 rounded-full text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">Hoạt động</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">Hoạt động</span>
                   {% else %}
-                  <span class="px-2 py-0.2 rounded-full text-[10px] bg-slate-100 text-slate-500 border border-slate-200 font-medium">Đã thu hồi</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-500 border border-slate-200 font-medium">Đã thu hồi</span>
                   {% endif %}
                 </div>
                 <div class="flex items-center space-x-1">
@@ -263,8 +269,6 @@
       </div>
 
     </div>
-
-  </div>
 
   </div>
 

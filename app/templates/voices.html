@@ -32,10 +32,10 @@
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#f0efed] pb-4">
       <div class="flex flex-wrap items-center gap-2">
         <button onclick="filterVoices('all', this)" class="filter-btn active inline-flex items-center px-4 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white shadow-sm transition">
-          <span class="material-symbols-rounded text-xs mr-1">tune</span>Tất cả (25)
+          <span class="material-symbols-rounded text-xs mr-1">tune</span>Tất cả ({{ presets|length }})
         </button>
         <button onclick="filterVoices('editors', this)" class="filter-btn inline-flex items-center px-4 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] text-[#4e4e4e] hover:bg-[#e7e5e4] hover:text-[#0c0a09] transition">
-          <span class="material-symbols-rounded text-xs mr-1 text-[#292524]">star</span>Nổi Bật (10)
+          <span class="material-symbols-rounded text-xs mr-1 text-[#292524]">star</span>Nổi Bật ({{ presets|selectattr('is_editors_pick')|list|length }})
         </button>
         <button onclick="filterVoices('Bắc', this)" class="filter-btn inline-flex items-center px-4 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] text-[#4e4e4e] hover:bg-[#e7e5e4] hover:text-[#0c0a09] transition">
           <span class="material-symbols-rounded text-xs mr-1">north</span>Miền Bắc
@@ -164,20 +164,20 @@
         <h3 class="text-xs font-semibold text-[#777169] uppercase tracking-wider">Danh sách giọng clone của bạn</h3>
         <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
           {% for s in samples %}
-          <div class="p-4 rounded-xl bg-[#fafafa] border border-[#e7e5e4] flex items-center justify-between hover:border-[#d6d3d1] transition">
-            <div>
-              <div class="text-sm font-medium text-[#0c0a09]">{{ s.name }}</div>
+          <div class="p-4 rounded-xl bg-[#fafafa] border border-[#e7e5e4] flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#d6d3d1] transition">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-[#0c0a09] truncate">{{ s.name }}</div>
               <div class="text-[11px] text-[#777169] mt-1 flex items-center space-x-2">
                 <span>Thời lượng: {{ "%.1f"|format(s.duration) }}s</span>
                 <span class="text-[#d6d3d1]">•</span>
                 <span>{{ s.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
               </div>
             </div>
-            <div class="flex items-center space-x-3">
-              <audio controls class="h-8 w-44">
+            <div class="flex items-center justify-between sm:justify-end space-x-3 shrink-0">
+              <audio controls class="h-8 w-44 max-w-full">
                 <source src="/v1/voices/samples/{{ s.file_path|basename }}" type="audio/wav">
               </audio>
-              <a href="/?voice=clone:{{ s.id }}" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white hover:bg-[#0c0a09] transition">
+              <a href="/?voice=clone:{{ s.id }}" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white hover:bg-[#0c0a09] transition shrink-0">
                 Dùng
               </a>
             </div>

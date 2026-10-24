@@ -124,7 +124,7 @@
             <span class="material-symbols-rounded text-sm mr-1">bedtime</span>[ngáp]
           </button>
           <button type="button" onclick="insertEmotion('[khóc]')" class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
-            <span class="material-symbols-rounded text-sm mr-1">tear_drop</span>[khóc]
+            <span class="material-symbols-rounded text-sm mr-1">water_drop</span>[khóc]
           </button>
           <button type="button" onclick="insertEmotion('[nói nhanh]')" class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#292524] border border-[#e7e5e4] transition active:scale-95">
             <span class="material-symbols-rounded text-sm mr-1">bolt</span>[nói nhanh]
@@ -168,10 +168,10 @@
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-1 max-w-full" id="voice-filter-chips">
             <button type="button" onclick="filterVoiceDropdown('all', this)" class="shrink-0 filter-chip active-filter inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#292524] text-white transition shadow-sm active:scale-95">
-              <span class="material-symbols-rounded text-xs mr-1">tune</span>Tất cả (25)
+              <span class="material-symbols-rounded text-xs mr-1">tune</span>Tất cả ({{ presets|length }})
             </button>
             <button type="button" onclick="filterVoiceDropdown('featured', this)" class="shrink-0 filter-chip inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] border border-[#e7e5e4] transition active:scale-95">
-              <span class="material-symbols-rounded text-xs mr-1 text-[#292524]">star</span>Nổi bật (11)
+              <span class="material-symbols-rounded text-xs mr-1 text-[#292524]">star</span>Nổi bật ({{ presets|selectattr('is_editors_pick')|list|length }})
             </button>
             <button type="button" onclick="filterVoiceDropdown('bac', this)" class="shrink-0 filter-chip inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] border border-[#e7e5e4] transition active:scale-95">
               <span class="material-symbols-rounded text-xs mr-1">north</span>Miền Bắc
@@ -224,7 +224,7 @@
           {% endfor %}
         </div>
         <div class="flex items-center justify-between pt-1">
-          <span class="text-[11px] text-[#777169]">Hoặc chọn chi tiết trong danh mục 25 giọng:</span>
+          <span class="text-[11px] text-[#777169]">Hoặc chọn chi tiết trong danh mục {{ presets|length }} giọng:</span>
         </div>
 
         <!-- Main Select Element -->
@@ -287,7 +287,7 @@
             <span>Tùy Chỉnh Nâng Cao (Studio Parameters)</span>
           </span>
           <div class="flex items-center space-x-2 text-[11px] text-[#777169]">
-            <span id="adv-summary">Tốc độ: 1.0x | Temp: 0.7 | Ngắt nghỉ: 0.15s</span>
+            <span id="adv-summary" class="hidden sm:inline">Tốc độ: 1.0x | Temp: 0.7 | Ngắt nghỉ: 0.15s</span>
             <span id="adv-chevron" class="material-symbols-rounded text-sm transition-transform duration-200">expand_more</span>
           </div>
         </button>
@@ -423,7 +423,7 @@
   </div>
 
   <!-- Right Column: Player & Recent Results (5 cols) - Smart Sticky Desktop Experience -->
-  <div class="lg:col-span-5 space-y-6 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto no-scrollbar">
+  <div class="lg:col-span-5 space-y-6 lg:sticky lg:top-20 lg:self-start">
     
     <!-- Waveform & Player Card -->
     <div class="card-editorial p-6 sm:p-7 flex flex-col justify-between">
@@ -597,11 +597,11 @@
     </div>
 
     <!-- Code Language Tabs -->
-    <div class="flex items-center border-b border-[#f0efed] px-6 bg-[#fafafa]">
-      <button onclick="switchCodeTab('curl')" id="tab-curl" class="tab-btn px-4 py-2.5 text-xs font-medium text-[#0c0a09] border-b-2 border-[#292524]">cURL</button>
-      <button onclick="switchCodeTab('py-requests')" id="tab-py-requests" class="tab-btn px-4 py-2.5 text-xs font-medium text-[#777169] hover:text-[#0c0a09]">Python (Requests)</button>
-      <button onclick="switchCodeTab('py-openai')" id="tab-py-openai" class="tab-btn px-4 py-2.5 text-xs font-medium text-[#777169] hover:text-[#0c0a09]">Python (OpenAI SDK)</button>
-      <button onclick="switchCodeTab('js-fetch')" id="tab-js-fetch" class="tab-btn px-4 py-2.5 text-xs font-medium text-[#777169] hover:text-[#0c0a09]">JavaScript</button>
+    <div class="flex items-center border-b border-[#f0efed] px-4 sm:px-6 bg-[#fafafa] overflow-x-auto no-scrollbar">
+      <button onclick="switchCodeTab('curl')" id="tab-curl" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 text-xs font-medium text-[#0c0a09] border-b-2 border-[#292524]">cURL</button>
+      <button onclick="switchCodeTab('py-requests')" id="tab-py-requests" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 text-xs font-medium text-[#777169] hover:text-[#0c0a09]">Python (Requests)</button>
+      <button onclick="switchCodeTab('py-openai')" id="tab-py-openai" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 text-xs font-medium text-[#777169] hover:text-[#0c0a09]">Python (OpenAI SDK)</button>
+      <button onclick="switchCodeTab('js-fetch')" id="tab-js-fetch" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 text-xs font-medium text-[#777169] hover:text-[#0c0a09]">JavaScript</button>
     </div>
 
     <!-- Code Box -->
@@ -974,6 +974,19 @@
     onVoiceSelected();
   }
 
+  // Initialize voice selection from URL parameter (?voice=...) or default
+  (function initVoiceSelection() {
+    try {
+      const urlVoice = new URLSearchParams(window.location.search).get('voice');
+      const sel = document.getElementById('voice-select');
+      if (urlVoice && sel) {
+        const matchOpt = Array.from(sel.options).find(o => o.value === urlVoice);
+        if (matchOpt) sel.value = urlVoice;
+      }
+      onVoiceSelected();
+    } catch (e) {}
+  })();
+
   function playQuickVoicePreview(url, btn) {
     if (!url) {
       showToast('Chưa có âm thanh nghe thử cho giọng này.');
@@ -1136,7 +1149,7 @@
     }
     document.getElementById('player-placeholder').classList.add('hidden');
 
-    wavesurfer = WaveSurfer.create({
+    wavesurfer = window.wavesurfer = WaveSurfer.create({
       container: '#waveform',
       waveColor: '#d6d3d1',
       progressColor: '#292524',
@@ -1433,7 +1446,8 @@
     const progressBar = document.getElementById('job-progress-bar');
 
     let tries = 0;
-    const interval = setInterval(async () => {
+    if (window.pollInterval) clearInterval(window.pollInterval);
+    const interval = window.pollInterval = setInterval(async () => {
       tries++;
       try {
         const res = await fetch(`/v1/tts/jobs/${jobId}`);

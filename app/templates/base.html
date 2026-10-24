@@ -244,73 +244,73 @@
   </div>
 
   <!-- Top Navigation (64px, quiet editorial) -->
-  <header class="sticky top-0 z-50 bg-[#f5f5f5]/85 backdrop-blur-md border-b border-[#e7e5e4] transition-colors">
-    <div class="layout-container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+  <header class="sticky top-0 z-50 bg-[#f5f5f5]/90 backdrop-blur-md border-b border-[#e7e5e4] transition-colors">
+    <div class="layout-container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
       
       <!-- Brand Logo (Near-black ink stamp) -->
-      <div class="flex items-center space-x-3">
+      <div class="flex items-center shrink-0">
         <a href="/" class="flex items-center space-x-2.5 group">
-          <div class="w-8 h-8 rounded-full bg-[#292524] text-white flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm">
+          <div class="w-8 h-8 rounded-full bg-[#292524] text-white flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm shrink-0">
             <span class="material-symbols-rounded text-[17px]">graphic_eq</span>
           </div>
           <div class="flex items-baseline space-x-2">
             <span class="font-serif text-2xl font-light tracking-tight text-[#0c0a09]">OlokaTTS</span>
-            <span class="text-[11px] font-medium uppercase tracking-wider text-[#777169] bg-[#f0efed] px-2 py-0.5 rounded-full border border-[#e7e5e4]">48kHz Neural</span>
+            <span class="hidden xl:inline-block text-[10px] font-medium uppercase tracking-wider text-[#777169] bg-[#f0efed] px-2 py-0.5 rounded-full border border-[#e7e5e4] whitespace-nowrap">48kHz Neural</span>
           </div>
         </a>
       </div>
 
       <!-- Navigation Links -->
-      <nav class="hidden md:flex items-center space-x-1">
-        <a href="/" class="px-3.5 py-1.5 rounded-full text-[14px] font-medium transition-colors {% if 'Studio' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/70 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
+      <nav class="hidden lg:flex items-center space-x-1 overflow-x-auto no-scrollbar py-1">
+        <a href="/" class="whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-medium transition-colors {% if page_title == 'OlokaTTS Studio' %}text-[#0c0a09] bg-[#e7e5e4]/80 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
           Studio
         </a>
-        <a href="/voices" class="px-3.5 py-1.5 rounded-full text-[14px] font-medium transition-colors {% if 'Thư Viện Giọng' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/70 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
+        <a href="/voices" class="whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-medium transition-colors {% if 'Thư Viện Giọng' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/80 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
           Thư Viện Giọng
         </a>
-        <a href="/conversation" class="px-3.5 py-1.5 rounded-full text-[14px] font-medium transition-colors {% if 'Hội Thoại' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/70 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
+        <a href="/conversation" class="whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-medium transition-colors {% if 'Hội Thoại' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/80 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
           Hội Thoại
         </a>
-        <a href="/docs/api" class="px-3.5 py-1.5 rounded-full text-[14px] font-medium transition-colors {% if 'API Documentation' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/70 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
+        <a href="/docs/api" class="whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-medium transition-colors {% if 'API Documentation' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/80 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
           API Docs
         </a>
-        <a href="/docs/mcp" class="px-3.5 py-1.5 rounded-full text-[14px] font-medium transition-colors {% if 'MCP' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/70 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
+        <a href="/docs/mcp" class="whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-medium transition-colors {% if 'MCP' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/80 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
           MCP &bull; Agent
         </a>
         {% if user and user.role == 'admin' %}
-        <a href="/monitor" class="px-3.5 py-1.5 rounded-full text-[14px] font-medium transition-colors {% if 'Giám Sát' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/70 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
+        <a href="/monitor" class="whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-medium transition-colors {% if 'Giám Sát Worker' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/80 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
           Giám Sát
         </a>
-        <a href="/admin/analytics" class="px-3.5 py-1.5 rounded-full text-[14px] font-medium transition-colors hover:text-[#0c0a09] text-[#777169] hover:bg-[#e7e5e4]/40">
+        <a href="/admin/analytics" class="whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-medium transition-colors {% if 'Admin' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/80 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
           Quản Trị
         </a>
         {% endif %}
       </nav>
 
       <!-- User Auth, Layout Mode & Status -->
-      <div class="flex items-center space-x-2.5 sm:space-x-3">
+      <div class="flex items-center space-x-2 sm:space-x-2.5 shrink-0">
 
         <!-- Smart Adaptive Layout Switcher -->
         <button type="button" onclick="cycleLayoutMode()" id="layout-toggle-btn"
-          class="hidden sm:inline-flex items-center space-x-1.5 py-1.5 px-3 rounded-full bg-white hover:bg-[#f0efed] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] transition cursor-pointer shadow-sm text-xs font-medium"
+          class="hidden md:inline-flex items-center space-x-1.5 py-1.5 px-2.5 xl:px-3 rounded-full bg-white hover:bg-[#f0efed] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] transition cursor-pointer shadow-sm text-xs font-medium whitespace-nowrap"
           title="Chế độ hiển thị: Click để chuyển đổi giữa Rộng (1536px) / Toàn cảnh (Fluid) / Tiêu chuẩn (1152px)">
           <span id="layout-toggle-icon" class="material-symbols-rounded text-base text-[#777169]">width_normal</span>
-          <span id="layout-toggle-label" class="text-[11px] font-medium">Bố cục: Rộng</span>
+          <span id="layout-toggle-label" class="hidden 2xl:inline text-[11px] font-medium">Bố cục: Rộng</span>
         </button>
         {% if user and user.role == 'admin' %}
-        <div id="worker-status-badge" class="hidden sm:flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#292524]">
+        <div id="worker-status-badge" class="hidden xl:flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#292524] whitespace-nowrap">
           <span class="w-1.5 h-1.5 rounded-full bg-[#777169] animate-pulse"></span>
           <span>Đang kết nối...</span>
         </div>
         {% elif user %}
         <div class="hidden sm:flex items-center">
           {% if user.kaggle_username and user.kaggle_key %}
-          <div class="flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#292524]" title="Hạ tầng Kaggle GPU đã kích hoạt">
+          <div class="flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#292524] whitespace-nowrap" title="Hạ tầng Kaggle GPU đã kích hoạt">
             <span class="material-symbols-rounded text-sm text-[#16a34a]">bolt</span>
             <span>GPU Ready</span>
           </div>
           {% else %}
-          <a href="/settings" class="flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#777169] hover:text-[#0c0a09] transition" title="Thiết lập Kaggle GPU">
+          <a href="/settings" class="flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#777169] hover:text-[#0c0a09] transition whitespace-nowrap" title="Thiết lập Kaggle GPU">
             <span class="material-symbols-rounded text-sm text-amber-600 animate-pulse">settings</span>
             <span>Cài Kaggle Key</span>
           </a>
@@ -321,15 +321,15 @@
         {% if user %}
         <!-- User Menu Dropdown -->
         <div class="relative inline-block text-left">
-          <button type="button" onclick="toggleUserDropdown()" class="flex items-center space-x-2 py-1.5 px-3 rounded-full bg-white hover:bg-[#f0efed] text-[#0c0a09] border border-[#e7e5e4] transition cursor-pointer shadow-sm">
+          <button type="button" onclick="toggleUserDropdown()" class="flex items-center space-x-2 py-1.5 px-2.5 sm:px-3 rounded-full bg-white hover:bg-[#f0efed] text-[#0c0a09] border border-[#e7e5e4] transition cursor-pointer shadow-sm whitespace-nowrap">
             {% if user.avatar_url %}
-            <img src="{{ user.avatar_url }}" alt="{{ user.username }}" class="w-5 h-5 rounded-full object-cover border border-[#e7e5e4]" />
+            <img src="{{ user.avatar_url }}" alt="{{ user.username }}" class="w-5 h-5 rounded-full object-cover border border-[#e7e5e4] shrink-0" />
             {% else %}
-            <div class="w-5 h-5 rounded-full bg-[#292524] text-white flex items-center justify-center text-[10px] font-medium">
+            <div class="w-5 h-5 rounded-full bg-[#292524] text-white flex items-center justify-center text-[10px] font-medium shrink-0">
               {{ user.username[:1].upper() }}
             </div>
             {% endif %}
-            <span class="text-xs font-medium max-w-[100px] truncate">{{ user.username }}</span>
+            <span class="text-xs font-medium max-w-[90px] sm:max-w-[110px] truncate">{{ user.username }}</span>
             <span class="material-symbols-rounded text-sm text-[#777169]">expand_more</span>
           </button>
           
@@ -356,7 +356,7 @@
         </div>
         {% else %}
         <!-- Guest Auth Buttons -->
-        <div class="hidden sm:flex items-center space-x-2">
+        <div class="hidden sm:flex items-center space-x-2 whitespace-nowrap">
           <a href="/login" class="px-3.5 py-1.5 rounded-full text-xs font-medium text-[#4e4e4e] hover:text-[#0c0a09] transition">
             Đăng nhập
           </a>
@@ -367,7 +367,7 @@
         {% endif %}
 
         <!-- Mobile Menu Toggle Button -->
-        <button type="button" onclick="toggleMobileMenu()" class="md:hidden w-9 h-9 rounded-full bg-white border border-[#e7e5e4] flex items-center justify-center text-[#292524] hover:bg-[#f0efed] transition shadow-sm" aria-label="Menu di động">
+        <button type="button" onclick="toggleMobileMenu()" class="lg:hidden w-9 h-9 rounded-full bg-white border border-[#e7e5e4] flex items-center justify-center text-[#292524] hover:bg-[#f0efed] transition shadow-sm shrink-0" aria-label="Menu di động">
           <span id="mobile-menu-icon" class="material-symbols-rounded text-xl">menu</span>
         </button>
 
@@ -376,9 +376,9 @@
     </div>
 
     <!-- Mobile Navigation Drawer -->
-    <div id="mobile-menu-drawer" class="hidden md:hidden border-t border-[#e7e5e4] bg-[#f5f5f5]/95 backdrop-blur-lg px-4 py-4 space-y-3 transition-all">
+    <div id="mobile-menu-drawer" class="hidden lg:hidden border-t border-[#e7e5e4] bg-[#f5f5f5]/95 backdrop-blur-lg px-4 py-4 space-y-3 transition-all">
       <nav class="flex flex-col space-y-1 text-sm font-medium">
-        <a href="/" class="px-3.5 py-2.5 rounded-xl flex items-center space-x-2.5 transition {% if 'Studio' in page_title %}bg-[#292524] text-white font-semibold shadow-sm{% else %}text-[#292524] hover:bg-[#e7e5e4]{% endif %}">
+        <a href="/" class="px-3.5 py-2.5 rounded-xl flex items-center space-x-2.5 transition {% if page_title == 'OlokaTTS Studio' %}bg-[#292524] text-white font-semibold shadow-sm{% else %}text-[#292524] hover:bg-[#e7e5e4]{% endif %}">
           <span class="material-symbols-rounded text-lg">graphic_eq</span>
           <span>Studio Tạo Giọng</span>
         </a>
@@ -399,11 +399,11 @@
           <span>Kết Nối MCP &amp; Agent</span>
         </a>
         {% if user and user.role == 'admin' %}
-        <a href="/monitor" class="px-3.5 py-2.5 rounded-xl flex items-center space-x-2.5 transition {% if 'Giám Sát' in page_title %}bg-[#292524] text-white font-semibold shadow-sm{% else %}text-[#292524] hover:bg-[#e7e5e4]{% endif %}">
+        <a href="/monitor" class="px-3.5 py-2.5 rounded-xl flex items-center space-x-2.5 transition {% if 'Giám Sát Worker' in page_title %}bg-[#292524] text-white font-semibold shadow-sm{% else %}text-[#292524] hover:bg-[#e7e5e4]{% endif %}">
           <span class="material-symbols-rounded text-lg">memory</span>
           <span>Giám Sát Dual T4 Worker</span>
         </a>
-        <a href="/admin/analytics" class="px-3.5 py-2.5 rounded-xl flex items-center space-x-2.5 transition {% if 'Quản Trị' in page_title or 'Admin' in page_title %}bg-[#292524] text-white font-semibold shadow-sm{% else %}text-[#292524] hover:bg-[#e7e5e4]{% endif %}">
+        <a href="/admin/analytics" class="px-3.5 py-2.5 rounded-xl flex items-center space-x-2.5 transition {% if 'Admin' in page_title %}bg-[#292524] text-white font-semibold shadow-sm{% else %}text-[#292524] hover:bg-[#e7e5e4]{% endif %}">
           <span class="material-symbols-rounded text-lg">shield</span>
           <span>Trang Quản Trị Hệ Thống</span>
         </a>
@@ -548,16 +548,16 @@
         if (!badge) return;
 
         if (data.live_worker_count > 0) {
-          badge.className = "flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#292524]";
+          badge.className = "hidden xl:flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#292524] whitespace-nowrap";
           badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse"></span><span>${data.live_worker_count} Kaggle T4 Active</span>`;
         } else if (data.kaggle.kernel_status && data.kaggle.kernel_status.includes('RUNNING')) {
-          badge.className = "flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-amber-700";
+          badge.className = "hidden xl:flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-amber-700 whitespace-nowrap";
           badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-spin"></span><span>Kaggle Đang Khởi Động...</span>`;
         } else if (data.local_engine.available) {
-          badge.className = "flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#292524]";
+          badge.className = "hidden xl:flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#292524] whitespace-nowrap";
           badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500"></span><span>Local CPU Ready</span>`;
         } else {
-          badge.className = "flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#777169]";
+          badge.className = "hidden xl:flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-[#f0efed] border border-[#e7e5e4] text-[#777169] whitespace-nowrap";
           badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-[#a8a29e]"></span><span>Worker Offline</span>`;
         }
       } catch (e) {
@@ -707,12 +707,6 @@
             oldHeader.innerHTML = newHeader.innerHTML;
           }
 
-          const newDrawer = doc.getElementById('mobile-menu-drawer');
-          const oldDrawer = document.getElementById('mobile-menu-drawer');
-          if (newDrawer && oldDrawer) {
-            oldDrawer.innerHTML = newDrawer.innerHTML;
-          }
-
           if (pushState) {
             window.history.pushState({ url }, doc.title, url);
           }
@@ -722,9 +716,11 @@
 
           SPANavigator.executeScripts(mainEl);
           if (typeof setLayoutMode === 'function') setLayoutMode(getLayoutMode());
+          if (typeof updateWorkerStatus === 'function') updateWorkerStatus();
 
-          if (oldDrawer && !oldDrawer.classList.contains('hidden')) {
-            oldDrawer.classList.add('hidden');
+          const currentDrawer = document.getElementById('mobile-menu-drawer');
+          if (currentDrawer && !currentDrawer.classList.contains('hidden')) {
+            currentDrawer.classList.add('hidden');
             const icon = document.getElementById('mobile-menu-icon');
             if (icon) icon.innerText = 'menu';
           }
@@ -791,15 +787,11 @@
               oldHeader.innerHTML = newHeader.innerHTML;
             }
 
-            const newDrawer = doc.getElementById('mobile-menu-drawer');
-            const oldDrawer = document.getElementById('mobile-menu-drawer');
-            if (newDrawer && oldDrawer) {
-              oldDrawer.innerHTML = newDrawer.innerHTML;
-            }
-
             window.history.pushState({ url: finalUrl }, doc.title, finalUrl);
             SPANavigator.updateActiveNav(finalUrl);
             SPANavigator.executeScripts(mainEl);
+            if (typeof setLayoutMode === 'function') setLayoutMode(getLayoutMode());
+            if (typeof updateWorkerStatus === 'function') updateWorkerStatus();
           } else {
             window.location.href = finalUrl;
           }
@@ -830,6 +822,10 @@
           try { window.currentSampleAudio.pause(); } catch(e){}
           window.currentSampleAudio = null;
         }
+        if (window.previewAudioInstance) {
+          try { window.previewAudioInstance.pause(); } catch(e){}
+          window.previewAudioInstance = null;
+        }
         if (window.pollInterval) {
           clearInterval(window.pollInterval);
           window.pollInterval = null;
@@ -844,23 +840,28 @@
         const u = new URL(currentUrl, window.location.origin);
         const path = u.pathname;
 
-        document.querySelectorAll('header nav a').forEach(a => {
+        const isRouteMatch = (href, currentPath) => {
+          if (!href) return false;
+          if (href === '/') return currentPath === '/';
+          if (href.startsWith('/admin')) return currentPath.startsWith('/admin');
+          return currentPath.startsWith(href);
+        };
+
+        document.querySelectorAll('header > div > nav a').forEach(a => {
           const href = a.getAttribute('href');
-          const isCurrent = (href === '/' && path === '/') || (href !== '/' && path.startsWith(href));
-          if (isCurrent) {
-            a.className = "px-3.5 py-1.5 rounded-full text-[14px] font-semibold text-[#0c0a09] bg-[#e7e5e4]/70 transition-colors";
+          if (isRouteMatch(href, path)) {
+            a.className = "whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-semibold text-[#0c0a09] bg-[#e7e5e4]/80 transition-colors";
           } else {
-            a.className = "px-3.5 py-1.5 rounded-full text-[14px] font-medium text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40 transition-colors";
+            a.className = "whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-medium text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40 transition-colors";
           }
         });
 
-        document.querySelectorAll('#mobile-menu-drawer a').forEach(a => {
+        document.querySelectorAll('#mobile-menu-drawer nav a').forEach(a => {
           const href = a.getAttribute('href');
-          const isCurrent = (href === '/' && path === '/') || (href !== '/' && path.startsWith(href));
-          if (isCurrent) {
-            a.className = "flex items-center space-x-2.5 p-2 rounded-xl bg-[#e7e5e4] font-semibold text-[#0c0a09] transition";
+          if (isRouteMatch(href, path)) {
+            a.className = "px-3.5 py-2.5 rounded-xl flex items-center space-x-2.5 transition bg-[#292524] text-white font-semibold shadow-sm";
           } else {
-            a.className = "flex items-center space-x-2.5 p-2 rounded-xl hover:bg-[#f0efed] text-[#4e4e4e] transition";
+            a.className = "px-3.5 py-2.5 rounded-xl flex items-center space-x-2.5 transition text-[#292524] hover:bg-[#e7e5e4]";
           }
         });
       },

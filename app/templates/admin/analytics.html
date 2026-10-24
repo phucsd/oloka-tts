@@ -4,7 +4,7 @@
 <div class="space-y-8">
 
   <!-- Admin Subnav & Header -->
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#e7e5e4]">
+  <div class="space-y-5 pb-6 border-b border-[#e7e5e4]">
     <div>
       <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f0efed] text-[#4e4e4e] text-xs font-semibold mb-2">
         <span class="material-symbols-rounded text-sm text-[#292524]">monitoring</span>
@@ -17,40 +17,40 @@
     </div>
 
     <!-- Admin Nav Tabs -->
-    <div class="flex items-center flex-wrap gap-2">
-      <a href="/admin/analytics" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white shadow-sm flex items-center space-x-1.5">
+    <nav class="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1" aria-label="Menu Quản Trị">
+      <a href="/admin/analytics" class="shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#292524] text-white shadow-sm flex items-center space-x-1.5">
         <span class="material-symbols-rounded text-sm">monitoring</span>
         <span>Báo Cáo</span>
       </a>
-      <a href="/admin/settings" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+      <a href="/admin/settings" class="shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
         <span class="material-symbols-rounded text-sm text-[#777169]">settings</span>
         <span>Cấu Hình</span>
       </a>
-      <a href="/admin/jobs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+      <a href="/admin/jobs" class="shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
         <span class="material-symbols-rounded text-sm text-[#777169]">queue_music</span>
         <span>Hàng Đợi &amp; Job</span>
       </a>
-      <a href="/admin/voices" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+      <a href="/admin/voices" class="shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
         <span class="material-symbols-rounded text-sm text-[#777169]">record_voice_over</span>
         <span>Giọng Đọc</span>
       </a>
-      <a href="/admin/users" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+      <a href="/admin/users" class="shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
         <span class="material-symbols-rounded text-sm text-[#777169]">group</span>
         <span>Người Dùng</span>
       </a>
-      <a href="/admin/api-keys" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+      <a href="/admin/api-keys" class="shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
         <span class="material-symbols-rounded text-sm text-[#777169]">vpn_key</span>
         <span>API Keys</span>
       </a>
-      <a href="/admin/align-test" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+      <a href="/admin/align-test" class="shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
         <span class="material-symbols-rounded text-sm text-[#777169]">timer</span>
         <span>Căn Chỉnh (Align)</span>
       </a>
-      <a href="/admin/logs" class="px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
+      <a href="/admin/logs" class="shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-medium bg-[#f0efed] hover:bg-[#e7e5e4] text-[#4e4e4e] hover:text-[#0c0a09] border border-[#e7e5e4] flex items-center space-x-1.5 transition">
         <span class="material-symbols-rounded text-sm text-[#777169]">warning</span>
         <span>Logs</span>
       </a>
-    </div>
+    </nav>
   </div>
 
   <!-- KPI Top Stats Cards (6 cols on lg) -->

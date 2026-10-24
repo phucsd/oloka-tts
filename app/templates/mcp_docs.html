@@ -242,7 +242,7 @@ Khi người dùng yêu cầu đọc văn bản hoặc chuyển đổi thành gi
     "olokatts": {
       "command": "python",
       "args": [
-        "E:/Phuc's Data/Github/Oloka TTS/app/mcp_server.py"
+        "mcp_server.py"
       ],
       "env": {
         "OLOKATTS_GATEWAY_URL": "{{ gateway_url }}",
@@ -254,6 +254,8 @@ Khi người dùng yêu cầu đọc văn bản hoặc chuyển đổi thành gi
       </div>
 
       <!-- Remote SSE Server Endpoint -->
+      <div class="p-5 rounded-2xl bg-[#fafafa] border border-[#e7e5e4] space-y-3">
+        <div class="text-xs font-bold uppercase tracking-wider text-[#777169]">Kết nối trực tiếp qua Remote MCP (Streamable HTTP / SSE):</div>
         <div class="space-y-2">
           <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#e7e5e4]">
             <span class="font-mono text-xs text-[#0c0a09] select-all"><strong>Streamable HTTP:</strong> {{ gateway_url }}/mcp</span>

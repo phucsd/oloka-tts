@@ -131,6 +131,7 @@
       const res = await fetch('/api/admin/status');
       if (!res.ok) return;
       const data = await res.json();
+      if (!document.getElementById('stat-worker-count')) return;
 
       document.getElementById('stat-worker-count').innerText = data.live_worker_count;
       document.getElementById('stat-kaggle-status').innerText = data.kaggle.kernel_status || 'NOT CONFIGURED';
@@ -208,6 +209,7 @@
   }
 
   refreshMonitor();
-  setInterval(refreshMonitor, 5000);
+  if (window.monitorInterval) clearInterval(window.monitorInterval);
+  window.monitorInterval = setInterval(refreshMonitor, 5000);
 </script>
 {% endblock %}
