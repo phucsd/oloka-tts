@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="w-full space-y-10 py-2">
+
+  <!-- Header Banner -->
+  <div class="text-center max-w-3xl mx-auto space-y-3 pt-2">
+    <div class="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-xs font-semibold uppercase tracking-wider text-[#777169]">
+      <span class="w-2 h-2 rounded-full bg-[#292524]"></span>
+      <span>Điều Khoản &bull; Đạo Đức AI &bull; Bản Quyền Công Nghệ</span>
+    </div>
+    <h1 class="font-serif text-3xl sm:text-5xl font-light text-[#0c0a09] tracking-tight leading-tight">
+      Chính Sách Sử Dụng &amp; Bản Quyền
+    </h1>
+    <p class="text-sm sm:text-base text-[#4e4e4e] max-w-2xl mx-auto leading-relaxed">
+      Quy định về điều khoản dịch vụ, tiêu chuẩn đạo đức khi sử dụng công nghệ tổng hợp và nhân bản giọng nói, chính sách bảo mật dữ liệu và ghi nhận bản quyền mô hình <strong class="text-[#0c0a09]">VieNeu-TTS</strong>.
+    </p>
+  </div>
+
+  <!-- Main Grid: Sticky TOC Sidebar + Policy Sections -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+    <!-- Left Sticky TOC (3 cols) -->
+    <div class="hidden lg:block lg:col-span-3 sticky top-24 space-y-4 text-xs">
+      <div class="card-editorial p-4 bg-white border border-[#e7e5e4] rounded-2xl space-y-3">
+        <div class="font-bold uppercase tracking-wider text-[11px] text-[#777169]">Mục Lục Chính Sách</div>
+        <nav class="space-y-1 font-medium">
+          <a href="#general" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">1. Điều Khoản Chung</a>
+          <a href="#model-attribution" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">2. Bản Quyền Mô Hình VieNeu-TTS</a>
+          <a href="#acceptable-use" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">3. Chính Sách Đạo Đức &amp; Voice Clone</a>
+          <a href="#byok-kaggle" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">4. Cơ Chế BYOK &amp; Hạ Tầng GPU</a>
+          <a href="#privacy" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">5. Bảo Mật &amp; Dữ Liệu Người Dùng</a>
+          <a href="#disclaimer" class="block px-2.5 py-1.5 rounded-lg text-[#4e4e4e] hover:text-[#0c0a09] hover:bg-[#f5f5f5] transition">6. Miễn Trừ Trách Nhiệm</a>
+        </nav>
+      </div>
+
+      <div class="card-editorial p-4 bg-white border border-[#e7e5e4] rounded-2xl space-y-2 text-xs">
+        <div class="font-medium text-[#0c0a09] flex items-center space-x-1.5">
+          <span class="material-symbols-rounded text-sm text-[#16a34a]">info</span>
+          <span>Về OlokaTTS</span>
+        </div>
+        <p class="text-[11px] text-[#777169] leading-relaxed">
+          Tìm hiểu thêm về tầm nhìn, định hướng mới và kiến trúc kỹ thuật của chúng tôi.
+        </p>
+        <a href="/about" class="inline-block text-xs font-semibold text-[#0c0a09] hover:underline pt-1">
+          Xem Trang Giới Thiệu &rarr;
+        </a>
+      </div>
+    </div>
+
+    <!-- Right Content Body (9 cols) -->
+    <div class="lg:col-span-9 space-y-8">
+
+      <!-- SECTION 1: GENERAL TERMS -->
+      <section id="general" class="card-editorial p-6 sm:p-8 space-y-4 scroll-mt-24 bg-white">
+        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-[#777169]">
+          <span class="material-symbols-rounded text-base text-[#292524]">description</span>
+          <span>1. Giới Thiệu &amp; Điều Khoản Chung</span>
+        </div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">Chấp Thuận Điều Khoản Dịch Vụ</h2>
+        <div class="text-xs sm:text-sm text-[#4e4e4e] leading-relaxed space-y-3">
+          <p>
+            Chào mừng bạn đến với <strong>OlokaTTS</strong>. Bằng việc truy cập, đăng ký tài khoản hoặc sử dụng bất kỳ tính năng nào của OlokaTTS (bao gồm Web Studio, Thư viện giọng đọc, Phòng thu hội thoại đa nhân vật, REST API và MCP Server), bạn xác nhận đã đọc, hiểu và đồng ý tuân thủ toàn bộ các quy định trong Chính sách sử dụng này.
+          </p>
+          <p>
+            OlokaTTS được thiết kế nhằm phục vụ mục đích sáng tạo nội dung số, sản xuất podcast, sách nói, nghiên cứu học thuật và tích hợp trợ lý ảo hợp pháp. Nếu bạn không đồng ý với bất kỳ điều khoản nào dưới đây, vui lòng ngừng sử dụng dịch vụ.
+          </p>
+        </div>
+      </section>
+
+      <!-- SECTION 2: VIENEU-TTS MODEL ATTRIBUTION & LICENSING -->
+      <section id="model-attribution" class="card-editorial p-6 sm:p-8 space-y-4 scroll-mt-24 bg-gradient-to-br from-white via-[#fafafa] to-[#f0efed]/50 border border-[#d6d3d1]">
+        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-[#292524]">
+          <span class="material-symbols-rounded text-base text-[#16a34a]">verified</span>
+          <span>2. Bản Quyền Công Nghệ &amp; Ghi Nhận Mô Hình VieNeu-TTS</span>
+        </div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">Sử Dụng Mô Hình Lõi Của VieNeu-TTS</h2>
+        <div class="text-xs sm:text-sm text-[#4e4e4e] leading-relaxed space-y-3">
+          <p>
+            <strong>OlokaTTS công bố minh bạch và ghi nhận rõ ràng:</strong> Toàn bộ hệ thống tổng hợp tiếng nói (Text-to-Speech) và nhân bản giọng đọc (Voice Cloning) của nền tảng được vận hành trực tiếp dựa trên mô hình <strong>VieNeu-TTS</strong> do tác giả <strong>Phạm Nguyễn Ngọc Bảo (<code class="font-mono text-[#0c0a09]">pnnbao97</code>)</strong> nghiên cứu, huấn luyện và phát hành.
+          </p>
+          <div class="p-4 rounded-xl bg-white border border-[#e7e5e4] space-y-2 text-xs">
+            <div class="font-semibold text-[#0c0a09]">Thông tin mô hình công nghệ lõi được tích hợp:</div>
+            <ul class="list-disc list-inside space-y-1.5 text-[#4e4e4e]">
+              <li><strong>Tên mô hình:</strong> VieNeu-TTS (bao gồm biến thể <code class="font-mono text-[#0c0a09]">VieNeu-TTS v3 Turbo</code> và <code class="font-mono text-[#0c0a09]">VieNeu ONNX</code>).</li>
+              <li><strong>Thành phần phụ trợ:</strong> Bộ mã hóa âm thanh <code class="font-mono text-[#0c0a09]">MOSS-Audio-Tokenizer-Nano</code> và bộ chuyển đổi âm vị <code class="font-mono text-[#0c0a09]">sea-g2p</code>.</li>
+              <li><strong>Kho mã nguồn gốc:</strong> <a href="https://github.com/pnnbao97/VieNeu-TTS" target="_blank" rel="noopener noreferrer" data-spa="false" class="text-[#0c0a09] underline font-medium">https://github.com/pnnbao97/VieNeu-TTS</a></li>
+            </ul>
+          </div>
+          <p>
+            <strong>Phạm vi bản quyền:</strong>
+          </p>
+          <ul class="list-disc list-inside space-y-2 text-[#4e4e4e]">
+            <li>Bản quyền đối với trọng số mô hình (model weights), kiến trúc mạng nơ-ron và thuật toán tổng hợp giọng nói thuộc về tác giả dự án <strong>VieNeu-TTS</strong> và các bên cấp phép liên quan theo giấy phép công bố tại kho mã nguồn gốc.</li>
+            <li><strong>OlokaTTS</strong> chỉ sở hữu bản quyền đối với phần mã nguồn giao diện Web Studio, hệ thống điều phối đám mây (Gateway &amp; Kaggle Orchestrator), bộ công cụ ghép hội thoại và cổng giao tiếp MCP/API do đội ngũ OlokaTTS phát triển.</li>
+            <li>Người dùng khi sử dụng âm thanh đầu ra từ OlokaTTS có trách nhiệm tôn trọng quyền tác giả và tuân thủ các điều khoản cấp phép của mô hình <strong>VieNeu-TTS</strong>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SECTION 3: ACCEPTABLE USE & VOICE CLONING ETHICS -->
+      <section id="acceptable-use" class="card-editorial p-6 sm:p-8 space-y-4 scroll-mt-24 bg-white">
+        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-rose-700">
+          <span class="material-symbols-rounded text-base text-rose-600">gavel</span>
+          <span>3. Chính Sách Sử Dụng Hợp Lệ &amp; Đạo Đức AI (Acceptable Use Policy)</span>
+        </div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">Quy Tắc Bắt Buộc Khi Tạo Giọng &amp; Nhân Bản Giọng Nói</h2>
+        <div class="text-xs sm:text-sm text-[#4e4e4e] leading-relaxed space-y-3">
+          <p>
+            Công nghệ tổng hợp và nhân bản giọng nói AI mang lại tiềm năng sáng tạo lớn nhưng cũng đi kèm trách nhiệm đạo đức và pháp lý nghiêm ngặt. Khi sử dụng OlokaTTS, bạn <strong>nghiêm cấm thực hiện</strong> các hành vi sau:
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            <div class="p-4 rounded-xl bg-rose-50/50 border border-rose-200/80 space-y-1.5">
+              <div class="font-semibold text-rose-900 text-xs flex items-center space-x-1.5">
+                <span class="material-symbols-rounded text-sm text-rose-600">block</span>
+                <span>Cấm giả mạo cá nhân trái phép</span>
+              </div>
+              <p class="text-xs text-rose-950/80 leading-relaxed">
+                Không được tải lên mẫu giọng của bất kỳ cá nhân nào (người nổi tiếng, chính trị gia, công dân) để nhân bản giọng nói (Voice Cloning) khi chưa có sự đồng ý rõ ràng và hợp pháp của chính chủ thể đó.
+              </p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-rose-50/50 border border-rose-200/80 space-y-1.5">
+              <div class="font-semibold text-rose-900 text-xs flex items-center space-x-1.5">
+                <span class="material-symbols-rounded text-sm text-rose-600">block</span>
+                <span>Cấm lừa đảo &amp; Deepfake độc hại</span>
+              </div>
+              <p class="text-xs text-rose-950/80 leading-relaxed">
+                Nghiêm cấm sử dụng âm thanh tạo ra để lừa đảo tài chính, giả mạo cuộc gọi người thân/ngân hàng/cơ quan chức năng, vượt qua hệ thống xác thực sinh trắc học giọng nói hoặc thao túng dư luận.
+              </p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-rose-50/50 border border-rose-200/80 space-y-1.5">
+              <div class="font-semibold text-rose-900 text-xs flex items-center space-x-1.5">
+                <span class="material-symbols-rounded text-sm text-rose-600">block</span>
+                <span>Cấm nội dung vi phạm pháp luật</span>
+              </div>
+              <p class="text-xs text-rose-950/80 leading-relaxed">
+                Không sử dụng hệ thống để chuyển đổi văn bản chứa nội dung chống phá Nhà nước, kích động bạo lực, thù địch, phỉ báng, vu khống, khiêu dâm hoặc xâm hại quyền và lợi ích hợp pháp của tổ chức, cá nhân.
+              </p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-rose-50/50 border border-rose-200/80 space-y-1.5">
+              <div class="font-semibold text-rose-900 text-xs flex items-center space-x-1.5">
+                <span class="material-symbols-rounded text-sm text-rose-600">block</span>
+                <span>Minh bạch nội dung do AI tạo ra</span>
+              </div>
+              <p class="text-xs text-rose-950/80 leading-relaxed">
+                Khi xuất bản các tác phẩm báo chí, tin tức hoặc thông điệp công cộng sử dụng giọng đọc AI, người dùng cần thông báo rõ ràng cho khán giả biết âm thanh được tạo bởi công nghệ AI.
+              </p>
+            </div>
+          </div>
+          <p class="pt-1">
+            <strong>Cam kết quyền sở hữu mẫu giọng:</strong> Khi tải tệp âm thanh lên mục <em>Voice Cloning</em>, bạn cam đoan rằng bạn là chủ sở hữu giọng nói đó hoặc đã được ủy quyền hợp pháp. Chúng tôi có quyền xóa bỏ mẫu giọng và khóa tài khoản vĩnh viễn nếu phát hiện hành vi vi phạm.
+          </p>
+        </div>
+      </section>
+
+      <!-- SECTION 4: BYOK & KAGGLE GPU POLICY -->
+      <section id="byok-kaggle" class="card-editorial p-6 sm:p-8 space-y-4 scroll-mt-24 bg-white">
+        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-[#777169]">
+          <span class="material-symbols-rounded text-base text-[#292524]">memory</span>
+          <span>4. Chính Sách Tài Nguyên GPU &amp; Cơ Chế BYOK (Bring Your Own Key)</span>
+        </div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">Quản Lý &amp; Điều Phối Worker Đám Mây</h2>
+        <div class="text-xs sm:text-sm text-[#4e4e4e] leading-relaxed space-y-3">
+          <p>
+            OlokaTTS hỗ trợ mô hình vận hành <strong>BYOK (Bring Your Own Key)</strong>, cho phép người dùng liên kết thông tin xác thực Kaggle API cá nhân (<code class="font-mono bg-[#f0efed] px-1.5 py-0.5 rounded text-[#0c0a09]">KAGGLE_USERNAME</code> và <code class="font-mono bg-[#f0efed] px-1.5 py-0.5 rounded text-[#0c0a09]">KAGGLE_KEY</code>) để tự động khởi tạo và quản lý worker chạy mô hình VieNeu-TTS.
+          </p>
+          <ul class="list-disc list-inside space-y-2 text-[#4e4e4e]">
+            <li><strong>Tuân thủ chính sách nền tảng bên thứ ba:</strong> Người dùng tự chịu trách nhiệm tuân thủ các điều khoản dịch vụ và giới hạn hạn ngạch (quota) của Kaggle đối với tài khoản cá nhân của mình.</li>
+            <li><strong>Chống lạm dụng hệ thống (Rate Limiting):</strong> Để đảm bảo chất lượng dịch vụ chung trên cổng Gateway, hệ thống áp dụng cơ chế giới hạn tần suất yêu cầu hợp lý và tự động thu hồi các phiên treo.</li>
+            <li><strong>Không lạm dụng khai thác trái phép:</strong> Nghiêm cấm các hành vi tấn công từ chối dịch vụ (DoS), gửi hàng loạt yêu cầu rác làm tắc nghẽn hàng đợi hoặc can thiệp trái phép vào giao thức giao tiếp nội bộ giữa Gateway và Worker.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SECTION 5: PRIVACY & DATA SECURITY -->
+      <section id="privacy" class="card-editorial p-6 sm:p-8 space-y-4 scroll-mt-24 bg-white">
+        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-[#777169]">
+          <span class="material-symbols-rounded text-base text-[#292524]">shield_lock</span>
+          <span>5. Chính Sách Bảo Mật &amp; Quyền Riêng Tư Dữ Liệu</span>
+        </div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">An Toàn Khóa API &amp; Cô Lập Dữ Liệu</h2>
+        <div class="text-xs sm:text-sm text-[#4e4e4e] leading-relaxed space-y-3">
+          <ul class="list-disc list-inside space-y-2.5 text-[#4e4e4e]">
+            <li>
+              <strong>Mã hóa thông tin nhạy cảm:</strong> Mật khẩu người dùng được băm một chiều an toàn; khóa Kaggle API của bạn được mã hóa đối xứng chuẩn công nghiệp (Fernet AES-128) trước khi lưu trữ và chỉ được giải mã trong bộ nhớ tạm khi đẩy phiên worker của chính bạn.
+            </li>
+            <li>
+              <strong>Bảo mật Developer API Keys &amp; OAuth Tokens:</strong> Các khóa <code class="font-mono bg-[#f0efed] px-1.5 py-0.5 rounded text-[#0c0a09]">oloka_live_*</code> và mã phiên MCP OAuth chỉ lưu dưới dạng mã băm SHA-256 trong cơ sở dữ liệu.
+            </li>
+            <li>
+              <strong>Cô lập dữ liệu đa người dùng (Multi-tenant Isolation):</strong> Lịch sử tạo giọng nói, văn bản kịch bản và các tệp mẫu giọng nhân bản (Voice Samples) của bạn được cô lập theo tài khoản cá nhân. Người dùng khác không thể truy cập hoặc sử dụng mẫu giọng riêng tư của bạn.
+            </li>
+            <li>
+              <strong>Quyền kiểm soát của bạn:</strong> Bạn có toàn quyền xóa các mẫu giọng đã tải lên, thu hồi khóa API hoặc gỡ bỏ liên kết tài khoản Kaggle bất cứ lúc nào tại trang <a href="/settings" class="text-[#0c0a09] underline font-medium">Cài đặt tài khoản</a>.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- SECTION 6: DISCLAIMER & LIMITATION OF LIABILITY -->
+      <section id="disclaimer" class="card-editorial p-6 sm:p-8 space-y-4 scroll-mt-24 bg-white">
+        <div class="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-[#777169]">
+          <span class="material-symbols-rounded text-base text-[#292524]">balance</span>
+          <span>6. Miễn Trừ &amp; Giới Hạn Trách Nhiệm</span>
+        </div>
+        <h2 class="font-serif text-2xl font-light text-[#0c0a09]">Trách Nhiệm Pháp Lý</h2>
+        <div class="text-xs sm:text-sm text-[#4e4e4e] leading-relaxed space-y-3">
+          <p>
+            Dịch vụ <strong>OlokaTTS</strong> được cung cấp trên cơ sở "nguyên trạng" (<em>As-Is</em>) và "như hiện có" (<em>As-Available</em>). Chúng tôi nỗ lực duy trì độ ổn định cao nhất nhưng không cam kết dịch vụ sẽ không bao giờ bị gián đoạn, đặc biệt khi phụ thuộc vào hạ tầng đám mây bên thứ ba (như Kaggle hoặc Hugging Face).
+          </p>
+          <p>
+            Người dùng hoàn toàn chịu trách nhiệm trước pháp luật về nội dung văn bản đầu vào, mẫu âm thanh tải lên và mục đích sử dụng các tệp âm thanh đầu ra do mình khởi tạo. Đội ngũ phát triển OlokaTTS cũng như tác giả mô hình <strong>VieNeu-TTS</strong> không chịu trách nhiệm đối với bất kỳ thiệt hại trực tiếp hay gián tiếp nào phát sinh từ việc người dùng vi phạm Chính sách sử dụng này.
+          </p>
+          <div class="pt-3 border-t border-[#f0efed] flex flex-wrap items-center justify-between gap-2 text-xs text-[#777169]">
+            <span>Cập nhật lần cuối: Tháng 10 năm 2026</span>
+            <a href="/about" class="text-[#0c0a09] font-medium underline hover:text-black">Quay lại Trang Giới Thiệu &rarr;</a>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

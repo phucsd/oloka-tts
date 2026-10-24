@@ -121,8 +121,31 @@ def api_docs_page(request: Request, user: Optional[User] = Depends(get_current_u
         request=request,
         name="api_docs.html",
         context={
-            "page_title": "API Documentation & Reference - OlokaTTS 48kHz",
+            "page_title": "API Documentation & Reference - OlokaTTS",
             "user": user,
             "gateway_url": settings.PUBLIC_API_BASE_URL.rstrip("/")
+        }
+    )
+
+@router.get("/about")
+def about_page(request: Request, user: Optional[User] = Depends(get_current_user_optional)):
+    return templates.TemplateResponse(
+        request=request,
+        name="about.html",
+        context={
+            "page_title": "Giới Thiệu & Định Hướng - OlokaTTS",
+            "user": user
+        }
+    )
+
+@router.get("/terms")
+@router.get("/policy")
+def terms_page(request: Request, user: Optional[User] = Depends(get_current_user_optional)):
+    return templates.TemplateResponse(
+        request=request,
+        name="terms.html",
+        context={
+            "page_title": "Chính Sách Sử Dụng & Bản Quyền - OlokaTTS",
+            "user": user
         }
     )

@@ -255,7 +255,7 @@
           </div>
           <div class="flex items-baseline space-x-2">
             <span class="font-serif text-2xl font-light tracking-tight text-[#0c0a09]">OlokaTTS</span>
-            <span class="hidden xl:inline-block text-[10px] font-medium uppercase tracking-wider text-[#777169] bg-[#f0efed] px-2 py-0.5 rounded-full border border-[#e7e5e4] whitespace-nowrap">48kHz Neural</span>
+            <span class="hidden xl:inline-block text-[10px] font-medium uppercase tracking-wider text-[#777169] bg-[#f0efed] px-2 py-0.5 rounded-full border border-[#e7e5e4] whitespace-nowrap">AI Voice Studio</span>
           </div>
         </a>
       </div>
@@ -276,6 +276,9 @@
         </a>
         <a href="/docs/mcp" class="whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-medium transition-colors {% if 'MCP' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/80 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
           MCP &bull; Agent
+        </a>
+        <a href="/about" class="whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-medium transition-colors {% if 'Giới Thiệu' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/80 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
+          Giới Thiệu
         </a>
         {% if user and user.role == 'admin' %}
         <a href="/monitor" class="whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-[13px] xl:text-[14px] font-medium transition-colors {% if 'Giám Sát Worker' in page_title %}text-[#0c0a09] bg-[#e7e5e4]/80 font-semibold{% else %}text-[#777169] hover:text-[#0c0a09] hover:bg-[#e7e5e4]/40{% endif %}">
@@ -398,6 +401,14 @@
           <span class="material-symbols-rounded text-lg">integration_instructions</span>
           <span>Kết Nối MCP &amp; Agent</span>
         </a>
+        <a href="/about" class="px-3.5 py-2.5 rounded-xl flex items-center space-x-2.5 transition {% if 'Giới Thiệu' in page_title %}bg-[#292524] text-white font-semibold shadow-sm{% else %}text-[#292524] hover:bg-[#e7e5e4]{% endif %}">
+          <span class="material-symbols-rounded text-lg">info</span>
+          <span>Giới Thiệu &amp; Định Hướng</span>
+        </a>
+        <a href="/terms" class="px-3.5 py-2.5 rounded-xl flex items-center space-x-2.5 transition {% if 'Chính Sách' in page_title %}bg-[#292524] text-white font-semibold shadow-sm{% else %}text-[#292524] hover:bg-[#e7e5e4]{% endif %}">
+          <span class="material-symbols-rounded text-lg">gavel</span>
+          <span>Chính Sách &amp; Bản Quyền</span>
+        </a>
         {% if user and user.role == 'admin' %}
         <a href="/monitor" class="px-3.5 py-2.5 rounded-xl flex items-center space-x-2.5 transition {% if 'Giám Sát Worker' in page_title %}bg-[#292524] text-white font-semibold shadow-sm{% else %}text-[#292524] hover:bg-[#e7e5e4]{% endif %}">
           <span class="material-symbols-rounded text-lg">memory</span>
@@ -454,16 +465,22 @@
 
   <!-- Editorial Footer -->
   <footer class="border-t border-[#e7e5e4] py-10 mt-16 text-center text-xs text-[#777169] bg-[#f5f5f5]">
-    <div class="layout-container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div class="flex items-center space-x-2">
+    <div class="layout-container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center justify-center md:justify-start gap-2">
         <span class="font-serif text-lg font-light text-[#0c0a09]">OlokaTTS</span>
-        <span class="text-[#a8a29e]">•</span>
-        <span>Công nghệ giọng nói tiếng Việt chuẩn xác 48kHz</span>
+        <span class="text-[#a8a29e]">&bull;</span>
+        <span>Thổi hồn cảm xúc vào từng câu chữ Việt</span>
+        <span class="text-[#a8a29e]">&bull;</span>
+        <a href="/about#vieneu-credit" class="text-[11px] bg-[#f0efed] hover:bg-[#e7e5e4] px-2.5 py-0.5 rounded-full border border-[#e7e5e4] text-[#292524] font-medium transition">
+          Powered by VieNeu-TTS
+        </a>
       </div>
-      <div class="flex items-center space-x-6 text-[#777169]">
+      <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[#777169]">
         <a href="/" class="hover:text-[#0c0a09] transition">Studio</a>
         <a href="/voices" class="hover:text-[#0c0a09] transition">Thư Viện Giọng</a>
         <a href="/conversation" class="hover:text-[#0c0a09] transition">Hội Thoại</a>
+        <a href="/about" class="hover:text-[#0c0a09] transition">Giới Thiệu</a>
+        <a href="/terms" class="hover:text-[#0c0a09] transition">Chính Sách Sử Dụng</a>
         <span>&copy; 2026 OlokaTTS</span>
       </div>
     </div>

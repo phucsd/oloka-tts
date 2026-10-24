@@ -275,7 +275,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="OlokaTTS Gateway",
-    description="High-fidelity 48kHz Vietnamese Neural TTS Gateway powered by Kaggle Dual Tesla T4 Workers",
+    description="AI Voice Studio & Cloud Gateway — Thổi hồn cảm xúc vào từng câu chữ Việt (Powered by VieNeu-TTS)",
     version="1.0.0",
     lifespan=lifespan
 )

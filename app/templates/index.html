@@ -5,13 +5,13 @@
 <div class="text-center max-w-3xl mx-auto pt-2 pb-6 sm:pb-8 space-y-3">
   <div class="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full text-xs font-medium uppercase tracking-wider text-[#777169] bg-[#f0efed] border border-[#e7e5e4]">
     <span class="w-1.5 h-1.5 rounded-full bg-[#16a34a]"></span>
-    <span>VieNeu v3 Turbo • 48kHz Neural Voice</span>
+    <span>Powered by VieNeu-TTS &bull; AI Voice Studio</span>
   </div>
   <h1 class="font-serif text-3xl sm:text-5xl lg:text-6xl font-light tracking-[-0.03em] text-[#0c0a09] leading-[1.12]">
-    Tiếng nói Việt chuẩn xác,<br class="hidden sm:inline"> biểu cảm và tự nhiên.
+    Thổi hồn cảm xúc vào<br class="hidden sm:inline"> từng câu chữ Việt.
   </h1>
-  <p class="font-sans text-sm sm:text-base text-[#4e4e4e] max-w-xl mx-auto font-normal leading-relaxed">
-    Công nghệ tổng hợp giọng nói tiếng Việt chất lượng phòng thu 48.000 Hz, 25 giọng chuẩn 3 miền và sao chép giọng nói tức thì.
+  <p class="font-sans text-sm sm:text-base text-[#4e4e4e] max-w-2xl mx-auto font-normal leading-relaxed">
+    Không gian sáng tạo giọng nói AI giàu sắc thái dành cho nhà sáng tạo nội dung và lập trình viên. Khám phá 25 giọng đọc Bắc – Trung – Nam và nhân bản giọng nói nhanh trên nền tảng mô hình <a href="/about#vieneu-credit" class="text-[#0c0a09] underline font-medium hover:text-black">VieNeu-TTS</a>.
   </p>
 </div>
 
@@ -85,7 +85,7 @@
       <!-- Textarea -->
       <textarea id="prompt-input" rows="6" 
         class="w-full input-editorial p-4 text-[#0c0a09] placeholder-[#a8a29e] text-[15px] leading-relaxed resize-y font-sans"
-        placeholder="Nhập nội dung cần chuyển thành giọng nói tại đây... (Mẹo: Nhấn Ctrl + Enter để tạo nhanh)">Chào bạn! [cười] Đây là hệ thống chuyển văn bản thành giọng nói tiếng Việt chất lượng cao OlokaTTS v3 Turbo, chạy trên hạ tầng Kaggle Dual Tesla T4 với âm thanh chuẩn 48kHz siêu mượt mà!</textarea>
+        placeholder="Nhập nội dung cần chuyển thành giọng nói tại đây... (Mẹo: Nhấn Ctrl + Enter để tạo nhanh)">Chào bạn! [cười] Chào mừng bạn đến với OlokaTTS — không gian sáng tạo giọng nói AI giàu cảm xúc, nơi từng câu chữ Việt được thổi hồn tự nhiên và sống động trên nền tảng mô hình VieNeu-TTS!</textarea>
 
       <!-- Live Text Statistics Strip -->
       <div class="flex flex-wrap items-center justify-between text-xs text-[#777169] px-1 gap-2">
@@ -156,7 +156,7 @@
         <!-- Voice Selector & Filter Bar -->
         <div class="flex items-center justify-between">
           <label class="block text-xs font-medium text-[#0c0a09]">
-            Chọn Giọng Đọc (25 Giọng Chuẩn 48kHz)
+            Chọn Giọng Đọc (25 Giọng Đa Sắc Thái)
           </label>
           <button type="button" id="preview-voice-btn" onclick="quickPreviewSelectedVoice()" class="text-xs font-medium text-[#292524] hover:text-[#0c0a09] flex items-center space-x-1.5 transition cursor-pointer">
             <span id="preview-voice-icon" class="material-symbols-rounded text-base text-[#292524]">volume_up</span>
@@ -273,7 +273,7 @@
           </span>
           <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-[#f0efed] border border-[#e7e5e4] text-[#292524] text-[11px] font-medium">
             <span class="material-symbols-rounded text-xs mr-0.5">graphic_eq</span>
-            <span>48.000 Hz</span>
+            <span>VieNeu-TTS</span>
           </span>
           <span class="text-[11px] text-[#777169] truncate max-w-[280px]" id="meta-desc">Truyền cảm, tự nhiên</span>
         </div>
@@ -394,7 +394,7 @@
         <button id="generate-btn" onclick="startGeneration()" 
           class="flex-1 py-3.5 px-6 rounded-full font-medium text-white bg-[#292524] hover:bg-[#0c0a09] shadow-sm flex items-center justify-center space-x-2 transition-all active:scale-[0.99] text-[15px]">
           <span class="material-symbols-rounded text-lg">play_arrow</span>
-          <span id="btn-text">Tạo Giọng Nói (48kHz Stereo)</span>
+          <span id="btn-text">Tạo Giọng Nói Ngay</span>
           <kbd class="ml-2 text-[10px] font-mono bg-white/20 px-1.5 py-0.5 rounded text-white/90">Ctrl ↵</kbd>
         </button>
 
@@ -433,7 +433,7 @@
             <span>Bản Phát Âm Thanh</span>
           </h3>
           <div class="flex items-center space-x-2">
-            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#f0efed] text-[#292524] border border-[#e7e5e4]">48.000 Hz</span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#f0efed] text-[#292524] border border-[#e7e5e4]">VieNeu Engine</span>
             <span id="active-voice-badge" class="text-xs px-2.5 py-0.5 rounded-full bg-[#f0efed] text-[#4e4e4e] font-medium border border-[#e7e5e4]">Hải Đăng</span>
           </div>
         </div>
@@ -456,7 +456,7 @@
             </button>
             <div>
               <div id="time-display" class="text-xs font-mono font-medium text-[#0c0a09]">00:00 / 00:00</div>
-              <div class="text-[11px] text-[#777169]">48kHz Neural Master</div>
+              <div class="text-[11px] text-[#777169]">Studio Audio Master</div>
             </div>
           </div>
 
@@ -588,7 +588,7 @@
         </div>
         <div>
           <h3 class="text-base font-semibold text-[#0c0a09]">Tích Hợp API OlokaTTS</h3>
-          <p class="text-xs text-[#777169]">OpenAI-Compatible &amp; REST Endpoint chuẩn 48kHz</p>
+          <p class="text-xs text-[#777169]">Chuẩn OpenAI-Compatible &amp; REST API linh hoạt</p>
         </div>
       </div>
       <button onclick="closeApiModal()" class="w-8 h-8 rounded-full text-[#777169] hover:text-[#0c0a09] hover:bg-[#f0efed] flex items-center justify-center transition">
@@ -614,7 +614,7 @@
     </div>
 
     <div class="p-5 border-t border-[#f0efed] bg-[#fafafa] flex items-center justify-between text-xs text-[#777169]">
-      <span>Định dạng trả về: <strong>48kHz WAV PCM</strong></span>
+      <span>Định dạng trả về: <strong>WAV PCM Audio</strong></span>
       <button onclick="closeApiModal()" class="px-4 py-2 rounded-full border border-[#d6d3d1] hover:bg-[#f0efed] text-[#0c0a09] font-medium transition">Đóng</button>
     </div>
   </div>
@@ -629,7 +629,7 @@
       </div>
       <div>
         <h3 class="text-base font-semibold text-[#0c0a09]">Yêu Cầu Đăng Nhập</h3>
-        <p class="text-xs text-[#777169]">Trải nghiệm giọng nói AI 48kHz không giới hạn</p>
+        <p class="text-xs text-[#777169]">Không gian sáng tạo giọng nói AI biểu cảm</p>
       </div>
     </div>
     <p class="text-xs text-[#4e4e4e] leading-relaxed">
@@ -823,7 +823,7 @@
     bilingual: "Google vừa chính thức công bố bước đột phá mới với mô hình Gemini 1.5 Pro hỗ trợ context window lên đến 2 triệu tokens. Khả năng code-switching và ultra-low latency mang lại trải nghiệm multimodal vô cùng ấn tượng cho người dùng toàn cầu.",
     story: "Đêm hôm ấy, gió rít từng hồi qua khe cửa sổ gỗ cũ kỹ. [thở dài] Tôi ngồi một mình giữa căn phòng tối, chỉ có ánh nến leo lét rọi lên vách tường. [ngập ngừng] Bỗng nhiên... [thì thầm] có một tiếng bước chân nhẹ nhàng đang tiến lại gần cánh cửa.",
     casual: "Trời ơi, cậu không thể nào tin được chuyện gì vừa xảy ra sáng nay đâu! [cười] Con mèo nhà tôi nó nhảy phốc lên bàn làm việc, rồi làm đổ cả cốc trà sữa vào bàn phím! [thở dài] Tôi vừa dọn vừa khóc không ra tiếng... [ngáp] Buồn ngủ quá đi mất!",
-    promo: "Chào mừng các bạn đã quay trở lại! Hôm nay trên tay mình là chiếc máy tính bảng mới nhất vừa ra mắt. Thiết kế khung nhôm nguyên khối siêu mỏng nhẹ, màn hình 120Hz mượt mà cùng dàn loa vòm 48kHz sống động, chắc chắn sẽ không làm bạn thất vọng!"
+    promo: "Chào mừng các bạn đã quay trở lại! Hôm nay trên tay mình là chiếc máy tính bảng mới nhất vừa ra mắt. Thiết kế khung nhôm nguyên khối siêu mỏng nhẹ, màn hình 120Hz mượt mà cùng dàn loa vòm không gian sống động, chắc chắn sẽ không làm bạn thất vọng!"
   };
 
   function applyPromptPreset(key) {
@@ -1234,7 +1234,7 @@
 
   function loadAudioUrl(url, voiceName, autoPlay = false) {
     currentAudioUrl = url;
-    document.getElementById('active-voice-badge').innerText = voiceName || 'OlokaTTS 48kHz';
+    document.getElementById('active-voice-badge').innerText = voiceName || 'OlokaTTS';
     
     // Show download buttons
     const dlWav = document.getElementById('download-btn');
@@ -1253,7 +1253,7 @@
       mPlayer.classList.remove('hidden');
       mPlayer.classList.add('flex');
       const mVoice = document.getElementById('mobile-voice-name');
-      if (mVoice) mVoice.innerText = voiceName || 'OlokaTTS 48kHz';
+      if (mVoice) mVoice.innerText = voiceName || 'OlokaTTS';
       const mDl = document.getElementById('mobile-download-btn');
       if (mDl) mDl.href = url;
     }
@@ -1463,7 +1463,7 @@
           stepLabel.innerHTML = '<span class="material-symbols-rounded text-sm animate-spin mr-1.5 text-[#292524]">sync</span>Đang khởi động Kaggle Tesla T4 GPU...';
           progressBar.style.width = "40%";
         } else if (job.status === 'processing') {
-          stepLabel.innerHTML = '<span class="material-symbols-rounded text-sm animate-pulse mr-1.5 text-[#292524]">graphic_eq</span>Kaggle GPU đang tổng hợp giọng nói 48kHz...';
+          stepLabel.innerHTML = '<span class="material-symbols-rounded text-sm animate-pulse mr-1.5 text-[#292524]">graphic_eq</span>Kaggle GPU đang tổng hợp giọng nói...';
           progressBar.style.width = "75%";
         } else if (job.status === 'completed') {
           clearInterval(interval);
@@ -1524,7 +1524,7 @@
     const btnText = document.getElementById('btn-text');
     btn.disabled = false;
     btn.classList.remove('opacity-75');
-    btnText.innerText = "Tạo Giọng Nói (48kHz Stereo)";
+    btnText.innerText = "Tạo Giọng Nói Ngay";
   }
 
   function closeLoginModal() {
@@ -1578,7 +1578,7 @@
 
     let code = "";
     if (activeCodeTab === 'curl') {
-      code = `# 1. OpenAI-Compatible Audio Speech (trực tiếp trả về file WAV 48kHz)
+      code = `# 1. OpenAI-Compatible Audio Speech (trực tiếp trả về file WAV)
 curl -X POST "${baseUrl}/v1/audio/speech" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -1613,9 +1613,9 @@ payload = {
 
 response = requests.post(url, json=payload, timeout=60)
 if response.status_code == 200:
-    with open("output_48khz.wav", "wb") as f:
+    with open("output_speech.wav", "wb") as f:
         f.write(response.content)
-    print("✅ Đã lưu file âm thanh chất lượng 48kHz vào output_48khz.wav")
+    print("✅ Đã lưu file âm thanh vào output_speech.wav")
 else:
     print(f"❌ Lỗi: HTTP {response.status_code} - {response.text}")`;
     } else if (activeCodeTab === 'py-openai') {
