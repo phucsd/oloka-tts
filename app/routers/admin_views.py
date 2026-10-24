@@ -78,6 +78,7 @@ def admin_analytics_page(
         context={
             "page_title": "Báo Cáo & Thống Kê - OlokaTTS Admin",
             "admin": admin,
+            "user": admin,  # base.html header reads `user` to render the account menu
             "total_users": total_users,
             "active_users": active_users,
             "users_with_kaggle": users_with_kaggle,
@@ -115,6 +116,7 @@ def admin_settings_page(
         context={
             "page_title": "Cấu Hình Hệ Thống - OlokaTTS Admin",
             "admin": admin,
+            "user": admin,  # base.html header reads `user` to render the account menu
             "settings": all_settings,
             "all_voices": all_voices,
             "google_redirect_uri": google_redirect_uri,
@@ -212,6 +214,7 @@ def admin_jobs_page(
         context={
             "page_title": "Quản Lý Hàng Đợi & Job - OlokaTTS Admin",
             "admin": admin,
+            "user": admin,  # base.html header reads `user` to render the account menu
             "jobs": jobs,
             "user_map": user_map,
             "total_jobs": total_jobs,
@@ -310,6 +313,7 @@ def admin_voices_page(
         context={
             "page_title": "Quản Lý Danh Mục Giọng - OlokaTTS Admin",
             "admin": admin,
+            "user": admin,  # base.html header reads `user` to render the account menu
             "presets": presets,
             "clone_samples": clone_samples,
             "msg": msg
@@ -421,6 +425,7 @@ def admin_users_page(
         context={
             "page_title": "Quản Lý Người Dùng - OlokaTTS Admin",
             "admin": admin,
+            "user": admin,  # base.html header reads `user` to render the account menu
             "users": users,
             "user_job_stats": user_job_stats,
             "total_users": total_users,
@@ -528,6 +533,7 @@ def admin_logs_page(
         context={
             "page_title": "Nhật Ký Lỗi & Giám Sát - OlokaTTS Admin",
             "admin": admin,
+            "user": admin,  # base.html header reads `user` to render the account menu
             "logs": logs,
             "failed_jobs": failed_jobs,
             "worker_logs": RECENT_WORKER_LOGS[-40:],
@@ -563,6 +569,7 @@ def admin_api_keys_page(
         context={
             "page_title": "Quản Lý API Keys - OlokaTTS Admin",
             "admin": admin,
+            "user": admin,  # base.html header reads `user` to render the account menu
             "key_tuples": key_tuples,
             "total_keys": total_keys,
             "active_keys": active_keys,
@@ -643,6 +650,7 @@ def admin_align_test_page(
         context={
             "page_title": "Kiểm Thử Căn Chỉnh Thời Gian (Forced Alignment) - OlokaTTS Admin",
             "admin": admin,
+            "user": admin,  # base.html header reads `user` to render the account menu
             "recent_jobs": recent_jobs,
             "has_local_audio_jobs": len(jobs_with_audio) > 0,
             "presets": presets,
