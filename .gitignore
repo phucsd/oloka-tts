@@ -9,6 +9,8 @@ __pycache__/
 .env.*
 !.env.example
 kaggle.json
+storage/.secret_key
+storage/.worker_token
 
 # Databases
 *.db

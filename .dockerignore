@@ -17,6 +17,8 @@ pip-delete-this-directory.txt
 .env.*
 !.env.example
 kaggle.json
+storage/.secret_key
+storage/.worker_token
 
 # Databases & sqlite storage
 *.db
