@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 class TTSJobCreate(BaseModel):
     prompt: str = Field(..., min_length=1, description="Nội dung văn bản cần đọc")
@@ -43,8 +43,7 @@ class TTSJobResponse(BaseModel):
     subtitles_url: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class VoicePresetResponse(BaseModel):
     id: str
@@ -56,8 +55,7 @@ class VoicePresetResponse(BaseModel):
     is_editors_pick: bool = False
     preview_audio_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class VoiceSampleResponse(BaseModel):
     id: str
@@ -65,8 +63,7 @@ class VoiceSampleResponse(BaseModel):
     duration: Optional[float] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Worker schemas
 class WorkerRegisterRequest(BaseModel):

@@ -523,3 +523,117 @@ def test_fail_closed_on_legacy_null_owner_resources(hardening_fixture):
             except Exception:
                 pass
         db.close()
+
+
+# ==============================================================================
+# P0/P1: AUDIT REMEDIATION REGRESSION TESTS
+# ==============================================================================
+
+def test_voice_sample_isolation_in_web_and_clone_job(hardening_fixture):
+    """
+    Verify:
+    1. User 1's private VoiceSample is not leaked on / or /voices to anonymous or User 2.
+    2. User 2 cannot clone User 1's VoiceSample via /v1/tts/jobs (returns 403).
+    """
+    db = SessionLocal()
+    u1_id = hardening_fixture["u1_id"]
+    u2_id = hardening_fixture["u2_id"]
+    u1 = db.query(User).filter(User.id == u1_id).first()
+    u2 = db.query(User).filter(User.id == u2_id).first()
+    u1_token = AuthService.create_token(u1.id, u1.username, u1.role)
+    u2_token = AuthService.create_token(u2.id, u2.username, u2.role)
+
+    try:
+        vs_u1 = db.query(VoiceSample).filter(VoiceSample.id == "vs_private_u1").first()
+        if not vs_u1:
+            vs_u1 = VoiceSample(
+                id="vs_private_u1",
+                name="SecretVoiceTenantOneUnique",
+                file_path="storage/samples/u1_secret.wav",
+                duration=4.2,
+                user_id=u1_id
+            )
+            db.add(vs_u1)
+            db.commit()
+
+        # Anonymous /voices must NOT contain User 1's private sample
+        client.cookies.clear()
+        anon_voices = client.get("/voices")
+        assert anon_voices.status_code == 200
+        assert "SecretVoiceTenantOneUnique" not in anon_voices.text
+
+        # User 2 / and /voices must NOT contain User 1's private sample
+        u2_home = client.get("/", headers={"Authorization": f"Bearer {u2_token}"})
+        assert u2_home.status_code == 200
+        assert "SecretVoiceTenantOneUnique" not in u2_home.text
+
+        u2_voices = client.get("/voices", headers={"Authorization": f"Bearer {u2_token}"})
+        assert u2_voices.status_code == 200
+        assert "SecretVoiceTenantOneUnique" not in u2_voices.text
+
+        # User 1 /voices DOES contain their own sample
+        u1_voices = client.get("/voices", headers={"Authorization": f"Bearer {u1_token}"})
+        assert u1_voices.status_code == 200
+        assert "SecretVoiceTenantOneUnique" in u1_voices.text
+
+        # User 2 attempting to create a clone job using User 1's ref_sample_id -> 403 Forbidden
+        clone_resp = client.post(
+            "/v1/tts/jobs",
+            headers={"Authorization": f"Bearer {u2_token}"},
+            json={
+                "prompt": "Thu clone giong nguoi khac",
+                "voice_type": "clone",
+                "voice_id": "vs_private_u1",
+                "ref_sample_id": "vs_private_u1"
+            }
+        )
+        assert clone_resp.status_code == 403
+        assert "không có quyền sử dụng mẫu giọng" in clone_resp.text
+    finally:
+        db.close()
+
+
+def test_non_admin_cannot_mint_privileged_api_key_scopes(hardening_fixture):
+    """
+    Verify that a non-admin user calling POST /api/user/api-keys/create with
+    'admin:access,full:access' has those privileged scopes stripped automatically.
+    """
+    db = SessionLocal()
+    u1_id = hardening_fixture["u1_id"]
+    u1 = db.query(User).filter(User.id == u1_id).first()
+    u1_token = AuthService.create_token(u1.id, u1.username, u1.role)
+    try:
+        resp = client.post(
+            "/api/user/api-keys/create",
+            headers={"Authorization": f"Bearer {u1_token}", "Accept": "application/json"},
+            json={"name": "Attempt Escalation Key", "scopes": "admin:access,full:access,tts:generate"}
+        )
+        assert resp.status_code == 200
+        key_data = resp.json()["key"]
+        assert "admin:access" not in key_data["scopes"]
+        assert "full:access" not in key_data["scopes"]
+        assert key_data["scopes"] == "tts:generate"
+    finally:
+        db.close()
+
+
+def test_admin_kaggle_stop_default_and_align_temp_traversal_protection(hardening_fixture):
+    """
+    Verify:
+    1. POST /api/admin/kaggle/stop without execution_account_id succeeds (no AttributeError).
+    2. GET /admin/api/align-temp-audio/{filename} rejects path traversal strings.
+    """
+    admin_token = hardening_fixture["admin_token"]
+    stop_resp = client.post(
+        "/api/admin/kaggle/stop",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert stop_resp.status_code == 200
+    assert stop_resp.json()["status"] == "stopping"
+
+    trav_resp = client.get(
+        "/admin/api/align-temp-audio/..%5Cvieneu_gateway.db",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert trav_resp.status_code in (400, 404)
+

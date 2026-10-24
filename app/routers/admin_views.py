@@ -166,6 +166,15 @@ def update_admin_settings(
     }
     SettingsService.update_bulk(db, updates)
     
+    # Sync master Kaggle credentials with admin user's KaggleExecutionAccount if provided
+    clean_k_user = master_kaggle_username.strip()
+    clean_k_key = master_kaggle_key.strip()
+    if clean_k_user and clean_k_key:
+        from app.services.kaggle_account_service import KaggleAccountService
+        KaggleAccountService.create_or_update_account(
+            db, user_id=admin.id, kaggle_username=clean_k_user, kaggle_key=clean_k_key
+        )
+
     # Sync default admin account email if appropriate
     clean_admin_email = admin_google_email.strip().lower()
     if clean_admin_email:
@@ -470,6 +479,8 @@ def admin_create_user(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin)
 ):
+    if len(password) < 8:
+        return RedirectResponse(url="/admin/users?error=password_too_short", status_code=302)
     existing = db.query(User).filter((User.username == username.strip()) | (User.email == email.strip().lower())).first()
     if existing:
         return RedirectResponse(url="/admin/users?error=username_or_email_exists", status_code=302)
@@ -527,6 +538,8 @@ def reset_user_password(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin)
 ):
+    if len(new_password) < 8:
+        return RedirectResponse(url="/admin/users?error=password_too_short", status_code=302)
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
         raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
@@ -618,7 +631,7 @@ def admin_toggle_key_status(
     
     key.is_active = not key.is_active
     db.commit()
-    AuthService.log_audit(db, action="admin_toggle_api_key", level="WARNING", message=f"Admin {admin.username} đã {'kích hoạt' if key.is_active else 'khóa'} key '{key.name}' ({key.key_prefix})")
+    AuthService.log_audit(db, action="admin_toggle_api_key", level="WARNING", message=f"Admin {admin.username} đã {'kích hoạt' if key.is_active else 'khóa'} key '{key.name}' ({key.key_prefix})", user_id=admin.id)
     return RedirectResponse(url="/admin/api-keys?msg=status_updated", status_code=303)
 
 @router.post("/api-keys/{key_id}/delete")
@@ -735,12 +748,20 @@ async def admin_api_align_test(
 
     # Case 2: Uploaded audio file
     elif audio_file and audio_file.filename:
-        temp_dir = Path("storage/temp_align")
+        import re
+        temp_dir = Path("storage/temp_align").resolve()
         temp_dir.mkdir(parents=True, exist_ok=True)
-        safe_fname = f"test_{int(time.time())}_{audio_file.filename}"
-        temp_path = temp_dir / safe_fname
+        raw_basename = Path(audio_file.filename).name
+        clean_basename = re.sub(r"[^A-Za-z0-9._-]", "_", raw_basename)[:80] or "upload.wav"
+        safe_fname = f"test_{int(time.time())}_{clean_basename}"
+        temp_path = (temp_dir / safe_fname).resolve()
+        if not temp_path.is_relative_to(temp_dir):
+            return JSONResponse({"success": False, "error": "Tên tệp tải lên không hợp lệ."}, status_code=400)
+        MAX_ALIGN_UPLOAD_BYTES = 25 * 1024 * 1024
+        content = await audio_file.read(MAX_ALIGN_UPLOAD_BYTES + 1)
+        if len(content) > MAX_ALIGN_UPLOAD_BYTES:
+            return JSONResponse({"success": False, "error": "Tệp âm thanh vượt quá giới hạn 25MB."}, status_code=413)
         with open(temp_path, "wb") as f_tmp:
-            content = await audio_file.read()
             f_tmp.write(content)
         audio_source_path = str(temp_path)
         audio_url = f"/admin/api/align-temp-audio/{temp_path.name}"
@@ -787,8 +808,12 @@ def admin_get_temp_align_audio(
     filename: str,
     admin: User = Depends(get_current_admin)
 ):
-    path = Path("storage/temp_align") / filename
-    if not path.exists():
+    temp_dir = Path("storage/temp_align").resolve()
+    safe_name = Path(filename).name
+    if not safe_name or safe_name != filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Tên tệp không hợp lệ")
+    path = (temp_dir / safe_name).resolve()
+    if not path.is_relative_to(temp_dir) or not path.exists() or not path.is_file():
         raise HTTPException(status_code=404, detail="File không tồn tại")
     return FileResponse(str(path), media_type="audio/wav")
 

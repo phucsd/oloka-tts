@@ -82,15 +82,9 @@ class JobService:
         from app.services.tts_script_parser import TtsScriptParser
         TtsScriptParser.parse(prompt)
 
-        ref_audio_path = None
-        if voice_type == "clone" and ref_sample_id:
-            sample = db.query(VoiceSample).filter(VoiceSample.id == ref_sample_id).first()
-            if sample:
-                ref_audio_path = sample.file_path
-
-        # Resolve execution account if not explicitly passed
-        if user_id and not execution_account_id:
-            user = db.query(User).filter(User.id == user_id).first()
+        # Resolve execution account and user if not explicitly passed
+        user = db.query(User).filter(User.id == user_id).first() if user_id else None
+        if user and not execution_account_id:
             acc = KaggleAccountService.get_execution_account_for_user(db, user)
             if acc:
                 execution_account_id = acc.id
@@ -98,6 +92,21 @@ class JobService:
             acc = db.query(KaggleExecutionAccount).filter(KaggleExecutionAccount.id == execution_account_id).first()
             if acc:
                 user_id = acc.owner_user_id
+                user = db.query(User).filter(User.id == user_id).first() if user_id else None
+
+        ref_audio_path = None
+        if voice_type == "clone" and ref_sample_id:
+            sample = db.query(VoiceSample).filter(VoiceSample.id == ref_sample_id).first()
+            if sample:
+                is_admin = bool(user and user.role == "admin")
+                if is_admin or (user_id and sample.user_id == user_id):
+                    ref_audio_path = sample.file_path
+                else:
+                    from fastapi import HTTPException
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Bạn không có quyền sử dụng mẫu giọng (Voice Sample) của tài khoản khác."
+                    )
 
         job = TTSJob(
             user_id=user_id,

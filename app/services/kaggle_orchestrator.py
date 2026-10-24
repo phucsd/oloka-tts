@@ -250,7 +250,10 @@ class KaggleOrchestrator:
                     res = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=60)
 
                     if res.returncode == 0:
-                        print(f"✅ [KaggleOrchestrator] Push succeeded for @{cur_acc.kaggle_username}: {res.stdout.strip()}")
+                        try:
+                            print(f"[OK] [KaggleOrchestrator] Push succeeded for @{cur_acc.kaggle_username}: {res.stdout.strip()}")
+                        except Exception:
+                            pass
                         cur_acc.last_status = "booting"
                         # Transition queued jobs owned by this execution account to booting_kaggle
                         push_db.query(TTSJob).filter(
@@ -260,7 +263,10 @@ class KaggleOrchestrator:
                         push_db.commit()
                     else:
                         err_out = (res.stderr or res.stdout or "").strip()
-                        print(f"❌ [KaggleOrchestrator] Push failed for @{cur_acc.kaggle_username}: {err_out}")
+                        try:
+                            print(f"[ERROR] [KaggleOrchestrator] Push failed for @{cur_acc.kaggle_username}: {err_out}")
+                        except Exception:
+                            pass
                         fail_msg = "Lỗi khởi chạy Kaggle kernel"
                         if "quota" in err_out.lower():
                             cur_acc.last_status = "quota_exceeded"
@@ -280,7 +286,10 @@ class KaggleOrchestrator:
                         push_db.commit()
 
                 except Exception as ex:
-                    print(f"⚠️ [KaggleOrchestrator] Exception in _do_push for account {acc_id}: {ex}")
+                    try:
+                        print(f"[WARN] [KaggleOrchestrator] Exception in _do_push for account {acc_id}: {ex}")
+                    except Exception:
+                        pass
                 finally:
                     with cls._get_account_lock(acc_id):
                         cls._is_pushing_accounts.discard(acc_id)

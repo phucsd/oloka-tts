@@ -25,10 +25,13 @@ def studio_page(request: Request, db: Session = Depends(get_db), user: Optional[
     recent_jobs = []
     
     if user:
-        samples = db.query(VoiceSample).all()
         if user.role == "admin":
+            samples = db.query(VoiceSample).order_by(VoiceSample.created_at.desc()).all()
             recent_jobs = db.query(TTSJob).order_by(TTSJob.created_at.desc()).limit(10).all()
         else:
+            samples = db.query(VoiceSample).filter(
+                VoiceSample.user_id == user.id
+            ).order_by(VoiceSample.created_at.desc()).all()
             recent_jobs = db.query(TTSJob).filter(
                 TTSJob.user_id == user.id
             ).order_by(TTSJob.created_at.desc()).limit(10).all()
@@ -53,7 +56,14 @@ def studio_page(request: Request, db: Session = Depends(get_db), user: Optional[
 @router.get("/voices")
 def voices_page(request: Request, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user_optional)):
     presets = db.query(VoicePreset).all()
-    samples = db.query(VoiceSample).order_by(VoiceSample.created_at.desc()).all()
+    samples = []
+    if user:
+        if user.role == "admin":
+            samples = db.query(VoiceSample).order_by(VoiceSample.created_at.desc()).all()
+        else:
+            samples = db.query(VoiceSample).filter(
+                VoiceSample.user_id == user.id
+            ).order_by(VoiceSample.created_at.desc()).all()
     return templates.TemplateResponse(
         request=request,
         name="voices.html",

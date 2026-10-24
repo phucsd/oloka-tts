@@ -75,11 +75,13 @@ def trigger_kaggle_stop(
     else:
         from app.models import KaggleExecutionAccount
         admin_accs = db.query(KaggleExecutionAccount.id).filter(
-            (KaggleExecutionAccount.user_id == admin.id) | (KaggleExecutionAccount.is_master == True)
+            KaggleExecutionAccount.owner_user_id == admin.id
         ).all()
         admin_acc_ids = [a[0] for a in admin_accs]
         if admin_acc_ids:
             query = query.filter(WorkerSession.execution_account_id.in_(admin_acc_ids))
+        else:
+            return {"status": "stopping", "stopped_workers": 0, "message": "Không có Kaggle GPU Worker nào thuộc tài khoản Admin đang hoạt động."}
     count = query.update({"status": "stopping"}, synchronize_session=False)
     db.commit()
     return {"status": "stopping", "stopped_workers": count, "message": f"Đã gửi lệnh ngắt kết nối tới {count} Kaggle GPU Worker."}

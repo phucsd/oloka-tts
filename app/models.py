@@ -134,7 +134,7 @@ class User(Base):
     avatar_url = Column(String(512), nullable=True)
     google_id = Column(String(128), nullable=True, index=True)
 
-    api_key = Column(String(64), unique=True, index=True, default=lambda: generate_id("key"))
+    api_key = Column(String(64), unique=True, index=True, nullable=True, default=None)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login_at = Column(DateTime, nullable=True)

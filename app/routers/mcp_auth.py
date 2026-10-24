@@ -279,20 +279,47 @@ def resolve_or_create_cimd_client(db: Session, client_id: str, redirect_uri: Opt
 
     try:
         import urllib.request
-        req = urllib.request.Request(
-            clean_client_id,
-            headers={"Accept": "application/json", "User-Agent": "OlokaTTS-OAuth-Server/1.0"}
-        )
-        with urllib.request.urlopen(req, timeout=3) as resp:
-            if resp.status == 200:
-                data = json.loads(resp.read().decode("utf-8"))
-                if isinstance(data, dict):
-                    if data.get("client_name"):
-                        client_name = str(data["client_name"])[:128]
-                    doc_uris = data.get("redirect_uris") or []
-                    for u in doc_uris:
-                        if isinstance(u, str) and validate_redirect_uri_format(u) and u not in valid_uris:
-                            valid_uris.append(u)
+        import socket
+        import ipaddress
+        parsed_cimd = urllib.parse.urlsplit(clean_client_id)
+        host = (parsed_cimd.hostname or "").strip().lower()
+        is_safe_host = False
+        if host and host not in ("localhost", "localhost.localdomain"):
+            try:
+                addr_infos = socket.getaddrinfo(host, parsed_cimd.port or 443, proto=socket.IPPROTO_TCP)
+                if addr_infos:
+                    is_safe_host = True
+                    for info in addr_infos:
+                        ip_obj = ipaddress.ip_address(info[4][0])
+                        if (
+                            ip_obj.is_private
+                            or ip_obj.is_loopback
+                            or ip_obj.is_link_local
+                            or ip_obj.is_multicast
+                            or ip_obj.is_reserved
+                            or ip_obj.is_unspecified
+                        ):
+                            is_safe_host = False
+                            break
+            except Exception:
+                is_safe_host = False
+
+        if is_safe_host:
+            req = urllib.request.Request(
+                clean_client_id,
+                headers={"Accept": "application/json", "User-Agent": "OlokaTTS-OAuth-Server/1.0"}
+            )
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                if resp.status == 200:
+                    raw_body = resp.read(65536)
+                    data = json.loads(raw_body.decode("utf-8"))
+                    if isinstance(data, dict):
+                        if data.get("client_name"):
+                            client_name = str(data["client_name"])[:128]
+                        doc_uris = data.get("redirect_uris") or []
+                        for u in doc_uris:
+                            if isinstance(u, str) and validate_redirect_uri_format(u) and u not in valid_uris:
+                                valid_uris.append(u)
     except Exception:
         pass
 

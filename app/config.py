@@ -1,7 +1,16 @@
 import os
+import sys
 from pathlib import Path
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Prevent UnicodeEncodeError on Windows cp1252 console when background threads print UTF-8/emojis
+for _stream in (getattr(sys, "stdout", None), getattr(sys, "stderr", None)):
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(errors="replace")
+        except Exception:
+            pass
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 

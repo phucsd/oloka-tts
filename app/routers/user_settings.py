@@ -114,7 +114,7 @@ def change_password(
     if not AuthService.verify_password(old_password, user.hashed_password):
         return RedirectResponse(url="/settings?error=wrong_old_password", status_code=302)
 
-    if len(new_password) < 6:
+    if len(new_password) < 8:
         return RedirectResponse(url="/settings?error=password_too_short", status_code=302)
 
     if new_password != confirm_new_password:
@@ -150,6 +150,16 @@ async def create_api_key_endpoint(
         form = await request.form()
         name = form.get("name") or name
         scopes = form.get("scopes") or scopes
+
+    # Enforce scope whitelist: non-admin users cannot mint admin:access or full:access keys
+    allowed_user_scopes = {"tts:generate", "tts:write", "voices:read", "voices:write"}
+    allowed_admin_scopes = allowed_user_scopes | {"admin:access", "full:access"}
+    permitted_set = allowed_admin_scopes if user.role == "admin" else allowed_user_scopes
+    requested_list = [s.strip() for s in str(scopes).split(",") if s.strip()]
+    sanitized_list = [s for s in requested_list if s in permitted_set]
+    if not sanitized_list:
+        sanitized_list = ["tts:generate", "voices:read"]
+    scopes = ",".join(sanitized_list)
 
     api_key_obj, raw_secret = ApiKeyService.create_api_key(
         db=db,
