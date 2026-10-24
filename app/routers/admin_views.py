@@ -67,7 +67,7 @@ def admin_analytics_page(
     ).all()
 
     # Calculate audio storage directory size
-    audio_dir = Path("app/static/audio")
+    audio_dir = Path(settings.AUDIO_DIR)
     total_storage_mb = 0.0
     if audio_dir.exists():
         total_storage_mb = sum(f.stat().st_size for f in audio_dir.glob("*.wav") if f.is_file()) / (1024 * 1024)

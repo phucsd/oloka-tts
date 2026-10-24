@@ -78,7 +78,7 @@
         <span>Tổng Lượt Gọi API</span>
         <span class="material-symbols-rounded text-lg text-indigo-600">api</span>
       </div>
-      <div class="text-3xl font-light text-[#0c0a09]">{{ "{:,}".format(total_requests) }}</div>
+      <div class="text-3xl font-light text-[#0c0a09]">{{ "{:,}".format(total_requests or 0) }}</div>
       <div class="text-[11px] text-[#777169]">Tổng request qua API</div>
     </div>
 
@@ -87,7 +87,7 @@
         <span>Tổng Ký Tự Phục Vụ</span>
         <span class="material-symbols-rounded text-lg text-amber-600">text_snippet</span>
       </div>
-      <div class="text-3xl font-light text-[#0c0a09]">{{ "{:,}".format(total_chars) }}</div>
+      <div class="text-3xl font-light text-[#0c0a09]">{{ "{:,}".format(total_chars or 0) }}</div>
       <div class="text-[11px] text-[#777169]">Ký tự tiếng Việt đã tổng hợp</div>
     </div>
   </div>

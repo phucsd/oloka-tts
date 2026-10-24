@@ -73,6 +73,8 @@ def init_database():
             if "user_id" not in cols_s and len(cols_s) > 0:
                 conn.exec_driver_sql("ALTER TABLE voice_samples ADD COLUMN user_id VARCHAR(64)")
                 print("[Startup] Auto-migrated schema: Added user_id to voice_samples.")
+            if len(cols_s) > 0:
+                conn.exec_driver_sql("UPDATE voice_samples SET duration = 0.0 WHERE duration IS NULL")
             
             res_v = conn.exec_driver_sql("PRAGMA table_info(voice_presets)")
             cols_v = [row[1] for row in res_v.fetchall()]

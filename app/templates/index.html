@@ -254,7 +254,7 @@
           <optgroup id="grp-clone" label="Giọng Clone Của Bạn">
             {% for s in samples %}
               <option value="clone:{{ s.id }}" data-preview="/v1/voices/samples/{{ s.file_path|basename }}" data-featured="false" data-region="clone" data-gender="clone" data-desc="Giọng tạo từ mẫu người dùng">
-                [Clone] {{ s.name }} ({{ "%.1f"|format(s.duration) }}s)
+                [Clone] {{ s.name }} ({{ "%.1f"|format(s.duration or 0) }}s)
               </option>
             {% endfor %}
           </optgroup>
@@ -533,7 +533,7 @@
               <span>{{ job.created_at.strftime('%H:%M:%S') }}</span>
               {% if job.duration %}
               <span>•</span>
-              <span>{{ "%.1f"|format(job.duration) }}s</span>
+              <span>{{ "%.1f"|format(job.duration or 0) }}s</span>
               {% endif %}
             </div>
           </div>

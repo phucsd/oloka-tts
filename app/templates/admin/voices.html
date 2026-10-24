@@ -184,7 +184,7 @@
           {% for s in clone_samples %}
           <tr class="hover:bg-[#fafafa] transition">
             <td class="p-4 font-medium text-[#0c0a09]">{{ s.name }}</td>
-            <td class="p-4 font-mono text-[#4e4e4e]">{{ "%.1f"|format(s.duration) }}s</td>
+            <td class="p-4 font-mono text-[#4e4e4e]">{{ "%.1f"|format(s.duration or 0) }}s</td>
             <td class="p-4 text-[#777169] max-w-xs truncate">{{ s.ref_text or '--' }}</td>
             <td class="p-4 text-[11px] text-[#777169]">{{ s.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
             <td class="p-4">

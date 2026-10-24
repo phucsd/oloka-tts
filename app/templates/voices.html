@@ -168,7 +168,7 @@
             <div class="min-w-0">
               <div class="text-sm font-medium text-[#0c0a09] truncate">{{ s.name }}</div>
               <div class="text-[11px] text-[#777169] mt-1 flex items-center space-x-2">
-                <span>Thời lượng: {{ "%.1f"|format(s.duration) }}s</span>
+                <span>Thời lượng: {{ "%.1f"|format(s.duration or 0) }}s</span>
                 <span class="text-[#d6d3d1]">•</span>
                 <span>{{ s.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
               </div>
