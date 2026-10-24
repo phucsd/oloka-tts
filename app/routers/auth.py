@@ -57,7 +57,7 @@ def set_session_cookie(resp: Response, request: Request, token: str):
     resp.set_cookie(
         key="session_token",
         value=token,
-        max_age=7 * 86400,
+        max_age=30 * 86400,
         httponly=True,
         samesite="lax",
         secure=is_https
@@ -104,7 +104,7 @@ def login_action(
         )
 
     # Create session token
-    token = AuthService.create_token(user.id, user.username, user.role, expires_in_days=7)
+    token = AuthService.create_token(user.id, user.username, user.role, expires_in_days=30)
     AuthService.log_audit(db, action="login", message=f"Đăng nhập thành công", user_id=user.id)
 
     if is_json:
@@ -275,7 +275,7 @@ async def google_oauth_callback(
     if not user.is_active:
         return RedirectResponse(url="/login?error=account_disabled", status_code=303)
 
-    token = AuthService.create_token(user.id, user.username, user.role, expires_in_days=7)
+    token = AuthService.create_token(user.id, user.username, user.role, expires_in_days=30)
     AuthService.log_audit(
         db,
         action="google_login",
@@ -332,7 +332,7 @@ def register_action(
 
     # Create user
     user = AuthService.create_user(db, username=username, email=email, password=password, role="user")
-    token = AuthService.create_token(user.id, user.username, user.role, expires_in_days=7)
+    token = AuthService.create_token(user.id, user.username, user.role, expires_in_days=30)
 
     if is_json:
         return {"status": "success", "token": token, "user_id": user.id, "message": "Đăng ký thành công!"}

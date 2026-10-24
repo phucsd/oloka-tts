@@ -42,7 +42,7 @@ class AuthService:
             return False
 
     @staticmethod
-    def create_token(user_id: str, username: str, role: str, expires_in_days: int = 7) -> str:
+    def create_token(user_id: str, username: str, role: str, expires_in_days: int = 30) -> str:
         exp = int(time.time()) + (expires_in_days * 86400)
         payload = {
             "sub": user_id,

@@ -73,18 +73,43 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Secure credential checks and runtime generation
+# Secure credential checks and persistent runtime generation
 import secrets
+
+def _load_or_create_persistent_secret(filename: str, generate_fn) -> str:
+    candidates = []
+    if Path("/data").exists() and os.access("/data", os.W_OK):
+        candidates.append(Path("/data/storage") / filename)
+    candidates.append(BASE_DIR / "storage" / filename)
+
+    for p in candidates:
+        try:
+            if p.exists():
+                val = p.read_text(encoding="utf-8").strip()
+                if len(val) >= 24:
+                    return val
+        except Exception:
+            pass
+
+    new_val = generate_fn()
+    for p in candidates:
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(new_val, encoding="utf-8")
+            break
+        except Exception:
+            pass
+    return new_val
 
 if not settings.SECRET_KEY:
     if settings.APP_ENV == "production":
         raise RuntimeError("CRITICAL SECURITY ERROR: 'SECRET_KEY' environment variable must be set in production (minimum 32 characters)!")
-    settings.SECRET_KEY = secrets.token_urlsafe(32)
-    print("[SECURITY NOTICE] No SECRET_KEY provided in environment. Generated dynamic runtime SECRET_KEY.")
+    settings.SECRET_KEY = _load_or_create_persistent_secret(".secret_key", lambda: secrets.token_urlsafe(32))
+    print("[SECURITY NOTICE] Loaded/persisted SECRET_KEY from storage.")
 
 if not settings.WORKER_TOKEN:
-    settings.WORKER_TOKEN = secrets.token_hex(24)
-    print("[SECURITY NOTICE] No WORKER_TOKEN configured in environment. Generated dynamic runtime WORKER_TOKEN.")
+    settings.WORKER_TOKEN = _load_or_create_persistent_secret(".worker_token", lambda: secrets.token_hex(24))
+    print("[SECURITY NOTICE] Loaded/persisted WORKER_TOKEN from storage.")
 
 # Normalize postgres URL dialect if provided
 if settings.DATABASE_URL.startswith("postgres://"):
