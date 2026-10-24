@@ -12,14 +12,32 @@ router = APIRouter(prefix="/api/admin", tags=["Admin & Monitor"])
 
 @router.get("/status")
 def get_system_status(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    from app.services.job_service import JobService
+    from app.services.kaggle_account_service import KaggleAccountService
+
+    # Automatically clean up any abandoned jobs (>15 minutes) so queue metrics stay accurate
+    JobService.cleanup_stale_jobs(db, max_age_minutes=15)
+
     cutoff = datetime.utcnow() - timedelta(seconds=90)
     live_workers = db.query(WorkerSession).filter(
         WorkerSession.status.in_(["starting", "ready", "busy"]),
         WorkerSession.last_heartbeat_at >= cutoff
     ).all()
 
-    kaggle_configured = KaggleOrchestrator.is_configured()
-    kaggle_status = KaggleOrchestrator.get_kernel_status() if kaggle_configured else "NOT_CONFIGURED"
+    admin_acc = KaggleAccountService.get_execution_account_for_user(db, admin)
+    kaggle_configured = KaggleOrchestrator.is_configured(
+        execution_account_id=admin_acc.id if admin_acc else None,
+        db=db
+    )
+    kaggle_status = (
+        KaggleOrchestrator.get_kernel_status(
+            db=db,
+            execution_account_id=admin_acc.id if admin_acc else None,
+            user_id=admin.id
+        )
+        if kaggle_configured else "NOT_CONFIGURED"
+    )
+    active_kernel_ref = admin_acc.kernel_ref if admin_acc else settings.KAGGLE_KERNEL_REF
 
     pending_jobs = db.query(TTSJob).filter(TTSJob.status.in_(["queued", "booting_kaggle", "processing"])).count()
     completed_jobs = db.query(TTSJob).filter(TTSJob.status == "completed").count()
@@ -43,7 +61,7 @@ def get_system_status(db: Session = Depends(get_db), admin: User = Depends(get_c
         ],
         "kaggle": {
             "configured": kaggle_configured,
-            "kernel_ref": settings.KAGGLE_KERNEL_REF,
+            "kernel_ref": active_kernel_ref,
             "kernel_status": kaggle_status
         },
         "local_engine": {

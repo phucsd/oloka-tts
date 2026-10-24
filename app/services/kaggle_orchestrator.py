@@ -19,6 +19,7 @@ class KaggleOrchestrator:
     _account_locks: Dict[str, threading.Lock] = {}
     _is_pushing_accounts: set = set()
     _last_push_times: Dict[str, float] = {}
+    _status_cache: Dict[str, tuple[float, str]] = {}
 
     @classmethod
     def _get_account_lock(cls, account_id: str) -> threading.Lock:
@@ -28,18 +29,25 @@ class KaggleOrchestrator:
             return cls._account_locks[account_id]
 
     @staticmethod
-    def is_configured(execution_account_id: str = None) -> bool:
-        if execution_account_id:
+    def is_configured(execution_account_id: str = None, db: Session = None) -> bool:
+        own_db = False
+        if db is None:
             db = SessionLocal()
-            try:
+            own_db = True
+        try:
+            if execution_account_id:
                 acc = db.query(KaggleExecutionAccount).filter(KaggleExecutionAccount.id == execution_account_id).first()
                 return bool(acc and acc.kaggle_username and acc.kaggle_key)
-            finally:
+            admin_user = db.query(User).filter(User.role == "admin", User.username == "admin").first() or db.query(User).filter(User.role == "admin").first()
+            acc = KaggleAccountService.get_execution_account_for_user(db, admin_user)
+            if acc and acc.kaggle_username and acc.kaggle_key:
+                return True
+            username = settings.KAGGLE_USERNAME or os.environ.get("KAGGLE_USERNAME")
+            key = settings.KAGGLE_KEY or os.environ.get("KAGGLE_KEY")
+            return bool(username and key)
+        finally:
+            if own_db:
                 db.close()
-        # Default admin configuration check
-        username = settings.KAGGLE_USERNAME or os.environ.get("KAGGLE_USERNAME")
-        key = settings.KAGGLE_KEY or os.environ.get("KAGGLE_KEY")
-        return bool(username and key)
 
     @staticmethod
     def has_live_worker(db: Session = None, execution_account_id: str = None, user_id: str = None) -> bool:
@@ -108,24 +116,55 @@ class KaggleOrchestrator:
                 user = db.query(User).filter(User.id == user_id).first()
                 acc = KaggleAccountService.get_execution_account_for_user(db, user)
             else:
-                admin_user = db.query(User).filter(User.role == "admin").first()
+                admin_user = db.query(User).filter(User.role == "admin", User.username == "admin").first() or db.query(User).filter(User.role == "admin").first()
                 acc = KaggleAccountService.get_execution_account_for_user(db, admin_user)
 
             if not acc or not acc.kaggle_username or not acc.kaggle_key:
                 return "NOT_CONFIGURED"
 
+            # Fast-path: if live workers for this account are actively heartbeating, the kernel is RUNNING
+            if cls.has_live_worker(db, execution_account_id=acc.id):
+                return "Đang Chạy (Dual T4 Ready)"
+
+            if acc.id in cls._is_pushing_accounts:
+                return "Đang Đẩy Kernel (Pushing...)"
+
+            now = time.time()
+            cached = cls._status_cache.get(acc.id)
+            if cached and (now - cached[0] < 30):
+                return cached[1]
+
             try:
-                from kaggle.api.kaggle_api_extended import KaggleApi
-                api = KaggleApi()
-                api.config_values = {
-                    api.CONFIG_NAME_USER: acc.kaggle_username,
-                    api.CONFIG_NAME_KEY: acc.kaggle_key
-                }
-                res = api.kernels_status(acc.kernel_ref)
-                status = res.get("status", "UNKNOWN") if isinstance(res, dict) else str(res)
-                return status
-            except Exception as e:
-                return f"ERROR: {e}"
+                env = os.environ.copy()
+                env["KAGGLE_USERNAME"] = acc.kaggle_username
+                env["KAGGLE_KEY"] = acc.kaggle_key
+                env["KAGGLE_API_TOKEN"] = acc.kaggle_key
+                env["PYTHONUTF8"] = "1"
+
+                cmd = [
+                    sys.executable, "-c", "from kaggle.cli import main; main()",
+                    "kernels", "status", acc.kernel_ref
+                ]
+                res = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=8)
+                out = (res.stdout or "") + "\n" + (res.stderr or "")
+                status_str = "Đang Nghỉ (Idle)"
+                if "RUNNING" in out:
+                    status_str = "Đang Chạy (RUNNING)"
+                elif "QUEUED" in out:
+                    status_str = "Đang Khởi Động (QUEUED)"
+                elif "COMPLETE" in out:
+                    status_str = "Đang Nghỉ (COMPLETE)"
+                elif "ERROR" in out or "CANCEL" in out:
+                    status_str = "Đã Dừng (STOPPED)"
+                elif acc.last_status == "booting":
+                    status_str = "Đang Khởi Động (Booting)"
+
+                cls._status_cache[acc.id] = (now, status_str)
+                return status_str
+            except Exception:
+                fallback_str = "Đang Khởi Động (Booting)" if acc.last_status == "booting" else "Đang Nghỉ (Idle)"
+                cls._status_cache[acc.id] = (now, fallback_str)
+                return fallback_str
         finally:
             if own_db:
                 db.close()

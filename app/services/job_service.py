@@ -185,22 +185,24 @@ class JobService:
 
     @staticmethod
     def cleanup_stale_jobs(db: Session, max_age_minutes: int = 15):
-        """Marks abandoned queued/booting jobs older than max_age_minutes as failed."""
+        """Marks abandoned queued/booting/processing jobs older than max_age_minutes as failed."""
         try:
             cutoff = datetime.utcnow() - timedelta(minutes=max_age_minutes)
             stale_jobs = db.query(TTSJob).filter(
-                TTSJob.status.in_(["queued", "booting_kaggle"]),
+                TTSJob.status.in_(["queued", "booting_kaggle", "processing"]),
                 func.coalesce(TTSJob.updated_at, TTSJob.created_at) < cutoff
             ).all()
             if stale_jobs:
                 count = len(stale_jobs)
                 for sj in stale_jobs:
                     sj.status = "failed"
+                    sj.lease_token = None
+                    sj.lease_expires_at = None
                     sj.error_message = f"Hết hạn chờ xử lý (Stale timeout > {max_age_minutes}m)"
                 db.commit()
-                print(f"🧹 [JobService] Cleaned up {count} stale pending jobs older than {max_age_minutes}m.")
+                print(f"[JobService] Cleaned up {count} stale pending jobs older than {max_age_minutes}m.")
         except Exception as e:
-            print(f"⚠️ [JobService] Error during stale job cleanup: {e}")
+            print(f"[JobService] Error during stale job cleanup: {e}")
 
     @staticmethod
     def pull_pending_job(

@@ -256,6 +256,8 @@ class DbSyncService:
 
     @classmethod
     def _do_upload(cls):
+        if os.environ.get("TESTING") == "1" or "test_isolated" in str(settings.DATABASE_URL):
+            return
         with cls._lock:
             if cls._is_uploading:
                 cls._has_pending = True

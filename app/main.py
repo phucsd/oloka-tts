@@ -156,6 +156,18 @@ def init_database():
             except Exception as _eh:
                 pass
 
+            # Clean up any leftover test fixture jobs/workers in production DB
+            if os.environ.get("TESTING") != "1":
+                try:
+                    conn.exec_driver_sql(
+                        "DELETE FROM tts_jobs WHERE id IN ('job_unowned_test', 'job_stale_test_123') OR user_id LIKE 'usr_hard_%' OR execution_account_id IN (SELECT id FROM kaggle_execution_accounts WHERE kaggle_username LIKE 'kaggle_journey_%' OR kaggle_username LIKE 'hard_k_%')"
+                    )
+                    conn.exec_driver_sql(
+                        "DELETE FROM worker_sessions WHERE worker_id IN ('wkr_test_a_0', 'wkr_test_b_0')"
+                    )
+                except Exception:
+                    pass
+
             conn.commit()
     except Exception as em:
         print(f"[Startup] Migration check info: {em}")
