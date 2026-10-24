@@ -275,7 +275,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="OlokaTTS Gateway",
-    description="AI Voice Studio & Cloud Gateway — Thổi hồn cảm xúc vào từng câu chữ Việt (Powered by VieNeu-TTS)",
+    description="OlokaTTS AI Voice Studio & Cloud Gateway — Developed by Oloka.net",
     version="1.0.0",
     lifespan=lifespan
 )
