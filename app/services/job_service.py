@@ -142,6 +142,12 @@ class JobService:
                 job.execution_time = exec_time
                 job.completed_at = datetime.utcnow()
                 db.commit()
+                try:
+                    from app.services.db_sync_service import DbSyncService
+                    DbSyncService.backup_audio_file(out_path, job.id)
+                    DbSyncService.backup_database(immediate=False)
+                except Exception:
+                    pass
                 return job
             except Exception as e:
                 print(f"⚠️ Local engine failed for job {job.id}: {e}")
@@ -374,6 +380,7 @@ class JobService:
         db.refresh(job)
         try:
             from app.services.db_sync_service import DbSyncService
+            DbSyncService.backup_audio_file(out_path, job_id)
             DbSyncService.backup_database(immediate=False)
         except Exception:
             pass
@@ -455,16 +462,27 @@ class JobService:
             except Exception:
                 pass
 
-        if job.status == "completed" and job.audio_path and os.path.exists(job.audio_path):
-            try:
-                from app.services.forced_aligner import ForcedAlignerService
-                res = ForcedAlignerService.align(job.audio_path, job.prompt)
-                if res.get("success"):
-                    job.alignment_data = json.dumps(res, ensure_ascii=False)
-                    db.commit()
-                    return res
-            except Exception as e:
-                print(f"⚠️ [JobService] Could not generate on-demand alignment for job {job.id}: {e}")
+        if job.status == "completed":
+            audio_p = job.audio_path
+            if not audio_p or not os.path.exists(audio_p):
+                try:
+                    from app.services.db_sync_service import DbSyncService
+                    audio_p = DbSyncService.restore_audio_file(job.id, job.audio_path)
+                    if audio_p and job.audio_path != audio_p:
+                        job.audio_path = audio_p
+                        db.commit()
+                except Exception:
+                    audio_p = None
+            if audio_p and os.path.exists(audio_p):
+                try:
+                    from app.services.forced_aligner import ForcedAlignerService
+                    res = ForcedAlignerService.align(audio_p, job.prompt)
+                    if res.get("success"):
+                        job.alignment_data = json.dumps(res, ensure_ascii=False)
+                        db.commit()
+                        return res
+                except Exception as e:
+                    print(f"⚠️ [JobService] Could not generate on-demand alignment for job {job.id}: {e}")
         return None
 
 

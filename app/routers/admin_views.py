@@ -201,6 +201,10 @@ def admin_jobs_page(
     total_jobs = query.count()
     jobs = query.order_by(TTSJob.created_at.desc()).offset((page - 1) * 20).limit(20).all()
 
+    for j in jobs:
+        std_audio = os.path.join(settings.AUDIO_DIR, f"{j.id}.wav")
+        j.has_local_audio = bool((j.audio_path and os.path.exists(j.audio_path)) or os.path.exists(std_audio))
+
     # Pre-fetch user dictionary for username mapping
     user_ids = list(set(j.user_id for j in jobs if j.user_id))
     user_map = {}
@@ -231,16 +235,38 @@ def retry_job(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin)
 ):
+    from app.services.kaggle_account_service import KaggleAccountService
+    from app.services.kaggle_orchestrator import KaggleOrchestrator
+
     job = db.query(TTSJob).filter(TTSJob.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Không tìm thấy job")
-    
+
+    if not job.user_id:
+        job.user_id = admin.id
+
+    if not job.execution_account_id:
+        owner = db.query(User).filter(User.id == job.user_id).first() or admin
+        acc = KaggleAccountService.get_execution_account_for_user(db, owner) or KaggleAccountService.get_execution_account_for_user(db, admin)
+        if acc:
+            job.execution_account_id = acc.id
+
     job.status = "queued"
     job.error_message = None
     job.worker_id = None
+    job.lease_token = None
+    job.lease_expires_at = None
     job.created_at = datetime.utcnow()
     job.updated_at = datetime.utcnow()
     db.commit()
+
+    if job.execution_account_id:
+        is_worker_alive = KaggleOrchestrator.has_live_worker(db, execution_account_id=job.execution_account_id)
+        if not is_worker_alive:
+            job.status = "booting_kaggle"
+            db.commit()
+            KaggleOrchestrator.ensure_worker_running(db, execution_account_id=job.execution_account_id, user_id=job.user_id)
+
     AuthService.log_audit(db, action="admin_retry_job", message=f"Admin {admin.username} đã đưa job #{job.id} trở lại hàng đợi", user_id=admin.id)
     return RedirectResponse(url="/admin/jobs?msg=retry_success", status_code=302)
 
@@ -682,6 +708,15 @@ async def admin_api_align_test(
         job = db.query(TTSJob).filter(TTSJob.id == job_id.strip()).first()
         if not job:
             return JSONResponse({"success": False, "error": f"Không tìm thấy tác vụ #{job_id}"}, status_code=404)
+        if not job.audio_path or not os.path.exists(job.audio_path):
+            try:
+                from app.services.db_sync_service import DbSyncService
+                restored = DbSyncService.restore_audio_file(job.id, job.audio_path)
+                if restored and os.path.exists(restored):
+                    job.audio_path = restored
+                    db.commit()
+            except Exception:
+                pass
         if not job.audio_path or not os.path.exists(job.audio_path):
             if job.alignment_data:
                 cached = JobService.get_or_create_job_alignment(db, job)

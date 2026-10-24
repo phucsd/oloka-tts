@@ -82,7 +82,7 @@ def get_tts_job(job_id: str, db: Session = Depends(get_db), user: Optional[User]
     job = db.query(TTSJob).filter(TTSJob.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    if not job.user_id or not user or (job.user_id != user.id and user.role != "admin"):
+    if not user or (user.role != "admin" and (not job.user_id or job.user_id != user.id)):
         raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập thông tin tác vụ này.")
     
     resp = TTSJobResponse.model_validate(job)
@@ -98,7 +98,7 @@ def get_job_alignment(job_id: str, db: Session = Depends(get_db), user: Optional
     job = db.query(TTSJob).filter(TTSJob.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    if not job.user_id or not user or (job.user_id != user.id and user.role != "admin"):
+    if not user or (user.role != "admin" and (not job.user_id or job.user_id != user.id)):
         raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập thông tin tác vụ này.")
 
     align_data = JobService.get_or_create_job_alignment(db, job)
@@ -118,7 +118,7 @@ def get_job_subtitles(
     job = db.query(TTSJob).filter(TTSJob.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    if not job.user_id or not user or (job.user_id != user.id and user.role != "admin"):
+    if not user or (user.role != "admin" and (not job.user_id or job.user_id != user.id)):
         raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập phụ đề của tác vụ này.")
 
     align_data = JobService.get_or_create_job_alignment(db, job)
@@ -147,14 +147,27 @@ def get_job_audio(job_id: str, db: Session = Depends(get_db), user: Optional[Use
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    if not job.user_id or not user or (job.user_id != user.id and user.role != "admin"):
+    if not user or (user.role != "admin" and (not job.user_id or job.user_id != user.id)):
         raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập tệp âm thanh của tác vụ này.")
 
-    if not job.audio_path or not os.path.exists(job.audio_path):
-        raise HTTPException(status_code=404, detail="Audio not found or job not finished")
+    audio_path = job.audio_path
+    if not audio_path or not os.path.exists(audio_path):
+        try:
+            from app.services.db_sync_service import DbSyncService
+            restored = DbSyncService.restore_audio_file(job.id, job.audio_path)
+            if restored and os.path.exists(restored):
+                audio_path = restored
+                if job.audio_path != restored:
+                    job.audio_path = restored
+                    db.commit()
+        except Exception:
+            pass
+
+    if not audio_path or not os.path.exists(audio_path):
+        raise HTTPException(status_code=404, detail="Tệp âm thanh của tác vụ cũ đã được dọn dẹp khi khởi động lại container. Vui lòng bấm nút 'Tạo lại (Retry)' để tổng hợp lại âm thanh.")
 
     return FileResponse(
-        job.audio_path,
+        audio_path,
         media_type="audio/wav",
         filename=f"vieneu_{job_id}.wav"
     )

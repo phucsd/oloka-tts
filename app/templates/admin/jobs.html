@@ -121,6 +121,28 @@
     </div>
   </div>
 
+  <!-- Inline Audio Player Bar -->
+  <div id="admin-job-player-bar" class="hidden p-4 rounded-2xl bg-white border border-[#292524]/20 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="flex items-center space-x-3 min-w-0">
+      <div class="w-9 h-9 rounded-full bg-[#292524] text-white flex items-center justify-center shrink-0">
+        <span class="material-symbols-rounded text-base">graphic_eq</span>
+      </div>
+      <div class="min-w-0">
+        <div class="flex items-center space-x-2">
+          <span id="admin-player-job-id" class="font-mono text-xs font-semibold text-[#0c0a09]">#job</span>
+          <span id="admin-player-voice" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#f0efed] text-[#292524] border border-[#e7e5e4]">Giọng đọc</span>
+        </div>
+        <div id="admin-player-prompt" class="text-xs text-[#777169] truncate max-w-md mt-0.5">Đang phát âm thanh...</div>
+      </div>
+    </div>
+    <div class="flex items-center space-x-3 shrink-0">
+      <audio id="admin-job-audio-el" controls class="h-9 w-full sm:w-72"></audio>
+      <button type="button" onclick="closeAdminJobPlayer()" class="p-1.5 rounded-full text-[#777169] hover:text-[#0c0a09] hover:bg-[#f0efed] transition" title="Đóng trình phát">
+        <span class="material-symbols-rounded text-base">close</span>
+      </button>
+    </div>
+  </div>
+
   <!-- Jobs Table Card -->
   <div class="card-editorial bg-white rounded-2xl border border-[#e7e5e4] overflow-hidden shadow-sm">
     <div class="overflow-x-auto">
@@ -203,16 +225,22 @@
                   class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#292524] border border-[#e7e5e4] transition">
                   <span class="material-symbols-rounded text-sm">download</span>
                 </a>
-                <button type="button" onclick="playJobAudio('{{ j.audio_url }}', this)" title="Nghe thử"
-                  class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#292524] border border-[#e7e5e4] transition">
+                <button type="button"
+                  data-url="{{ j.audio_url }}"
+                  data-job-id="{{ j.id }}"
+                  data-voice="{{ j.voice_id }}"
+                  data-prompt="{{ j.prompt }}"
+                  onclick="playJobAudio(this)"
+                  title="Nghe thử"
+                  class="job-play-btn p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#292524] border border-[#e7e5e4] transition">
                   <span class="material-symbols-rounded text-sm">volume_up</span>
                 </button>
                 {% endif %}
 
-                <!-- Retry Job -->
-                {% if j.status == 'failed' %}
-                <form action="/admin/jobs/{{ j.id }}/retry" method="POST">
-                  <button type="submit" title="Chạy lại job này"
+                <!-- Retry / Re-synthesize Job -->
+                {% if j.status in ['failed', 'completed'] %}
+                <form id="retry-form-{{ j.id }}" action="/admin/jobs/{{ j.id }}/retry" method="POST">
+                  <button type="submit" title="{% if j.status == 'completed' %}Tổng hợp lại âm thanh (Re-synthesize){% else %}Chạy lại job này{% endif %}"
                     class="p-1.5 rounded-lg text-xs bg-white hover:bg-[#f0efed] text-[#16a34a] border border-[#16a34a]/30 transition">
                     <span class="material-symbols-rounded text-sm">replay</span>
                   </button>
@@ -259,17 +287,126 @@
 
 <script>
   var currentAudio = null;
-  function playJobAudio(url, btn) {
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio = null;
+  var currentPlayBtn = null;
+  var currentBlobUrl = null;
+
+  function resetAllPlayButtons() {
+    document.querySelectorAll('.job-play-btn .material-symbols-rounded').forEach(ic => {
+      ic.innerText = 'volume_up';
+      ic.classList.remove('animate-spin');
+    });
+  }
+
+  function closeAdminJobPlayer() {
+    const playerEl = document.getElementById('admin-job-audio-el');
+    if (playerEl) {
+      try { playerEl.pause(); playerEl.removeAttribute('src'); } catch (e) {}
     }
-    const audio = new Audio(url);
-    currentAudio = audio;
-    audio.play();
+    if (currentBlobUrl) {
+      try { URL.revokeObjectURL(currentBlobUrl); } catch (e) {}
+      currentBlobUrl = null;
+    }
+    currentAudio = null;
+    window.currentAudio = null;
+    currentPlayBtn = null;
+    resetAllPlayButtons();
+    const bar = document.getElementById('admin-job-player-bar');
+    if (bar) bar.classList.add('hidden');
+  }
+
+  async function playJobAudio(btn) {
+    const url = btn.getAttribute('data-url');
+    const jobId = btn.getAttribute('data-job-id') || '';
+    const voice = btn.getAttribute('data-voice') || 'OlokaTTS';
+    const prompt = btn.getAttribute('data-prompt') || '';
     const icon = btn.querySelector('.material-symbols-rounded');
-    icon.innerText = 'stop';
-    audio.onended = () => { icon.innerText = 'volume_up'; };
+    const playerEl = document.getElementById('admin-job-audio-el');
+
+    // Toggle pause/stop if clicking the currently active button
+    if (currentPlayBtn === btn && playerEl && !playerEl.paused) {
+      playerEl.pause();
+      if (icon) icon.innerText = 'volume_up';
+      currentPlayBtn = null;
+      return;
+    }
+
+    resetAllPlayButtons();
+    if (icon) {
+      icon.innerText = 'progress_activity';
+      icon.classList.add('animate-spin');
+    }
+
+    try {
+      const res = await fetch(url, { method: 'GET', credentials: 'same-origin' });
+      if (!res.ok) {
+        let detail = 'Không thể tải file âm thanh (HTTP ' + res.status + ').';
+        try {
+          const errJson = await res.json();
+          if (errJson && errJson.detail) detail = errJson.detail;
+        } catch (e) {}
+        if (icon) {
+          icon.classList.remove('animate-spin');
+          icon.innerText = 'volume_up';
+        }
+        const retryForm = document.getElementById('retry-form-' + jobId);
+        if (res.status === 404 && retryForm) {
+          if (confirm(detail + '\n\nBạn có muốn đưa tác vụ #' + jobId + ' vào hàng đợi để tổng hợp lại âm thanh ngay bây giờ không?')) {
+            retryForm.submit();
+          }
+        } else {
+          alert(detail);
+        }
+        return;
+      }
+
+      const blob = await res.blob();
+      if (currentBlobUrl) {
+        try { URL.revokeObjectURL(currentBlobUrl); } catch (e) {}
+      }
+      currentBlobUrl = URL.createObjectURL(blob);
+
+      const bar = document.getElementById('admin-job-player-bar');
+      if (bar) bar.classList.remove('hidden');
+      const idEl = document.getElementById('admin-player-job-id');
+      if (idEl) idEl.innerText = '#' + jobId;
+      const vEl = document.getElementById('admin-player-voice');
+      if (vEl) vEl.innerText = voice;
+      const pEl = document.getElementById('admin-player-prompt');
+      if (pEl) pEl.innerText = prompt;
+
+      if (playerEl) {
+        playerEl.src = currentBlobUrl;
+        currentAudio = playerEl;
+        window.currentAudio = playerEl;
+        currentPlayBtn = btn;
+
+        playerEl.onended = () => {
+          if (icon) icon.innerText = 'volume_up';
+          currentPlayBtn = null;
+        };
+        playerEl.onpause = () => {
+          if (playerEl.ended) return;
+          if (icon) icon.innerText = 'volume_up';
+        };
+        playerEl.onplay = () => {
+          resetAllPlayButtons();
+          if (icon) icon.innerText = 'stop';
+          currentPlayBtn = btn;
+        };
+
+        await playerEl.play();
+        if (icon) {
+          icon.classList.remove('animate-spin');
+          icon.innerText = 'stop';
+        }
+      }
+    } catch (err) {
+      if (icon) {
+        icon.classList.remove('animate-spin');
+        icon.innerText = 'volume_up';
+      }
+      alert('Lỗi khi phát âm thanh: ' + (err.message || err));
+    }
   }
 </script>
 {% endblock %}

@@ -284,3 +284,82 @@ class DbSyncService:
                 cls._is_uploading = False
             if cls._has_pending:
                 cls.backup_database(immediate=False)
+
+    @classmethod
+    def backup_audio_file(cls, local_path: str, job_id: str):
+        """
+        Asynchronously backs up a generated TTS job audio file to the private HF dataset
+        so it survives Hugging Face Space container rebuilds and restarts.
+        """
+        if os.environ.get("TESTING") == "1":
+            return
+        if not local_path or not os.path.exists(local_path):
+            return
+        try:
+            if os.path.getsize(local_path) <= 100:
+                return
+        except Exception:
+            return
+
+        token = cls.get_token()
+        if not token:
+            return
+
+        def _upload_audio():
+            try:
+                repo_id = cls.get_backup_repo_id()
+                api = HfApi(token=token) if HfApi else None
+                if not api:
+                    from huggingface_hub import HfApi as HubApi
+                    api = HubApi(token=token)
+                api.upload_file(
+                    path_or_fileobj=str(local_path),
+                    path_in_repo=f"audio/{job_id}.wav",
+                    repo_id=repo_id,
+                    repo_type="dataset",
+                    commit_message=f"Backup job audio {job_id}"
+                )
+                print(f"[DbSync] Backed up audio/{job_id}.wav to {repo_id}.")
+            except Exception as e:
+                print(f"⚠️ [DbSync] Audio backup notice for {job_id}: {e}")
+
+        threading.Thread(target=_upload_audio, daemon=True, name=f"AudioSync_{job_id}").start()
+
+    @classmethod
+    def restore_audio_file(cls, job_id: str, target_path: Optional[str] = None) -> Optional[str]:
+        """
+        On-demand restores a job's WAV file from the private HF dataset if the local
+        container file was wiped by a container rebuild or restart.
+        """
+        if os.environ.get("TESTING") == "1":
+            return None
+
+        dest = Path(target_path) if target_path else (Path(settings.AUDIO_DIR) / f"{job_id}.wav")
+        if dest.exists() and dest.stat().st_size > 100:
+            return str(dest)
+
+        # Also check standard settings.AUDIO_DIR in case target_path had a different OS prefix
+        std_dest = Path(settings.AUDIO_DIR) / f"{job_id}.wav"
+        if std_dest.exists() and std_dest.stat().st_size > 100:
+            return str(std_dest)
+
+        token = cls.get_token()
+        if not token:
+            return None
+
+        try:
+            from huggingface_hub import hf_hub_download as hub_dl
+            dl_fn = hf_hub_download or hub_dl
+            repo_id = cls.get_backup_repo_id()
+            downloaded = dl_fn(
+                repo_id=repo_id,
+                filename=f"audio/{job_id}.wav",
+                repo_type="dataset",
+                token=token
+            )
+            std_dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(downloaded, str(std_dest))
+            print(f"[DbSync] Restored audio/{job_id}.wav from {repo_id} -> {std_dest}")
+            return str(std_dest)
+        except Exception:
+            return None

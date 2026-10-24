@@ -1192,6 +1192,11 @@
 
     wavesurfer.on('audioprocess', updateTimeDisplay);
     wavesurfer.on('seek', updateTimeDisplay);
+    wavesurfer.on('error', () => {
+      const ph = document.getElementById('player-placeholder');
+      if (ph) ph.classList.remove('hidden');
+      showToast('Tệp âm thanh của bản ghi cũ đã được dọn dẹp khi máy chủ khởi động lại. Hãy bấm Tạo giọng nói để tổng hợp mới!');
+    });
     wavesurfer.on('finish', () => {
       document.getElementById('play-icon').innerText = 'play_arrow';
       const mIcon = document.getElementById('mobile-play-icon');
